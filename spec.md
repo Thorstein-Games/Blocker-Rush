@@ -3,14 +3,19 @@
 ## Product intent, “feel,” and what makes it not a clone
 
 1. When the player wins, what emotion do you want: relief, pride, “one more run” adrenaline, or calm mastery?
+   "One more run" adrenaline
 
 2. What’s the one “signature moment” you want players to remember (e.g., last piece snaps in + streak bonus, photo-finish vs opponent, dramatic time rewind)?
+   Last piece snaps in + streak bonus
 
 3. If you removed racing entirely, what part of the experience still must remain for it to be Blocker-rush?
+   The core mechanics of playing ("Genius Square")[https://www.gaminglib.com/blogs/news/how-to-play-genius-square] for one player.
 
 4. Do you want the game to be “fair but brutal” or “always encouraging”? (This affects puzzle selection, hints, and time pressure.)
+   Always encouraging when playing solo. Fair but brutal for multiplayer
 
 5. What is your stance on “soft cheating”: should the UI prevent obvious misplacements, or let players make mistakes and learn?
+   No cheating
 
 ## Puzzle identity and reproducibility (the hidden backbone)
 
