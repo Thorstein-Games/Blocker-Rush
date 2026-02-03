@@ -15,7 +15,7 @@ There will be three game modes:
 
 - Casual: for the solo player who wants to set their own settings, go their own pace, etc.
 - Multiplayer: More competitive race to see who finishes first. Up to 20 players can join. Three rounds of puzzles. Once a player finishes a puzzle, they instantly start the next puzzle. First to finish 3 win. Each puzzle gets a little harder.
-- Daily challenge: One game each day Sunday to Saturday, with each day raising the difficulty until resetting on Sunday.
+- Daily challenge: One game each day Monday to Sunday, with each day raising the difficulty until resetting on Monday.
 
 ## Product intent, “feel,” and what makes it not a clone of Genius Square
 
@@ -193,5 +193,56 @@ There will be three game modes:
 50. What’s your MVP “done” line: solo practice only? async races? real-time?
     The core game done. The three modes added.
 
-51. What features are you willing to cut even if they’re cool?
-    Animations
+## Further Questions (Implementation Clarifications)
+
+1. Tech stack: what are we using for frontend (React, Vue, Svelte, vanilla) and backend (Node, Go, etc.)?
+   React, Nextjs, and a separate Node server (file in the same repo)
+2. Target platforms: web only, or also iOS/Android wrappers?
+   Web only. But target mostly mobile users
+3. Board size and piece set: is the grid 6x6 with 9 polyominoes exactly like Genius Square, or do you want different shapes/counts?
+   6x6 with 9 polyominoes
+4. Do we already have the exact dice/blocker coordinate faces defined, or should I reproduce them from the physical game rules?
+   Here are the seven dice with the blocker coordinates:
+   1. A1 C1 D1 D2 E2 F3
+   2. A2 B2 C2 A3 B1 B3
+   3. C3 D3 E3 B4 C4 D4
+   4. E1 F2 F2 B6 A5 A5
+   5. A4 B5 C6 C5 D6 F6
+   6. E4 F4 E5 F5 D5 E6
+   7. F1 F1 F1 A6 A6 A6
+5. Puzzle ID format: do you want a specific URL param scheme (e.g., `?p=ABC123`) and should it encode blockers + difficulty + mode?
+   Puzzle id is basically the 7 blocker coordinates ?p=A1A2B4B6C5D5F1 sorted alphabetically first, then numerically. Mode is not part of the param scheme, but rather in the url /causual, /multiplayer (or /lobby), /daily-challenge
+6. Multiplayer: do you already have a server or should I build one? If yes, where will it run and how will players connect (rooms, codes, matchmaking)?
+   No server yet. Build one with web sockets.
+7. Multiplayer fairness: do you want a countdown start, or “join and go” as soon as the first player is ready?
+   Countdown start.
+8. Daily challenge: should the “daily puzzle” be computed client-side from date or served from the server?
+   Yes
+9. Streaks: should the daily streak reset on a missed day, and should it be per-device only (localStorage) or synced?
+   Per-device only and reset on a missed day.
+10. Casual difficulty: how does the player choose difficulty (simple 1–5, easy/medium/hard, or time-target)?
+    Easy/medium/hard/insane
+11. Hints in casual: do we show a single constructive hint at a time, or multiple? Any limit?
+    No limit. Eventually, the player will watch an ad for a hint
+12. Keyboard controls: what key bindings do you want (arrows move, `R` rotate, `F` flip, space place?)?
+    Whatever the best practices are.
+13. Ads: any specific provider or format? Where exactly should the banner placeholder live?
+    - Post game popup
+    - ads mid game as long as they’re collapsible and already spawned.  It’s annoying when new banners show up mid game.
+    - hint video in causual
+14. UI layout: do you have a mock or visual style direction, or should I design one?
+    Please design one. Make it modern and sleek.
+15. Telemetry storage: should time-to-solve and multiplayer W/L be kept only locally or sent to the server?
+    Kept locally
+16. Board/coordinates: confirm the board is 6x6 and the coordinate notation to display in UI and URLs (e.g., A–F and 1–6).
+    Yes. Architect the code in a way that the 6x6 board can be expanded.
+17. Multiplayer matchmaking: public queue, private room codes, or both?
+    Both.
+18. Multiplayer disconnects: should there be a grace period/rejoin window and a forfeit timeout?
+    30 second grace period to rejoin
+19. Difficulty mapping: define exact difficulty tiers for multiplayer rounds (R1/R2/R3) and daily challenge days (Sun–Sat).
+    Multiplayer: easy/medium/hard. Daily challenge: Mon, Tues - easy. Wed, Thurs - Medium. Fri, Sat, Sun - Hard.
+20. Shared puzzle links: should they open directly into a playable solve, or a spectator/preview screen first?
+    Shareable puzzles (when clicking the share button like words) should show an ASCII version of the solve in the shared text. Link should just lead to puzzle without the solve
+21. Ads: confirm provider/SDK choice and target banner size/placement constraints beyond positions listed above.
+    Don't worry about ads for now. Will be taken care of when approved and there are more players
