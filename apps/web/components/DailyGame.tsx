@@ -5,6 +5,7 @@ import { getDateKey, getDailyPuzzle } from "@blocker-rush/shared";
 import GameBoard from "./GameBoard";
 import PiecesTray from "./PiecesTray";
 import { GameProvider, useGame } from "./GameContext";
+import GameHeader from "./GameHeader";
 
 const DAILY_STATS_KEY = "blockerRush.daily.stats";
 
@@ -114,21 +115,32 @@ function DailyGameLayout({ date }: { date: Date }) {
       : "Not yet cleared";
 
   return (
-    <main className="page">
-      <section className="casual-layout">
-        <div className="panel">
-          <h2>Daily Challenge</h2>
-          <div className="stack">
-            <span className="badge">{dailyPuzzle.difficulty}</span>
-            <span>Local date: {dateKey}</span>
+    <main className="page game-page">
+      <GameHeader
+        mode="daily"
+        statsTitle="Daily Challenge"
+        statsPanel={
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-label">Streak</span>
+              <span className="stat-value">{stats.streak}</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Status</span>
+              <span className="stat-value">{statusLabel}</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Difficulty</span>
+              <span className="badge">{dailyPuzzle.difficulty}</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-label">Date</span>
+              <span className="stat-value">{dateKey}</span>
+            </div>
           </div>
-          <div className="status-row">
-            <span>Streak: {stats.streak}</span>
-            <span>{statusLabel}</span>
-          </div>
-          <div className="ad-slot">Ad slot placeholder</div>
-        </div>
-
+        }
+      />
+      <section className="game-layout">
         <div className="game-center">
           <GameBoard />
           <PiecesTray />

@@ -54,6 +54,16 @@ type InteractionState = {
   lastPointer?: { x: number; y: number };
 };
 
+type DragPreview = {
+  pieceId: PieceId;
+  pointer: { x: number; y: number };
+  cell: number;
+  gap: number;
+  offset: { x: number; y: number };
+  scale: number;
+  snap: { x: number; y: number } | null;
+};
+
 const initPieceStates = (): Record<PieceId, PieceState> =>
   PIECES.reduce(
     (acc, piece) => {
@@ -131,6 +141,7 @@ type GameContextValue = {
   activePieceId: PieceId | null;
   ghost: DragGhost | null;
   draggingPieceId: PieceId | null;
+  dragPreview: DragPreview | null;
   applyPuzzle: (puzzle: PuzzleSpec) => void;
   setActivePieceId: (pieceId: PieceId | null) => void;
   setPieceState: (pieceId: PieceId, next: PieceState) => void;
@@ -143,7 +154,7 @@ type GameContextValue = {
   onBoardClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onBoardDoubleClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onPiecePointerDown: (
-    event: ReactPointerEvent<HTMLDivElement>,
+    event: ReactPointerEvent<HTMLElement>,
     pieceId: PieceId,
   ) => void;
   rotatePiece: (pieceId: PieceId) => void;
@@ -170,6 +181,7 @@ export function GameProvider({ children }: GameProviderProps) {
   const [activePieceId, setActivePieceId] = useState<PieceId | null>(null);
   const [ghost, setGhost] = useState<DragGhost | null>(null);
   const [draggingPieceId, setDraggingPieceId] = useState<PieceId | null>(null);
+  const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
 
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -204,6 +216,7 @@ export function GameProvider({ children }: GameProviderProps) {
     setHistory([]);
     updateGhostState(null);
     setDraggingPieceId(null);
+    setDragPreview(null);
     setActivePieceId(null);
     setStartedAt(Date.now());
   };
@@ -262,6 +275,90 @@ export function GameProvider({ children }: GameProviderProps) {
     return { rect, gap, cell, step: cell + gap };
   };
 
+  const buildDragPreview = (
+    pieceId: PieceId,
+    pointer: { x: number; y: number },
+    metrics: { cell: number; gap: number },
+  ): DragPreview => {
+    const state = pieceStatesRef.current[pieceId];
+    const transform = getTransformFor(pieceId, state.rotation, state.flipped);
+    const cell = metrics.cell;
+    const gap = metrics.gap;
+    const width = transform.width * cell + (transform.width - 1) * gap;
+    const height = transform.height * cell + (transform.height - 1) * gap;
+    const offset = { x: width / 2, y: height / 2 };
+    return {
+      pieceId,
+      pointer,
+      cell,
+      gap,
+      offset,
+      scale: 1.06,
+      snap: null,
+    };
+  };
+
+  const updateDragPreviewPointer = (
+    pointer: { x: number; y: number },
+    interaction: InteractionState,
+  ) => {
+    setDragPreview((prev) => {
+      if (!prev || prev.pieceId !== interaction.pieceId) {
+        return buildDragPreview(
+          interaction.pieceId,
+          pointer,
+          interaction.metrics,
+        );
+      }
+      return { ...prev, pointer, snap: null };
+    });
+  };
+
+  const updateDragPreviewSnap = (
+    origin: Vec2 | null,
+    interaction: InteractionState,
+  ) => {
+    if (!origin) {
+      setDragPreview((prev) => (prev ? { ...prev, snap: null } : prev));
+      return;
+    }
+    setDragPreview((prev) => {
+      const preview =
+        prev ??
+        buildDragPreview(
+          interaction.pieceId,
+          interaction.lastPointer ?? {
+            x: interaction.startX,
+            y: interaction.startY,
+          },
+          interaction.metrics,
+        );
+      const state = pieceStatesRef.current[interaction.pieceId];
+      const transform = getTransformFor(
+        interaction.pieceId,
+        state.rotation,
+        state.flipped,
+      );
+      const width =
+        transform.width * preview.cell + (transform.width - 1) * preview.gap;
+      const height =
+        transform.height * preview.cell + (transform.height - 1) * preview.gap;
+      return {
+        ...preview,
+        snap: {
+          x:
+            interaction.metrics.rect.left +
+            origin.x * interaction.metrics.step +
+            width / 2,
+          y:
+            interaction.metrics.rect.top +
+            origin.y * interaction.metrics.step +
+            height / 2,
+        },
+      };
+    });
+  };
+
   const isPointerOutsideBoard = (
     clientX: number,
     clientY: number,
@@ -280,7 +377,7 @@ export function GameProvider({ children }: GameProviderProps) {
   };
 
   const startInteraction = (
-    event: ReactPointerEvent<HTMLDivElement>,
+    event: ReactPointerEvent<HTMLElement>,
     pieceId: PieceId,
     origin?: Vec2,
   ) => {
@@ -312,6 +409,13 @@ export function GameProvider({ children }: GameProviderProps) {
       interaction.mode = "dragging";
       interactionRef.current = interaction;
       setDraggingPieceId(pieceId);
+      const previewPointer = interaction.lastPointer ?? {
+        x: interaction.startX,
+        y: interaction.startY,
+      };
+      setDragPreview(
+        buildDragPreview(pieceId, previewPointer, interaction.metrics),
+      );
       updateGhostState(null);
       if (interaction.previousPlacement) {
         const nextBoard = removePiece(interaction.previousBoard, pieceId);
@@ -356,6 +460,10 @@ export function GameProvider({ children }: GameProviderProps) {
         return;
       }
 
+      updateDragPreviewPointer(
+        { x: moveEvent.clientX, y: moveEvent.clientY },
+        interaction,
+      );
       updateGhost(moveEvent.clientX, moveEvent.clientY, interaction);
     };
 
@@ -377,6 +485,7 @@ export function GameProvider({ children }: GameProviderProps) {
 
       interactionRef.current = null;
       setDraggingPieceId(null);
+      setDragPreview(null);
       updateGhostState(null);
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
@@ -405,6 +514,7 @@ export function GameProvider({ children }: GameProviderProps) {
       topLeftY > rect.height + buffer
     ) {
       updateGhostState(null);
+      updateDragPreviewSnap(null, interaction);
       return;
     }
 
@@ -420,6 +530,7 @@ export function GameProvider({ children }: GameProviderProps) {
       origin.y >= size.rows
     ) {
       updateGhostState(null);
+      updateDragPreviewSnap(null, interaction);
       return;
     }
 
@@ -430,8 +541,14 @@ export function GameProvider({ children }: GameProviderProps) {
       state.flipped,
     );
     const valid = canPlace(boardStateRef.current, transform, origin);
+    if (!valid) {
+      updateGhostState(null);
+      updateDragPreviewSnap(null, interaction);
+      return;
+    }
 
-    updateGhostState({ origin, valid });
+    updateGhostState({ origin, valid: true });
+    updateDragPreviewSnap(origin, interaction);
   };
 
   const finalizeDrop = (
@@ -543,7 +660,7 @@ export function GameProvider({ children }: GameProviderProps) {
   };
 
   const handlePiecePointerDown = (
-    event: ReactPointerEvent<HTMLDivElement>,
+    event: ReactPointerEvent<HTMLElement>,
     pieceId: PieceId,
   ) => {
     const placement = board.placements[pieceId];
@@ -564,6 +681,7 @@ export function GameProvider({ children }: GameProviderProps) {
     activePieceId,
     ghost,
     draggingPieceId,
+    dragPreview,
     applyPuzzle,
     setActivePieceId,
     setPieceState,

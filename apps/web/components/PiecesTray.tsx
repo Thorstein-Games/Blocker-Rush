@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { PIECES } from "@blocker-rush/shared";
 import { PIECE_COLORS } from "./pieceColors";
 import { useGame } from "./GameContext";
@@ -13,6 +14,7 @@ export default function PiecesTray() {
     onPiecePointerDown,
     rotatePiece,
     flipPiece,
+    draggingPieceId,
   } = useGame();
 
   const activePiece = activePieceId
@@ -50,7 +52,10 @@ export default function PiecesTray() {
         )}
       </div>
       <div className="pieces-tray">
-        {PIECES.map((piece) => {
+        {PIECES.filter(
+          (piece) =>
+            !board.placements[piece.id] && draggingPieceId !== piece.id,
+        ).map((piece) => {
           const state = pieceStates[piece.id];
           const transform = getTransformFor(
             piece.id,
@@ -62,6 +67,7 @@ export default function PiecesTray() {
             "piece-slot",
             placed ? "placed" : null,
             activePieceId === piece.id ? "active" : null,
+            draggingPieceId === piece.id ? "dragging" : null,
           ]
             .filter(Boolean)
             .join(" ");
@@ -85,12 +91,14 @@ export default function PiecesTray() {
                 {transform.cells.map((cell, index) => (
                   <div
                     key={index}
-                    className="piece-cell"
-                    style={{
-                      gridColumn: cell.x + 1,
-                      gridRow: cell.y + 1,
-                      background: PIECE_COLORS[piece.id],
-                    }}
+                    className="piece-cell block-cell"
+                    style={
+                      {
+                        gridColumn: cell.x + 1,
+                        gridRow: cell.y + 1,
+                        "--block-color": PIECE_COLORS[piece.id],
+                      } as CSSProperties
+                    }
                   />
                 ))}
               </div>

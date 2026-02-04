@@ -8,7 +8,6 @@ const makePiece = (id: PieceId, name: string, cells: Vec2[]): Piece => ({
   cells,
 });
 
-// TODO: Replace these placeholder shapes with the exact production set.
 export const PIECES: Piece[] = [
   makePiece("p1", "Dot", [{ x: 0, y: 0 }]),
   makePiece("p2", "Spire", [
@@ -91,10 +90,11 @@ export const generateTransforms = (piece: Piece): PieceTransform[] => {
   return transforms;
 };
 
-export const PIECE_TRANSFORMS: Record<PieceId, PieceTransform[]> = PIECES.reduce(
-  (acc, piece) => {
-    acc[piece.id] = generateTransforms(piece);
-    return acc;
-  },
-  {} as Record<PieceId, PieceTransform[]>
-);
+export const PIECE_TRANSFORMS: Record<PieceId, PieceTransform[]> =
+  PIECES.reduce(
+    (acc, piece) => {
+      acc[piece.id] = generateTransforms(piece);
+      return acc;
+    },
+    {} as Record<PieceId, PieceTransform[]>,
+  );
