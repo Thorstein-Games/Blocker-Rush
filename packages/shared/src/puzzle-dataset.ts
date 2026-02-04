@@ -1,7 +1,7 @@
-import type { Difficulty, PuzzleId, PuzzleRecord } from "./types.js";
-import { parseCoordinate } from "./coords.js";
-import { isDifficultyMatch } from "./difficulty.js";
-import { PUZZLE_DATASET_VERSION } from "./rules.js";
+import type { Difficulty, PuzzleId, PuzzleRecord } from "./types";
+import { parseCoordinate } from "./coords";
+import { isDifficultyMatch } from "./difficulty";
+import { PUZZLE_DATASET_VERSION } from "./rules";
 import rawDataset from "./data/puzzles.v1.json" assert { type: "json" };
 
 type RawPuzzleRecord = {

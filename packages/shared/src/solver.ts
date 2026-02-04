@@ -1,7 +1,7 @@
-import type { BoardSize, Coordinate, PieceId, SolveOptions, SolveResult } from "./types.js";
-import { DEFAULT_BOARD, coordToVec, toIndex } from "./coords.js";
-import { PIECES, PIECE_TRANSFORMS } from "./pieces.js";
-import { createBoard, withBlockers } from "./board.js";
+import type { BoardSize, Coordinate, PieceId, SolveOptions, SolveResult } from "./types";
+import { DEFAULT_BOARD, coordToVec, toIndex } from "./coords";
+import { PIECES, PIECE_TRANSFORMS } from "./pieces";
+import { createBoard, withBlockers } from "./board";
 
 const orderPieces = (pieceIds: PieceId[]): PieceId[] =>
   [...pieceIds].sort((a, b) => {

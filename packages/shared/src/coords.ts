@@ -1,4 +1,4 @@
-import type { BoardSize, Column, Coordinate, Row, Vec2 } from "./types.js";
+import type { BoardSize, Column, Coordinate, Row, Vec2 } from "./types";
 
 const COLUMN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 

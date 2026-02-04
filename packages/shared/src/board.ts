@@ -1,17 +1,18 @@
-import type { BoardCell, BoardSize, Coordinate, PieceId, PieceTransform, Placement, Vec2 } from "./types.js";
-import { DEFAULT_BOARD, coordToVec, toIndex, withinBounds } from "./coords.js";
+import type { BoardCell, BoardSize, BoardState, Coordinate, PieceId, PieceTransform, Placement, Vec2 } from "./types";
+import { DEFAULT_BOARD, coordToVec, toIndex, withinBounds } from "./coords";
+import { PIECES } from "./pieces";
+
+const createPlacements = (): Record<PieceId, Placement | undefined> =>
+  PIECES.reduce((acc, piece) => {
+    acc[piece.id] = undefined;
+    return acc;
+  }, {} as Record<PieceId, Placement | undefined>);
 
 export const createBoard = (size: BoardSize = DEFAULT_BOARD): BoardState => ({
   size,
   cells: Array.from({ length: size.cols * size.rows }, () => null),
-  placements: {},
+  placements: createPlacements(),
 });
-
-export type BoardState = {
-  size: BoardSize;
-  cells: BoardCell[];
-  placements: Record<PieceId, Placement | undefined>;
-};
 
 export const withBlockers = (
   blockers: Coordinate[],

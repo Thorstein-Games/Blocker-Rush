@@ -1,4 +1,4 @@
-import type { Difficulty, SolveResult } from "./types.js";
+import type { Difficulty, SolveResult } from "./types";
 
 export const scoreDifficulty = (result: SolveResult): Difficulty => {
   const { solutionCount, nodesVisited } = result;

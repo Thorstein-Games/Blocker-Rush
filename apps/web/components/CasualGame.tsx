@@ -85,10 +85,13 @@ type InteractionState = {
 };
 
 const initPieceStates = (): Record<PieceId, PieceState> =>
-  PIECES.reduce((acc, piece) => {
-    acc[piece.id] = { rotation: 0, flipped: false };
-    return acc;
-  }, {} as Record<PieceId, PieceState>);
+  PIECES.reduce(
+    (acc, piece) => {
+      acc[piece.id] = { rotation: 0, flipped: false };
+      return acc;
+    },
+    {} as Record<PieceId, PieceState>,
+  );
 
 const rotateCells = (cells: Vec2[]): Vec2[] =>
   cells.map((cell) => ({ x: cell.y, y: -cell.x }));
@@ -99,7 +102,7 @@ const reflectCells = (cells: Vec2[]): Vec2[] =>
 const getTransformFor = (
   pieceId: PieceId,
   rotation: number,
-  flipped: boolean
+  flipped: boolean,
 ): PieceTransform => {
   const base = PIECES.find((piece) => piece.id === pieceId)?.cells ?? [];
   let cells = base.map((cell) => ({ ...cell }));
@@ -110,8 +113,11 @@ const getTransformFor = (
     cells = rotateCells(cells);
   }
   const key = cellsToKey(cells);
-  const transform = PIECE_TRANSFORMS[pieceId].find((item) => item.id === key);
-  return transform ?? PIECE_TRANSFORMS[pieceId][0];
+  const transforms = PIECE_TRANSFORMS[pieceId];
+  if (!transforms || transforms.length === 0 || !transforms[0]) {
+    throw new Error(`Missing transforms for piece ${pieceId}`);
+  }
+  return transforms.find((item) => item.id === key) ?? transforms[0];
 };
 
 const findOrientationForTransform = (pieceId: PieceId, transformId: string) => {
@@ -194,18 +200,18 @@ export default function CasualGame() {
 
   const [difficulty, setDifficulty] = useState<Difficulty>("easy");
   const [board, setBoard] = useState<BoardState>(() => createBoard());
-  const [pieceStates, setPieceStates] = useState<Record<PieceId, PieceState>>(
-    initPieceStates()
-  );
+  const [pieceStates, setPieceStates] =
+    useState<Record<PieceId, PieceState>>(initPieceStates());
   const [puzzleId, setPuzzleId] = useState<string>("");
   const [blockers, setBlockers] = useState<Coordinate[]>([]);
   const [puzzleDifficulty, setPuzzleDifficulty] = useState<Difficulty | null>(
-    null
+    null,
   );
   const [hint, setHint] = useState<string | null>(null);
-  const [solutionCache, setSolutionCache] = useState<
-    Record<PieceId, { origin: Vec2; transformId: string } | undefined> | null
-  >(null);
+  const [solutionCache, setSolutionCache] = useState<Record<
+    PieceId,
+    { origin: Vec2; transformId: string } | undefined
+  > | null>(null);
   const [history, setHistory] = useState<BoardState[]>([]);
   const [stats, setStats] = useState<CasualStats>(() => readStats());
   const [activePieceId, setActivePieceId] = useState<PieceId | null>(null);
@@ -317,7 +323,7 @@ export default function CasualGame() {
   const applyPuzzle = (
     id: string,
     blockersForPuzzle: Coordinate[],
-    difficultyForPuzzle: Difficulty | null
+    difficultyForPuzzle: Difficulty | null,
   ) => {
     setPuzzleId(id);
     setBlockers(blockersForPuzzle);
@@ -369,8 +375,7 @@ export default function CasualGame() {
     if (!boardRef.current) return null;
     const rect = boardRef.current.getBoundingClientRect();
     const styles = window.getComputedStyle(boardRef.current);
-    const gap =
-      Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
+    const gap = Number.parseFloat(styles.columnGap || styles.gap || "0") || 0;
     const cols = boardStateRef.current.size.cols;
     const cell = (rect.width - gap * (cols - 1)) / cols;
     return { rect, gap, cell, step: cell + gap };
@@ -379,19 +384,24 @@ export default function CasualGame() {
   const startInteraction = (
     event: React.PointerEvent,
     pieceId: PieceId,
-    origin?: Vec2
+    origin?: Vec2,
   ) => {
     event.preventDefault();
     const metrics = getMetrics();
     if (!metrics) return;
     const pointerId = event.pointerId;
-    const targetRect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const targetRect = (
+      event.currentTarget as HTMLElement
+    ).getBoundingClientRect();
     const offset = origin
       ? {
           x: event.clientX - (metrics.rect.left + origin.x * metrics.step),
           y: event.clientY - (metrics.rect.top + origin.y * metrics.step),
         }
-      : { x: event.clientX - targetRect.left, y: event.clientY - targetRect.top };
+      : {
+          x: event.clientX - targetRect.left,
+          y: event.clientY - targetRect.top,
+        };
 
     const previousBoard = boardStateRef.current;
     const previousPlacement = previousBoard.placements[pieceId] ?? undefined;
@@ -479,7 +489,7 @@ export default function CasualGame() {
   const updateGhost = (
     clientX: number,
     clientY: number,
-    interaction: InteractionState
+    interaction: InteractionState,
   ) => {
     const { rect, step } = interaction.metrics;
     const topLeftX = clientX - rect.left - interaction.offset.x;
@@ -515,7 +525,7 @@ export default function CasualGame() {
     const transform = getTransformFor(
       interaction.pieceId,
       state.rotation,
-      state.flipped
+      state.flipped,
     );
     const valid = canPlace(boardStateRef.current, transform, origin);
 
@@ -528,7 +538,12 @@ export default function CasualGame() {
     if (ghost && ghost.valid) {
       const state = pieceStatesRef.current[pieceId];
       const transform = getTransformFor(pieceId, state.rotation, state.flipped);
-      const nextBoard = placePiece(currentBoard, pieceId, transform, ghost.origin);
+      const nextBoard = placePiece(
+        currentBoard,
+        pieceId,
+        transform,
+        ghost.origin,
+      );
       setHistory((prev) => [...prev, previousBoard]);
       boardStateRef.current = nextBoard;
       setBoard(nextBoard);
@@ -542,13 +557,15 @@ export default function CasualGame() {
         ...current,
         [pieceId]: findOrientationForTransform(
           pieceId,
-          previousPlacement.transformId
+          previousPlacement.transformId,
         ),
       }));
     }
   };
 
-  const handleBoardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleBoardPointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
     const target = event.target as HTMLElement;
     const index = target.dataset.index;
     if (index === undefined) return;
@@ -562,7 +579,7 @@ export default function CasualGame() {
 
   const handlePiecePointerDown = (
     event: React.PointerEvent<HTMLDivElement>,
-    pieceId: PieceId
+    pieceId: PieceId,
   ) => {
     const placement = board.placements[pieceId];
     startInteraction(event, pieceId, placement?.origin);
@@ -594,7 +611,7 @@ export default function CasualGame() {
     const coord = vecToCoord(placement.origin);
     const orientation = findOrientationForTransform(
       target.id,
-      placement.transformId
+      placement.transformId,
     );
     setPieceStates((prev) => ({
       ...prev,
@@ -603,8 +620,8 @@ export default function CasualGame() {
     setActivePieceId(target.id);
     setHint(
       `Try placing ${target.name} so its top-left is at ${formatCoordinate(
-        coord
-      )}.`
+        coord,
+      )}.`,
     );
     if (hintTimeoutRef.current) {
       window.clearTimeout(hintTimeoutRef.current);
@@ -629,7 +646,7 @@ export default function CasualGame() {
             if (placement) {
               updated[piece.id] = findOrientationForTransform(
                 piece.id,
-                placement.transformId
+                placement.transformId,
               );
             }
           }
@@ -742,15 +759,24 @@ export default function CasualGame() {
             )}
             {currentStats && (
               <span>
-                Attempts: {currentStats.attempts} · Best: {formatDuration(currentStats.best)}
+                Attempts: {currentStats.attempts} · Best:{" "}
+                {formatDuration(currentStats.best)}
               </span>
             )}
           </div>
           <div className="status-row">
-            <button className="button secondary" type="button" onClick={handleUndo}>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={handleUndo}
+            >
               Undo
             </button>
-            <button className="button secondary" type="button" onClick={handleHint}>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={handleHint}
+            >
               Hint
             </button>
             <button className="button secondary" type="button" disabled>
@@ -791,7 +817,7 @@ export default function CasualGame() {
                     const transform = getTransformFor(
                       draggingPieceId,
                       state.rotation,
-                      state.flipped
+                      state.flipped,
                     );
                     return transform.cells.map((cell, idx) => (
                       <div
@@ -829,7 +855,7 @@ export default function CasualGame() {
               const transform = getTransformFor(
                 piece.id,
                 state.rotation,
-                state.flipped
+                state.flipped,
               );
               const placed = Boolean(board.placements[piece.id]);
               const cardClassName = [

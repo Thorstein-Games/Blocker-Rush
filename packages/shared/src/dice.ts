@@ -1,5 +1,5 @@
-import type { Coordinate, PuzzleId } from "./types.js";
-import { parseCoordinate, sortCoordinates } from "./coords.js";
+import type { Coordinate, PuzzleId } from "./types";
+import { parseCoordinate, sortCoordinates } from "./coords";
 
 export const DICE_FACES: string[][] = [
   ["A1", "C1", "D1", "D2", "E2", "F3"],

@@ -1,7 +1,7 @@
-import type { DailyPuzzle, Difficulty, Coordinate, PuzzleId } from "./types.js";
-import { getDateKey, getWeekday } from "./coords.js";
-import { canonicalizePuzzleId, parsePuzzleId, rollDice } from "./dice.js";
-import { getPuzzleById, pickPuzzleByDifficulty, pickRandomPuzzle } from "./puzzle-dataset.js";
+import type { DailyPuzzle, Difficulty, Coordinate, PuzzleId } from "./types";
+import { getDateKey, getWeekday } from "./coords";
+import { canonicalizePuzzleId, parsePuzzleId, rollDice } from "./dice";
+import { getPuzzleById, pickPuzzleByDifficulty, pickRandomPuzzle } from "./puzzle-dataset";
 
 const mulberry32 = (seed: number) => {
   let t = seed >>> 0;

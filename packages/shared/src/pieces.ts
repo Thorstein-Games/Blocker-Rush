@@ -1,5 +1,5 @@
-import type { Piece, PieceId, PieceTransform, Vec2 } from "./types.js";
-import { cellsToKey, getBounds, normalizeCells } from "./coords.js";
+import type { Piece, PieceId, PieceTransform, Vec2 } from "./types";
+import { cellsToKey, getBounds, normalizeCells } from "./coords";
 
 const makePiece = (id: PieceId, name: string, cells: Vec2[]): Piece => ({
   id,
