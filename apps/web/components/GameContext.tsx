@@ -18,6 +18,7 @@ import type {
   BoardState,
   Coordinate,
   Difficulty,
+  Placement,
   PieceId,
   PieceTransform,
   Vec2,
@@ -133,6 +134,7 @@ type GameContextValue = {
   puzzleId: string;
   puzzleDifficulty: Difficulty | null;
   solved: boolean;
+  readOnly: boolean;
   moveCount: number;
   startedAt: number | null;
   board: BoardState;
@@ -159,6 +161,12 @@ type GameContextValue = {
   ) => void;
   rotatePiece: (pieceId: PieceId) => void;
   flipPiece: (pieceId: PieceId) => void;
+  restoreState: (snapshot: {
+    placements: Placement[];
+    pieceStates: Record<PieceId, PieceState>;
+    blockers?: Coordinate[];
+    startedAt?: number | null;
+  }) => void;
   boardRef: RefObject<HTMLDivElement | null>;
 };
 
@@ -166,9 +174,10 @@ const GameContext = createContext<GameContextValue | null>(null);
 
 type GameProviderProps = {
   children: ReactNode;
+  lockOnSolve?: boolean;
 };
 
-export function GameProvider({ children }: GameProviderProps) {
+export function GameProvider({ children, lockOnSolve = false }: GameProviderProps) {
   const [board, setBoard] = useState<BoardState>(() => createBoard());
   const [pieceStates, setPieceStates] =
     useState<Record<PieceId, PieceState>>(initPieceStates());
@@ -191,6 +200,7 @@ export function GameProvider({ children }: GameProviderProps) {
   const ghostRef = useRef<DragGhost | null>(null);
 
   const solved = useMemo(() => isSolved(board), [board]);
+  const readOnly = lockOnSolve && solved;
 
   useEffect(() => {
     boardStateRef.current = board;
@@ -223,22 +233,25 @@ export function GameProvider({ children }: GameProviderProps) {
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
+      if (readOnly) return;
       if (!activePieceId) return;
-      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      const key = event.key.toLowerCase();
+      if (key === "w" || key === "s") {
         event.preventDefault();
         rotatePiece(activePieceId);
         return;
       }
-      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      if (key === "a" || key === "d") {
         event.preventDefault();
         flipPiece(activePieceId);
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [activePieceId]);
+  }, [activePieceId, readOnly]);
 
   const rotatePiece = (pieceId: PieceId) => {
+    if (readOnly) return;
     setPieceStates((prev) => ({
       ...prev,
       [pieceId]: {
@@ -249,6 +262,7 @@ export function GameProvider({ children }: GameProviderProps) {
   };
 
   const flipPiece = (pieceId: PieceId) => {
+    if (readOnly) return;
     setPieceStates((prev) => ({
       ...prev,
       [pieceId]: {
@@ -381,6 +395,7 @@ export function GameProvider({ children }: GameProviderProps) {
     pieceId: PieceId,
     origin?: Vec2,
   ) => {
+    if (readOnly) return;
     event.preventDefault();
     const wasActive = activePieceId === pieceId;
     const metrics = getMetrics();
@@ -608,6 +623,7 @@ export function GameProvider({ children }: GameProviderProps) {
   };
 
   const handleBoardPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     const cellIndex = getCellIndexFromTarget(event.target);
     if (cellIndex === null) return;
     const currentBoard = boardStateRef.current;
@@ -619,6 +635,7 @@ export function GameProvider({ children }: GameProviderProps) {
   };
 
   const handleBoardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     const cellIndex = getCellIndexFromTarget(event.target);
     if (cellIndex === null) return;
     const currentBoard = boardStateRef.current;
@@ -650,6 +667,7 @@ export function GameProvider({ children }: GameProviderProps) {
   };
 
   const handleBoardDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (readOnly) return;
     const cellIndex = getCellIndexFromTarget(event.target);
     if (cellIndex === null) return;
     const currentBoard = boardStateRef.current;
@@ -663,16 +681,52 @@ export function GameProvider({ children }: GameProviderProps) {
     event: ReactPointerEvent<HTMLElement>,
     pieceId: PieceId,
   ) => {
+    if (readOnly) return;
     const placement = board.placements[pieceId];
     startInteraction(event, pieceId, placement?.origin);
   };
 
   const moveCount = useMemo(() => history.length, [history.length]);
 
+  const restoreState = (snapshot: {
+    placements: Placement[];
+    pieceStates: Record<PieceId, PieceState>;
+    blockers?: Coordinate[];
+    startedAt?: number | null;
+  }) => {
+    const baseBlockers = snapshot.blockers ?? blockers;
+    let nextBoard = withBlockers(baseBlockers);
+    for (const placement of snapshot.placements) {
+      const transforms = PIECE_TRANSFORMS[placement.pieceId];
+      const transform =
+        transforms?.find((item) => item.id === placement.transformId) ?? null;
+      if (!transform) continue;
+      if (!canPlace(nextBoard, transform, placement.origin)) continue;
+      nextBoard = placePiece(
+        nextBoard,
+        placement.pieceId,
+        transform,
+        placement.origin,
+      );
+    }
+    boardStateRef.current = nextBoard;
+    setBoard(nextBoard);
+    setPieceStates(snapshot.pieceStates ?? initPieceStates());
+    setHistory([]);
+    updateGhostState(null);
+    setDraggingPieceId(null);
+    setDragPreview(null);
+    setActivePieceId(null);
+    if (snapshot.startedAt !== undefined) {
+      setStartedAt(snapshot.startedAt);
+    }
+  };
+
   const value: GameContextValue = {
     puzzleId,
     puzzleDifficulty,
     solved,
+    readOnly,
     moveCount,
     startedAt,
     board,
@@ -692,6 +746,7 @@ export function GameProvider({ children }: GameProviderProps) {
     onPiecePointerDown: handlePiecePointerDown,
     rotatePiece,
     flipPiece,
+    restoreState,
     boardRef,
   };
 

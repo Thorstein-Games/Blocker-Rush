@@ -1,17 +1,28 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { getDateKey, getDailyPuzzle } from "@blocker-rush/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Placement, PieceId } from "@blocker-rush/shared";
+import { getDateKey, getDailyPuzzle, PIECES } from "@blocker-rush/shared";
 import GameBoard from "./GameBoard";
 import PiecesTray from "./PiecesTray";
 import { GameProvider, useGame } from "./GameContext";
 import GameHeader from "./GameHeader";
+import type { PieceState } from "./gameTypes";
 
 const DAILY_STATS_KEY = "blockerRush.daily.stats";
+const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
 
 type DailyStats = {
   streak: number;
   lastCompletedDateKey?: string;
+};
+
+type DailyProgress = {
+  dateKey: string;
+  puzzleId: string;
+  placements: Placement[];
+  pieceStates: Record<PieceId, PieceState>;
+  startedAt: number | null;
 };
 
 const readDailyStats = (): DailyStats => {
@@ -34,6 +45,37 @@ const readDailyStats = (): DailyStats => {
 const writeDailyStats = (stats: DailyStats) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(DAILY_STATS_KEY, JSON.stringify(stats));
+};
+
+const readDailyProgress = (
+  dateKey: string,
+  puzzleId: string,
+): DailyProgress | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(DAILY_PROGRESS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as DailyProgress;
+    if (!parsed || parsed.dateKey !== dateKey || parsed.puzzleId !== puzzleId) {
+      return null;
+    }
+    if (!Array.isArray(parsed.placements) || !parsed.pieceStates) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeDailyProgress = (progress: DailyProgress) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DAILY_PROGRESS_KEY, JSON.stringify(progress));
+};
+
+const clearDailyProgress = () => {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(DAILY_PROGRESS_KEY);
 };
 
 const parseDateKey = (dateKey: string): Date => {
@@ -62,13 +104,23 @@ const reconcileStats = (stats: DailyStats, dateKey: string): DailyStats => {
 };
 
 function DailyGameLayout({ date }: { date: Date }) {
-  const { solved, puzzleId, applyPuzzle } = useGame();
+  const {
+    solved,
+    puzzleId,
+    applyPuzzle,
+    board,
+    pieceStates,
+    startedAt,
+    restoreState,
+  } = useGame();
   const dateKey = getDateKey(date);
   const dailyPuzzle = useMemo(() => getDailyPuzzle(date), [dateKey]);
   const [stats, setStats] = useState<DailyStats>(() =>
     reconcileStats(readDailyStats(), dateKey),
   );
   const [hasRecorded, setHasRecorded] = useState(false);
+  const [progress, setProgress] = useState<DailyProgress | null>(null);
+  const hasRestoredRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (dailyPuzzle.id === puzzleId) return;
@@ -78,6 +130,28 @@ function DailyGameLayout({ date }: { date: Date }) {
       difficulty: dailyPuzzle.difficulty,
     });
   }, [dailyPuzzle, puzzleId, applyPuzzle]);
+
+  useEffect(() => {
+    const saved = readDailyProgress(dateKey, dailyPuzzle.id);
+    setProgress(saved);
+    hasRestoredRef.current = null;
+    if (!saved) {
+      clearDailyProgress();
+    }
+  }, [dateKey, dailyPuzzle.id]);
+
+  useEffect(() => {
+    if (!progress) return;
+    if (puzzleId !== dailyPuzzle.id) return;
+    if (hasRestoredRef.current === dateKey) return;
+    restoreState({
+      placements: progress.placements,
+      pieceStates: progress.pieceStates,
+      blockers: dailyPuzzle.blockers,
+      startedAt: progress.startedAt,
+    });
+    hasRestoredRef.current = dateKey;
+  }, [progress, puzzleId, dailyPuzzle, dateKey, restoreState]);
 
   useEffect(() => {
     setStats((prev) => {
@@ -109,15 +183,66 @@ function DailyGameLayout({ date }: { date: Date }) {
     setHasRecorded(true);
   }, [solved, hasRecorded, dateKey]);
 
+  useEffect(() => {
+    if (puzzleId !== dailyPuzzle.id) return;
+    const placements = PIECES.reduce<Placement[]>((acc, piece) => {
+      const placement = board.placements[piece.id];
+      if (placement) acc.push(placement);
+      return acc;
+    }, []);
+    writeDailyProgress({
+      dateKey,
+      puzzleId,
+      placements,
+      pieceStates,
+      startedAt,
+    });
+  }, [board, pieceStates, startedAt, puzzleId, dailyPuzzle.id, dateKey]);
+
   const statusLabel =
     stats.lastCompletedDateKey === dateKey
       ? "Completed"
       : "Not yet cleared";
 
+  const howToPlayPanel = (
+    <div className="stack">
+      <div className="stack">
+        <strong>Rules</strong>
+        <span>
+          This is a digital take on The Genius Square. Each puzzle gives you 7
+          blockers on a 6x6 grid. Your goal is to place all 9 pieces so every
+          remaining square is filled. Pieces can be rotated and flipped, but
+          they cannot overlap or cover blockers.
+        </span>
+      </div>
+      <div className="stack">
+        <strong>Interactions</strong>
+        <ul>
+          <li>Click or tap a piece to make it active.</li>
+          <li>Click an active piece again to rotate it.</li>
+          <li>Drag a piece onto the board to place it.</li>
+          <li>Click an empty board cell to place the active piece there.</li>
+          <li>Drag a placed piece to move it, or drag it off the board to remove it.</li>
+          <li>Double-click a placed piece to remove it.</li>
+          <li>Use the Rotate/Flip buttons, or press W/S to rotate and A/D to flip.</li>
+        </ul>
+      </div>
+      <div className="stack">
+        <strong>Modes</strong>
+        <span>
+          Daily gives everyone the same puzzle each day and tracks streaks.
+          Casual lets you pick difficulty, generate random puzzles, or load a
+          specific puzzle ID. Multiplayer is coming soon.
+        </span>
+      </div>
+    </div>
+  );
+
   return (
     <main className="page game-page">
       <GameHeader
         mode="daily"
+        howToPlayPanel={howToPlayPanel}
         statsTitle="Daily Challenge"
         statsPanel={
           <div className="stats-grid">
@@ -165,7 +290,7 @@ export default function DailyGame() {
   }, [today]);
 
   return (
-    <GameProvider>
+    <GameProvider lockOnSolve>
       <DailyGameLayout date={today} />
     </GameProvider>
   );

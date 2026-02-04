@@ -13,9 +13,11 @@ type GameHeaderProps = {
   statsTitle?: string;
   settingsPanel?: ReactNode;
   settingsTitle?: string;
+  howToPlayPanel?: ReactNode;
+  howToPlayTitle?: string;
 };
 
-type PanelKey = "stats" | "settings" | null;
+type PanelKey = "stats" | "settings" | "howToPlay" | null;
 
 const modeLinks: Array<{
   key: Mode;
@@ -45,6 +47,15 @@ const CogIcon = () => (
   </svg>
 );
 
+const HelpIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      fill="currentColor"
+      d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm-.1-5.3h2.2V17h-2.2v-2.3zm2.6-7.3c0 1.54-.9 2.23-1.78 2.9-.63.48-1.12.86-1.12 1.6v.45h-2.1v-.6c0-1.6.98-2.38 1.84-3.03.63-.48 1.06-.83 1.06-1.4 0-.75-.63-1.23-1.55-1.23-1 0-1.58.52-1.72 1.44l-2.1-.28c.28-1.9 1.86-3 3.92-3 2.15 0 3.55 1.18 3.55 3.15z"
+    />
+  </svg>
+);
+
 export default function GameHeader({
   mode,
   title = "Blocker Rush",
@@ -52,29 +63,55 @@ export default function GameHeader({
   statsTitle = "Stats",
   settingsPanel,
   settingsTitle = "Settings",
+  howToPlayPanel,
+  howToPlayTitle = "How to Play",
 }: GameHeaderProps) {
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (!openPanel) return;
+    if (!openPanel && !isMenuOpen) return;
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpenPanel(null);
+        setIsMenuOpen(false);
       }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [openPanel]);
+  }, [openPanel, isMenuOpen]);
 
   const togglePanel = (panel: Exclude<PanelKey, null>) => {
     setOpenPanel((current) => (current === panel ? null : panel));
+    setIsMenuOpen(false);
   };
 
   const activePanel =
-    openPanel === "stats" ? statsPanel : openPanel === "settings" ? settingsPanel : null;
+    openPanel === "stats"
+      ? statsPanel
+      : openPanel === "settings"
+        ? settingsPanel
+        : openPanel === "howToPlay"
+          ? howToPlayPanel
+          : null;
 
   const activeTitle =
-    openPanel === "stats" ? statsTitle : openPanel === "settings" ? settingsTitle : "";
+    openPanel === "stats"
+      ? statsTitle
+      : openPanel === "settings"
+        ? settingsTitle
+        : openPanel === "howToPlay"
+          ? howToPlayTitle
+          : "";
+
+  const handleMenuToggle = () => {
+    setIsMenuOpen((current) => !current);
+    setOpenPanel(null);
+  };
+
+  const handleMenuLinkClick = () => {
+    setIsMenuOpen(false);
+  };
 
   return (
     <>
@@ -120,6 +157,42 @@ export default function GameHeader({
           </div>
         </div>
         <div className="header-actions">
+          <button
+            className={[
+              "icon-button",
+              "header-menu-toggle",
+              isMenuOpen ? "active" : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            type="button"
+            onClick={handleMenuToggle}
+            aria-label="Open menu"
+            aria-expanded={isMenuOpen}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                fill="currentColor"
+                d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"
+              />
+            </svg>
+          </button>
+          {howToPlayPanel && (
+            <button
+              className={[
+                "icon-button",
+                openPanel === "howToPlay" ? "active" : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              type="button"
+              onClick={() => togglePanel("howToPlay")}
+              aria-label="Open how to play"
+              aria-expanded={openPanel === "howToPlay"}
+            >
+              <HelpIcon />
+            </button>
+          )}
           {statsPanel && (
             <button
               className={[
@@ -154,6 +227,73 @@ export default function GameHeader({
           )}
         </div>
       </header>
+      {isMenuOpen && (
+        <div className="header-menu" role="menu" aria-label="Game menu">
+          <div className="header-menu-card">
+            <div className="header-menu-section">
+              {modeLinks.map((item) =>
+                item.href ? (
+                  <Link
+                    key={item.key}
+                    className={[
+                      "menu-link",
+                      mode === item.key ? "active" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    href={item.href}
+                    role="menuitem"
+                    onClick={handleMenuLinkClick}
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <button
+                    key={item.key}
+                    className="menu-link"
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                  >
+                    {item.label}
+                  </button>
+                ),
+              )}
+            </div>
+            {(statsPanel || settingsPanel || howToPlayPanel) && (
+              <div className="header-menu-section">
+                {statsPanel && (
+                  <button
+                    className="menu-link"
+                    type="button"
+                    onClick={() => togglePanel("stats")}
+                  >
+                    {statsTitle}
+                  </button>
+                )}
+                {settingsPanel && (
+                  <button
+                    className="menu-link"
+                    type="button"
+                    onClick={() => togglePanel("settings")}
+                  >
+                    {settingsTitle}
+                  </button>
+                )}
+                {howToPlayPanel && (
+                  <button
+                    className="menu-link"
+                    type="button"
+                    onClick={() => togglePanel("howToPlay")}
+                  >
+                    {howToPlayTitle}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
       {openPanel && activePanel && (
         <div
           className="header-modal-backdrop"

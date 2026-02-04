@@ -18,6 +18,7 @@ export default function GameBoard() {
     onBoardDoubleClick,
     boardRef,
     solved,
+    readOnly,
   } = useGame();
 
   const boardCells = board.cells.map((cell, index) => {
@@ -62,9 +63,9 @@ export default function GameBoard() {
         <div
           className="board"
           ref={boardRef as React.RefObject<HTMLDivElement>}
-          onPointerDown={onBoardPointerDown}
-          onClick={onBoardClick}
-          onDoubleClick={onBoardDoubleClick}
+          onPointerDown={readOnly ? undefined : onBoardPointerDown}
+          onClick={readOnly ? undefined : onBoardClick}
+          onDoubleClick={readOnly ? undefined : onBoardDoubleClick}
           style={
             {
               "--cols": board.size.cols,

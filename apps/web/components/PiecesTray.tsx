@@ -15,6 +15,7 @@ export default function PiecesTray() {
     rotatePiece,
     flipPiece,
     draggingPieceId,
+    readOnly,
   } = useGame();
 
   const activePiece = activePieceId
@@ -33,6 +34,7 @@ export default function PiecesTray() {
                 className="button secondary"
                 type="button"
                 onClick={() => rotatePiece(activePiece.id)}
+                disabled={readOnly}
               >
                 Rotate
               </button>
@@ -42,6 +44,7 @@ export default function PiecesTray() {
                 className="button secondary"
                 type="button"
                 onClick={() => flipPiece(activePiece.id)}
+                disabled={readOnly}
               >
                 Flip
               </button>
@@ -80,6 +83,7 @@ export default function PiecesTray() {
               onPointerDown={(event) => onPiecePointerDown(event, piece.id)}
               aria-pressed={activePieceId === piece.id}
               aria-label={`Select ${piece.name}`}
+              disabled={readOnly}
             >
               <div
                 className="piece-grid"
