@@ -14,6 +14,8 @@ out/
 # production
 build/
 packages/shared/src/data/puzzles.v1.json*.tmp
+packages/shared/src/data/fullpuzzles.v1.json*.tmp
+packages/shared/src/data/fullpuzzles.v1.json
 
 # misc
 .vscode/

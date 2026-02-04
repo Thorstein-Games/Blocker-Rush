@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const INPUT_PATH = path.join(__dirname, "../src/data/puzzles.v1.json");
+const INPUT_PATH = path.join(__dirname, "../src/data/fullpuzzles.v1.json");
 const OUTPUT_PATH = path.join(__dirname, "../src/data/puzzles.v1.sample.json");
 
 const TARGET_PER_DIFFICULTY = Number(process.env.SAMPLE_PER_DIFFICULTY ?? 2000);
@@ -23,8 +23,12 @@ const targets = Object.fromEntries(
   difficulties.map((difficulty) => [difficulty, TARGET_PER_DIFFICULTY]),
 );
 
-const samples = Object.fromEntries(difficulties.map((difficulty) => [difficulty, []]));
-const seenCounts = Object.fromEntries(difficulties.map((difficulty) => [difficulty, 0]));
+const samples = Object.fromEntries(
+  difficulties.map((difficulty) => [difficulty, []]),
+);
+const seenCounts = Object.fromEntries(
+  difficulties.map((difficulty) => [difficulty, 0]),
+);
 
 const considerRecord = (record) => {
   const difficulty = record.difficulty;

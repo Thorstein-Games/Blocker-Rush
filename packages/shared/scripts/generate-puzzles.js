@@ -17,7 +17,7 @@ const __dirname = path.dirname(__filename);
 
 const RULES_VERSION = "v1";
 const DATASET_VERSION = "v1";
-const OUTPUT_PATH = path.join(__dirname, "../src/data/puzzles.v1.json");
+const OUTPUT_PATH = path.join(__dirname, "../src/data/fullpuzzles.v1.json");
 const MAX_SOLUTIONS = 51;
 
 const DIFFICULTY_RANGES = {
