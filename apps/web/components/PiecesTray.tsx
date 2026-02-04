@@ -20,59 +20,12 @@ export default function PiecesTray() {
     : null;
 
   return (
-    <div className="panel">
-      <h3>Pieces</h3>
-      <div className="tray">
-        {PIECES.map((piece) => {
-          const state = pieceStates[piece.id];
-          const transform = getTransformFor(
-            piece.id,
-            state.rotation,
-            state.flipped,
-          );
-          const placed = Boolean(board.placements[piece.id]);
-          const cardClassName = [
-            "piece-card",
-            placed ? "placed" : null,
-            activePieceId === piece.id ? "active" : null,
-          ]
-            .filter(Boolean)
-            .join(" ");
-
-          return (
-            <div
-              key={piece.id}
-              className={cardClassName}
-              onPointerDown={(event) => onPiecePointerDown(event, piece.id)}
-            >
-              <div
-                className="piece-grid"
-                style={{
-                  gridTemplateColumns: `repeat(${transform.width}, 18px)`,
-                  gridTemplateRows: `repeat(${transform.height}, 18px)`,
-                }}
-              >
-                {transform.cells.map((cell, index) => (
-                  <div
-                    key={index}
-                    className="piece-cell"
-                    style={{
-                      gridColumn: cell.x + 1,
-                      gridRow: cell.y + 1,
-                      background: PIECE_COLORS[piece.id],
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {activePiece && (
-        <div className="stack">
-          <label>Active Piece</label>
-          <div className="status-row">
-            <span>{activePiece.name}</span>
+    <div className="pieces-area">
+      <div className="pieces-header">
+        <h3>Pieces</h3>
+        {activePiece ? (
+          <div className="pieces-controls">
+            <span>Active: {activePiece.name}</span>
             {rotatePiece && (
               <button
                 className="button secondary"
@@ -92,8 +45,59 @@ export default function PiecesTray() {
               </button>
             )}
           </div>
-        </div>
-      )}
+        ) : (
+          <span className="pieces-hint">Tap a piece to start.</span>
+        )}
+      </div>
+      <div className="pieces-tray">
+        {PIECES.map((piece) => {
+          const state = pieceStates[piece.id];
+          const transform = getTransformFor(
+            piece.id,
+            state.rotation,
+            state.flipped,
+          );
+          const placed = Boolean(board.placements[piece.id]);
+          const slotClassName = [
+            "piece-slot",
+            placed ? "placed" : null,
+            activePieceId === piece.id ? "active" : null,
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+          return (
+            <button
+              key={piece.id}
+              className={slotClassName}
+              type="button"
+              onPointerDown={(event) => onPiecePointerDown(event, piece.id)}
+              aria-pressed={activePieceId === piece.id}
+              aria-label={`Select ${piece.name}`}
+            >
+              <div
+                className="piece-grid"
+                style={{
+                  gridTemplateColumns: `repeat(${transform.width}, var(--tray-cell))`,
+                  gridTemplateRows: `repeat(${transform.height}, var(--tray-cell))`,
+                }}
+              >
+                {transform.cells.map((cell, index) => (
+                  <div
+                    key={index}
+                    className="piece-cell"
+                    style={{
+                      gridColumn: cell.x + 1,
+                      gridRow: cell.y + 1,
+                      background: PIECE_COLORS[piece.id],
+                    }}
+                  />
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

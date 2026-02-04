@@ -3,12 +3,7 @@
 import type { Difficulty } from "@blocker-rush/shared";
 import GameBoard from "./GameBoard";
 import PiecesTray from "./PiecesTray";
-import {
-  GameProvider,
-  difficultyOptions,
-  formatDuration,
-  useGame,
-} from "./GameContext";
+import { GameProvider, difficultyOptions, useGame } from "./GameContext";
 
 function CasualGameLayout() {
   const {
@@ -79,8 +74,8 @@ function CasualGameLayout() {
             )}
             {currentStats && (
               <span>
-                Attempts: {currentStats.attempts} · Best:{" "}
-                {formatDuration(currentStats.best)}
+                Moves: {currentStats.moves} · Best:{" "}
+                {currentStats.bestMoves ?? "--"}
               </span>
             )}
           </div>
@@ -109,9 +104,10 @@ function CasualGameLayout() {
           <div className="ad-slot">Ad slot placeholder</div>
         </div>
 
-        <GameBoard />
-
-        <PiecesTray />
+        <div className="game-center">
+          <GameBoard />
+          <PiecesTray />
+        </div>
       </section>
     </main>
   );

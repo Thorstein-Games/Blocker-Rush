@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
   RefObject,
@@ -58,9 +59,10 @@ type CasualSettings = {
 };
 
 type CasualStats = {
-  attempts: Record<string, number>;
   bestTimesMs: Record<string, number>;
   lastTimesMs: Record<string, number>;
+  bestMoves: Record<string, number>;
+  lastMoves: Record<string, number>;
 };
 
 type InteractionState = {
@@ -162,19 +164,37 @@ const writeSettings = (settings: CasualSettings) => {
 
 const readStats = (): CasualStats => {
   if (typeof window === "undefined") {
-    return { attempts: {}, bestTimesMs: {}, lastTimesMs: {} };
+    return {
+      bestTimesMs: {},
+      lastTimesMs: {},
+      bestMoves: {},
+      lastMoves: {},
+    };
   }
   try {
     const raw = window.localStorage.getItem(STATS_KEY);
-    if (!raw) return { attempts: {}, bestTimesMs: {}, lastTimesMs: {} };
+    if (!raw) {
+      return {
+        bestTimesMs: {},
+        lastTimesMs: {},
+        bestMoves: {},
+        lastMoves: {},
+      };
+    }
     const parsed = JSON.parse(raw) as CasualStats;
     return {
-      attempts: parsed.attempts ?? {},
       bestTimesMs: parsed.bestTimesMs ?? {},
       lastTimesMs: parsed.lastTimesMs ?? {},
+      bestMoves: parsed.bestMoves ?? {},
+      lastMoves: parsed.lastMoves ?? {},
     };
   } catch {
-    return { attempts: {}, bestTimesMs: {}, lastTimesMs: {} };
+    return {
+      bestTimesMs: {},
+      lastTimesMs: {},
+      bestMoves: {},
+      lastMoves: {},
+    };
   }
 };
 
@@ -183,18 +203,10 @@ const writeStats = (stats: CasualStats) => {
   window.localStorage.setItem(STATS_KEY, JSON.stringify(stats));
 };
 
-export const formatDuration = (ms: number | undefined) => {
-  if (!ms) return "--";
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${String(seconds).padStart(2, "0")}`;
-};
-
 type CurrentStats = {
-  attempts: number;
-  last?: number;
-  best?: number;
+  moves: number;
+  bestMoves?: number;
+  lastMoves?: number;
 };
 
 type GameContextValue = {
@@ -222,6 +234,8 @@ type GameContextValue = {
     flipped: boolean,
   ) => PieceTransform;
   onBoardPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onBoardClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  onBoardDoubleClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onPiecePointerDown: (
     event: ReactPointerEvent<HTMLDivElement>,
     pieceId: PieceId,
@@ -306,12 +320,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setStartTime(Date.now());
     setHasRecordedSolve(false);
     setShareStatus(null);
-    setStats((prev) => {
-      const next = { ...prev, attempts: { ...prev.attempts } };
-      next.attempts[id] = (next.attempts[id] ?? 0) + 1;
-      writeStats(next);
-      return next;
-    });
     router.replace(`/casual?p=${id}`, { scroll: false });
   };
 
@@ -366,29 +374,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (!solved || !puzzleId || !startTime) return;
     if (hasRecordedSolve) return;
     const elapsed = Date.now() - startTime;
+    const moveCount = history.length;
     setStats((prev) => {
       const next = {
         ...prev,
         lastTimesMs: { ...prev.lastTimesMs },
         bestTimesMs: { ...prev.bestTimesMs },
+        lastMoves: { ...prev.lastMoves },
+        bestMoves: { ...prev.bestMoves },
       };
       next.lastTimesMs[puzzleId] = elapsed;
       const best = next.bestTimesMs[puzzleId];
       next.bestTimesMs[puzzleId] = best ? Math.min(best, elapsed) : elapsed;
+      next.lastMoves[puzzleId] = moveCount;
+      const bestMoves = next.bestMoves[puzzleId];
+      next.bestMoves[puzzleId] =
+        bestMoves !== undefined ? Math.min(bestMoves, moveCount) : moveCount;
       writeStats(next);
       return next;
     });
     setHasRecordedSolve(true);
-  }, [solved, puzzleId, startTime, hasRecordedSolve]);
+  }, [solved, puzzleId, startTime, hasRecordedSolve, history.length]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (!activePieceId) return;
-      if (event.key.toLowerCase() === "r") {
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
         event.preventDefault();
         rotatePiece(activePieceId);
+        return;
       }
-      if (event.key.toLowerCase() === "f") {
+      if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
         event.preventDefault();
         flipPiece(activePieceId);
       }
@@ -450,6 +466,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     origin?: Vec2,
   ) => {
     event.preventDefault();
+    const wasActive = activePieceId === pieceId;
     const metrics = getMetrics();
     if (!metrics) return;
     const pointerId = event.pointerId;
@@ -529,10 +546,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       window.clearTimeout(interaction.timeoutId);
 
       if (interaction.mode === "pending") {
-        if (!interaction.previousPlacement) {
+        if (!interaction.previousPlacement && wasActive) {
           rotatePiece(pieceId);
-        } else {
-          commitRemoval(pieceId, interaction.previousBoard);
         }
       } else {
         finalizeDrop(interaction, {
@@ -647,16 +662,62 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleBoardPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    const index = target.dataset.index;
-    if (index === undefined) return;
+  const getCellIndexFromTarget = (target: EventTarget | null) => {
+    if (!target) return null;
+    const index = (target as HTMLElement).dataset.index;
+    if (index === undefined) return null;
     const cellIndex = Number.parseInt(index, 10);
-    const cell = board.cells[cellIndex];
+    if (Number.isNaN(cellIndex)) return null;
+    return cellIndex;
+  };
+
+  const handleBoardPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const cellIndex = getCellIndexFromTarget(event.target);
+    if (cellIndex === null) return;
+    const currentBoard = boardStateRef.current;
+    const cell = currentBoard.cells[cellIndex];
     if (!cell || cell === "blocker") return;
-    const placement = board.placements[cell as PieceId];
+    const placement = currentBoard.placements[cell as PieceId];
     if (!placement) return;
     startInteraction(event, cell as PieceId, placement.origin);
+  };
+
+  const handleBoardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const cellIndex = getCellIndexFromTarget(event.target);
+    if (cellIndex === null) return;
+    const currentBoard = boardStateRef.current;
+    const cell = currentBoard.cells[cellIndex];
+    if (cell) return;
+    if (!activePieceId) return;
+    if (currentBoard.placements[activePieceId]) return;
+    const size = currentBoard.size;
+    const origin = {
+      x: cellIndex % size.cols,
+      y: Math.floor(cellIndex / size.cols),
+    };
+    const state = pieceStatesRef.current[activePieceId];
+    const transform = getTransformFor(
+      activePieceId,
+      state.rotation,
+      state.flipped,
+    );
+    if (!canPlace(currentBoard, transform, origin)) return;
+    const nextBoard = placePiece(currentBoard, activePieceId, transform, origin);
+    setHistory((prev) => [...prev, currentBoard]);
+    boardStateRef.current = nextBoard;
+    setBoard(nextBoard);
+  };
+
+  const handleBoardDoubleClick = (
+    event: ReactMouseEvent<HTMLDivElement>,
+  ) => {
+    const cellIndex = getCellIndexFromTarget(event.target);
+    if (cellIndex === null) return;
+    const currentBoard = boardStateRef.current;
+    const cell = currentBoard.cells[cellIndex];
+    if (!cell || cell === "blocker") return;
+    commitRemoval(cell as PieceId, currentBoard);
+    setActivePieceId(cell as PieceId);
   };
 
   const handlePiecePointerDown = (
@@ -732,11 +793,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const currentStats = useMemo<CurrentStats | null>(() => {
     if (!puzzleId) return null;
     return {
-      attempts: stats.attempts[puzzleId] ?? 0,
-      last: stats.lastTimesMs[puzzleId],
-      best: stats.bestTimesMs[puzzleId],
+      moves: history.length,
+      bestMoves: stats.bestMoves[puzzleId],
+      lastMoves: stats.lastMoves[puzzleId],
     };
-  }, [puzzleId, stats]);
+  }, [puzzleId, stats, history.length]);
 
   const loadPuzzleFromInput = () => {
     loadPuzzleFromId(puzzleInput, difficulty);
@@ -763,6 +824,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     draggingPieceId,
     getTransformFor,
     onBoardPointerDown: handleBoardPointerDown,
+    onBoardClick: handleBoardClick,
+    onBoardDoubleClick: handleBoardDoubleClick,
     onPiecePointerDown: handlePiecePointerDown,
     rotatePiece,
     flipPiece,

@@ -13,6 +13,8 @@ export default function GameBoard() {
     pieceStates,
     getTransformFor,
     onBoardPointerDown,
+    onBoardClick,
+    onBoardDoubleClick,
     boardRef,
     solved,
   } = useGame();
@@ -46,6 +48,8 @@ export default function GameBoard() {
           className="board"
           ref={boardRef}
           onPointerDown={onBoardPointerDown}
+          onClick={onBoardClick}
+          onDoubleClick={onBoardDoubleClick}
           style={
             {
               "--cols": board.size.cols,
@@ -87,7 +91,7 @@ export default function GameBoard() {
         )}
       </div>
       <div className="status-row">
-        <span>R to rotate. F to flip</span>
+        <span>Up/Down to rotate. Left/Right to flip</span>
       </div>
     </div>
   );
