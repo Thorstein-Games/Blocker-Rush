@@ -1,19 +1,24 @@
 import type { Difficulty, SolveResult } from "./types";
 
-export const scoreDifficulty = (result: SolveResult): Difficulty => {
-  const { solutionCount, nodesVisited } = result;
+const MAX_SOLUTIONS = 51;
 
-  if (solutionCount <= 1 && nodesVisited > 5000) return "insane";
-  if (solutionCount <= 1 || nodesVisited > 2000) return "hard";
-  if (solutionCount <= 3 || nodesVisited > 500) return "medium";
+const DIFFICULTY_RANGES = {
+  insane: { min: 1, max: 3 },
+  hard: { min: 4, max: 10 },
+  medium: { min: 10, max: MAX_SOLUTIONS - 1 },
+  easy: { min: MAX_SOLUTIONS, max: null },
+};
+
+const scoreDifficultyFromCount = (solutionCount: number) => {
+  if (solutionCount <= DIFFICULTY_RANGES.insane.max) return "insane";
+  if (solutionCount <= DIFFICULTY_RANGES.hard.max) return "hard";
+  if (solutionCount <= DIFFICULTY_RANGES.medium.max) return "medium";
   return "easy";
 };
 
 export const isDifficultyMatch = (
   difficulty: Difficulty,
-  target: Difficulty
+  target: Difficulty,
 ): boolean => {
-  if (difficulty === target) return true;
-  if (target === "hard") return difficulty === "hard" || difficulty === "insane";
-  return false;
+  return difficulty === target;
 };

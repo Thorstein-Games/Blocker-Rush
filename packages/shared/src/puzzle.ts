@@ -1,7 +1,6 @@
 import type { DailyPuzzle, Difficulty, Coordinate, PuzzleId } from "./types";
-import { getDateKey, getWeekday } from "./coords";
-import { canonicalizePuzzleId, parsePuzzleId, rollDice } from "./dice";
-import { getPuzzleById, pickPuzzleByDifficulty, pickRandomPuzzle } from "./puzzle-dataset";
+import { getDateKey, getWeekday, parsePuzzleId } from "./coords";
+import { pickPuzzleByDifficulty, pickRandomPuzzle } from "./puzzle-dataset";
 
 const mulberry32 = (seed: number) => {
   let t = seed >>> 0;
@@ -23,12 +22,8 @@ const hashSeed = (value: string): number => {
 };
 
 export const generatePuzzle = (rng: () => number): { id: PuzzleId; blockers: Coordinate[] } => {
-  const blockers = rollDice(rng);
-  const id = canonicalizePuzzleId(blockers);
-  const record = getPuzzleById(id);
-  if (record) return { id: record.id, blockers: record.blockers };
-  const fallback = pickRandomPuzzle(rng);
-  return { id: fallback.id, blockers: fallback.blockers };
+  const record = pickRandomPuzzle(rng);
+  return { id: record.id, blockers: record.blockers };
 };
 
 export const puzzleFromId = (id: PuzzleId): { id: PuzzleId; blockers: Coordinate[] } => ({

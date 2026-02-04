@@ -14,7 +14,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import type {
   BoardState,
   Coordinate,
@@ -27,43 +26,14 @@ import {
   PIECES,
   PIECE_TRANSFORMS,
   canPlace,
-  canonicalizePuzzleId,
   cellsToKey,
   createBoard,
-  formatCoordinate,
-  getPuzzleById,
-  pickPuzzleByDifficulty,
   placePiece,
-  parsePuzzleId,
   removePiece,
-  solvePuzzle,
-  vecToCoord,
   withBlockers,
   isSolved,
-  buildShareText,
 } from "@blocker-rush/shared";
 import type { DragGhost, PieceState } from "./gameTypes";
-
-const SETTINGS_KEY = "blockerRush.casual.settings";
-const STATS_KEY = "blockerRush.casual.stats";
-
-export const difficultyOptions: Difficulty[] = [
-  "easy",
-  "medium",
-  "hard",
-  "insane",
-];
-
-type CasualSettings = {
-  difficulty: Difficulty;
-};
-
-type CasualStats = {
-  bestTimesMs: Record<string, number>;
-  lastTimesMs: Record<string, number>;
-  bestMoves: Record<string, number>;
-  lastMoves: Record<string, number>;
-};
 
 type InteractionState = {
   mode: "pending" | "dragging";
@@ -120,7 +90,10 @@ const getTransformFor = (
   return transforms.find((item) => item.id === key) ?? transforms[0];
 };
 
-const findOrientationForTransform = (pieceId: PieceId, transformId: string) => {
+export const findOrientationForTransform = (
+  pieceId: PieceId,
+  transformId: string,
+) => {
   for (let rotation = 0; rotation < 4; rotation += 1) {
     for (const flipped of [false, true]) {
       const base = PIECES.find((piece) => piece.id === pieceId)?.cells ?? [];
@@ -140,94 +113,27 @@ const findOrientationForTransform = (pieceId: PieceId, transformId: string) => {
   return { rotation: 0, flipped: false };
 };
 
-const readSettings = (): CasualSettings => {
-  if (typeof window === "undefined") {
-    return { difficulty: "easy" };
-  }
-  try {
-    const raw = window.localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return { difficulty: "easy" };
-    const parsed = JSON.parse(raw) as CasualSettings;
-    if (!difficultyOptions.includes(parsed.difficulty)) {
-      return { difficulty: "easy" };
-    }
-    return parsed;
-  } catch {
-    return { difficulty: "easy" };
-  }
-};
-
-const writeSettings = (settings: CasualSettings) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-};
-
-const readStats = (): CasualStats => {
-  if (typeof window === "undefined") {
-    return {
-      bestTimesMs: {},
-      lastTimesMs: {},
-      bestMoves: {},
-      lastMoves: {},
-    };
-  }
-  try {
-    const raw = window.localStorage.getItem(STATS_KEY);
-    if (!raw) {
-      return {
-        bestTimesMs: {},
-        lastTimesMs: {},
-        bestMoves: {},
-        lastMoves: {},
-      };
-    }
-    const parsed = JSON.parse(raw) as CasualStats;
-    return {
-      bestTimesMs: parsed.bestTimesMs ?? {},
-      lastTimesMs: parsed.lastTimesMs ?? {},
-      bestMoves: parsed.bestMoves ?? {},
-      lastMoves: parsed.lastMoves ?? {},
-    };
-  } catch {
-    return {
-      bestTimesMs: {},
-      lastTimesMs: {},
-      bestMoves: {},
-      lastMoves: {},
-    };
-  }
-};
-
-const writeStats = (stats: CasualStats) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-};
-
-type CurrentStats = {
-  moves: number;
-  bestMoves?: number;
-  lastMoves?: number;
+type PuzzleSpec = {
+  id: string;
+  blockers: Coordinate[];
+  difficulty: Difficulty | null;
 };
 
 type GameContextValue = {
-  difficulty: Difficulty;
-  setDifficulty: (difficulty: Difficulty) => void;
-  puzzleInput: string;
-  setPuzzleInput: (value: string) => void;
+  puzzleId: string;
   puzzleDifficulty: Difficulty | null;
-  currentStats: CurrentStats | null;
-  hint: string | null;
-  shareStatus: string | null;
   solved: boolean;
-  loadPuzzleFromInput: () => void;
-  loadRandomPuzzle: () => void;
-  handleHint: () => void;
-  handleShare: () => Promise<void>;
+  moveCount: number;
+  startedAt: number | null;
   board: BoardState;
+  blockers: Coordinate[];
   pieceStates: Record<PieceId, PieceState>;
   activePieceId: PieceId | null;
   ghost: DragGhost | null;
   draggingPieceId: PieceId | null;
+  applyPuzzle: (puzzle: PuzzleSpec) => void;
+  setActivePieceId: (pieceId: PieceId | null) => void;
+  setPieceState: (pieceId: PieceId, next: PieceState) => void;
   getTransformFor: (
     pieceId: PieceId,
     rotation: number,
@@ -247,12 +153,11 @@ type GameContextValue = {
 
 const GameContext = createContext<GameContextValue | null>(null);
 
-export function GameProvider({ children }: { children: ReactNode }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const puzzleParam = searchParams.get("p");
+type GameProviderProps = {
+  children: ReactNode;
+};
 
-  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
+export function GameProvider({ children }: GameProviderProps) {
   const [board, setBoard] = useState<BoardState>(() => createBoard());
   const [pieceStates, setPieceStates] =
     useState<Record<PieceId, PieceState>>(initPieceStates());
@@ -261,26 +166,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [puzzleDifficulty, setPuzzleDifficulty] = useState<Difficulty | null>(
     null,
   );
-  const [hint, setHint] = useState<string | null>(null);
-  const [solutionCache, setSolutionCache] = useState<Record<
-    PieceId,
-    { origin: Vec2; transformId: string } | undefined
-  > | null>(null);
   const [history, setHistory] = useState<BoardState[]>([]);
-  const [stats, setStats] = useState<CasualStats>(() => readStats());
   const [activePieceId, setActivePieceId] = useState<PieceId | null>(null);
   const [ghost, setGhost] = useState<DragGhost | null>(null);
   const [draggingPieceId, setDraggingPieceId] = useState<PieceId | null>(null);
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [shareStatus, setShareStatus] = useState<string | null>(null);
-  const [puzzleInput, setPuzzleInput] = useState<string>("");
-  const [hasRecordedSolve, setHasRecordedSolve] = useState(false);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
 
   const boardRef = useRef<HTMLDivElement | null>(null);
   const boardStateRef = useRef(board);
   const pieceStatesRef = useRef(pieceStates);
   const interactionRef = useRef<InteractionState | null>(null);
-  const hintTimeoutRef = useRef<number | null>(null);
   const ghostRef = useRef<DragGhost | null>(null);
 
   const solved = useMemo(() => isSolved(board), [board]);
@@ -298,103 +193,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setGhost(next);
   };
 
-  const applyPuzzle = (
-    id: string,
-    blockersForPuzzle: Coordinate[],
-    difficultyForPuzzle: Difficulty | null,
-  ) => {
-    setPuzzleId(id);
-    setBlockers(blockersForPuzzle);
-    setPuzzleDifficulty(difficultyForPuzzle);
-    const nextBoard = withBlockers(blockersForPuzzle);
+  const applyPuzzle = (puzzle: PuzzleSpec) => {
+    setPuzzleId(puzzle.id);
+    setBlockers(puzzle.blockers);
+    setPuzzleDifficulty(puzzle.difficulty);
+    const nextBoard = withBlockers(puzzle.blockers);
     boardStateRef.current = nextBoard;
     setBoard(nextBoard);
     setPieceStates(initPieceStates());
     setHistory([]);
-    setHint(null);
-    setSolutionCache(null);
     updateGhostState(null);
     setDraggingPieceId(null);
     setActivePieceId(null);
-    setPuzzleInput(id);
-    setStartTime(Date.now());
-    setHasRecordedSolve(false);
-    setShareStatus(null);
-    router.replace(`/casual?p=${id}`, { scroll: false });
+    setStartedAt(Date.now());
   };
-
-  const loadPuzzleFromId = (raw: string, fallbackDifficulty: Difficulty) => {
-    try {
-      const parsed = parsePuzzleId(raw);
-      const canonical = canonicalizePuzzleId(parsed);
-      const record = getPuzzleById(canonical);
-      const resolvedBlockers = record?.blockers ?? parsed;
-      applyPuzzle(canonical, resolvedBlockers, record?.difficulty ?? null);
-    } catch {
-      loadRandomPuzzle(fallbackDifficulty);
-    }
-  };
-
-  const loadRandomPuzzle = (tier: Difficulty) => {
-    const record = pickPuzzleByDifficulty(tier);
-    applyPuzzle(record.id, record.blockers, record.difficulty);
-  };
-
-  useEffect(() => {
-    const settings = readSettings();
-    setDifficulty(settings.difficulty);
-    if (puzzleParam) {
-      loadPuzzleFromId(puzzleParam, settings.difficulty);
-      return;
-    }
-    loadRandomPuzzle(settings.difficulty);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (hintTimeoutRef.current) {
-        window.clearTimeout(hintTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (puzzleParam && puzzleParam !== puzzleId) {
-      loadPuzzleFromId(puzzleParam, difficulty);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [puzzleParam]);
-
-  useEffect(() => {
-    writeSettings({ difficulty });
-  }, [difficulty]);
-
-  useEffect(() => {
-    if (!solved || !puzzleId || !startTime) return;
-    if (hasRecordedSolve) return;
-    const elapsed = Date.now() - startTime;
-    const moveCount = history.length;
-    setStats((prev) => {
-      const next = {
-        ...prev,
-        lastTimesMs: { ...prev.lastTimesMs },
-        bestTimesMs: { ...prev.bestTimesMs },
-        lastMoves: { ...prev.lastMoves },
-        bestMoves: { ...prev.bestMoves },
-      };
-      next.lastTimesMs[puzzleId] = elapsed;
-      const best = next.bestTimesMs[puzzleId];
-      next.bestTimesMs[puzzleId] = best ? Math.min(best, elapsed) : elapsed;
-      next.lastMoves[puzzleId] = moveCount;
-      const bestMoves = next.bestMoves[puzzleId];
-      next.bestMoves[puzzleId] =
-        bestMoves !== undefined ? Math.min(bestMoves, moveCount) : moveCount;
-      writeStats(next);
-      return next;
-    });
-    setHasRecordedSolve(true);
-  }, [solved, puzzleId, startTime, hasRecordedSolve, history.length]);
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
@@ -430,6 +242,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
         ...prev[pieceId],
         flipped: !prev[pieceId].flipped,
       },
+    }));
+  };
+
+  const setPieceState = (pieceId: PieceId, next: PieceState) => {
+    setPieceStates((prev) => ({
+      ...prev,
+      [pieceId]: next,
     }));
   };
 
@@ -702,15 +521,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       state.flipped,
     );
     if (!canPlace(currentBoard, transform, origin)) return;
-    const nextBoard = placePiece(currentBoard, activePieceId, transform, origin);
+    const nextBoard = placePiece(
+      currentBoard,
+      activePieceId,
+      transform,
+      origin,
+    );
     setHistory((prev) => [...prev, currentBoard]);
     boardStateRef.current = nextBoard;
     setBoard(nextBoard);
   };
 
-  const handleBoardDoubleClick = (
-    event: ReactMouseEvent<HTMLDivElement>,
-  ) => {
+  const handleBoardDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     const cellIndex = getCellIndexFromTarget(event.target);
     if (cellIndex === null) return;
     const currentBoard = boardStateRef.current;
@@ -728,100 +550,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
     startInteraction(event, pieceId, placement?.origin);
   };
 
-  const handleHint = () => {
-    if (!puzzleId) return;
-    let solution = solutionCache;
-    if (!solution) {
-      const result = solvePuzzle(blockers, { maxSolutions: 1 });
-      solution = result.firstSolution ?? null;
-      setSolutionCache(solution);
-    }
-    if (!solution) {
-      setHint("No hints available for this puzzle.");
-      return;
-    }
-    const remaining = PIECES.filter((piece) => !board.placements[piece.id]);
-    const target = remaining[0];
-    if (!target) {
-      setHint("All pieces are already placed.");
-      return;
-    }
-    const placement = solution[target.id];
-    if (!placement) {
-      setHint("Hint unavailable for that piece.");
-      return;
-    }
-    const coord = vecToCoord(placement.origin);
-    const orientation = findOrientationForTransform(
-      target.id,
-      placement.transformId,
-    );
-    setPieceStates((prev) => ({
-      ...prev,
-      [target.id]: orientation,
-    }));
-    setActivePieceId(target.id);
-    setHint(
-      `Try placing ${target.name} so its top-left is at ${formatCoordinate(
-        coord,
-      )}.`,
-    );
-    if (hintTimeoutRef.current) {
-      window.clearTimeout(hintTimeoutRef.current);
-    }
-    hintTimeoutRef.current = window.setTimeout(() => {
-      setHint(null);
-    }, 6000);
-  };
-
-  const handleShare = async () => {
-    if (!puzzleId) return;
-    const baseUrl = `${window.location.origin}/casual`;
-    const text = buildShareText(puzzleId, board.placements, baseUrl);
-    try {
-      if (navigator.share) {
-        await navigator.share({ text });
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
-      }
-      setShareStatus("Copied share text.");
-    } catch {
-      setShareStatus("Unable to share right now.");
-    }
-  };
-
-  const currentStats = useMemo<CurrentStats | null>(() => {
-    if (!puzzleId) return null;
-    return {
-      moves: history.length,
-      bestMoves: stats.bestMoves[puzzleId],
-      lastMoves: stats.lastMoves[puzzleId],
-    };
-  }, [puzzleId, stats, history.length]);
-
-  const loadPuzzleFromInput = () => {
-    loadPuzzleFromId(puzzleInput, difficulty);
-  };
+  const moveCount = useMemo(() => history.length, [history.length]);
 
   const value: GameContextValue = {
-    difficulty,
-    setDifficulty,
-    puzzleInput,
-    setPuzzleInput,
+    puzzleId,
     puzzleDifficulty,
-    currentStats,
-    hint,
-    shareStatus,
     solved,
-    loadPuzzleFromInput,
-    loadRandomPuzzle: () => loadRandomPuzzle(difficulty),
-    handleHint,
-    handleShare,
+    moveCount,
+    startedAt,
     board,
+    blockers,
     pieceStates,
     activePieceId,
     ghost,
     draggingPieceId,
+    applyPuzzle,
+    setActivePieceId,
+    setPieceState,
     getTransformFor,
     onBoardPointerDown: handleBoardPointerDown,
     onBoardClick: handleBoardClick,

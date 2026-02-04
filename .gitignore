@@ -13,6 +13,7 @@ out/
 
 # production
 build/
+packages/shared/src/data/puzzles.v1.json*.tmp
 
 # misc
 .vscode/

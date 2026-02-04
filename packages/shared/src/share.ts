@@ -1,6 +1,5 @@
 import type { Coordinate, PieceId } from "./types";
-import { DEFAULT_BOARD, coordToVec, toIndex } from "./coords";
-import { parsePuzzleId } from "./dice";
+import { DEFAULT_BOARD, coordToVec, parsePuzzleId, toIndex } from "./coords";
 import { PIECE_TRANSFORMS } from "./pieces";
 
 const pieceToken = (pieceId: PieceId): string => {

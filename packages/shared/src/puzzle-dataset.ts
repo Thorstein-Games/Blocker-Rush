@@ -2,7 +2,7 @@ import type { Difficulty, PuzzleId, PuzzleRecord } from "./types";
 import { parseCoordinate } from "./coords";
 import { isDifficultyMatch } from "./difficulty";
 import { PUZZLE_DATASET_VERSION } from "./rules";
-import rawDataset from "./data/puzzles.v1.json" assert { type: "json" };
+import rawDataset from "./data/puzzles.v1.sample.json" assert { type: "json" };
 
 type RawPuzzleRecord = {
   id: PuzzleId;

@@ -14,16 +14,16 @@ export default function HomePage() {
             <Link className="button" href="/casual">
               Play Casual
             </Link>
-            <button className="button secondary" type="button" disabled>
-              Daily Challenge (Soon)
-            </button>
+            <Link className="button secondary" href="/daily-challenge">
+              Daily Challenge
+            </Link>
           </div>
         </div>
         <div className="hero-card">
           <h3>Tonight's Vibe</h3>
           <p>
             Smooth, encouraging solo runs. Every puzzle is solvable, every win
-            feels earned. Multiplayer and daily streaks are coming next.
+            feels earned. Multiplayer is coming next.
           </p>
         </div>
       </section>
@@ -55,9 +55,9 @@ export default function HomePage() {
             One puzzle per day, difficulty ramps up as the week heats up. Keep
             the streak alive.
           </p>
-          <button className="button secondary" type="button" disabled>
-            Coming Soon
-          </button>
+          <Link className="button secondary" href="/daily-challenge">
+            Start Today
+          </Link>
         </div>
       </section>
     </main>

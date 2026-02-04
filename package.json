@@ -11,6 +11,8 @@
     "build": "npm run build -w apps/web",
     "dev:server": "npm run dev -w apps/server",
     "lint": "npm run lint -w apps/web",
-    "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/server && npm run build -w packages/shared"
+    "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/server && npm run build -w packages/shared",
+    "gen-puzzles": "node packages/shared/scripts/generate-puzzles.js",
+    "refresh-samples": "node packages/shared/scripts/sample-puzzles.js"
   }
 }

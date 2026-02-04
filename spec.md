@@ -60,7 +60,7 @@ There will be three game modes:
     Guarantee solvable. The dice should only allow solvable puzzles.
 
 13. Do you want difficulty levels to be: based on solver complexity (search depth), based on human friction (how many dead-ends), based on time-to-solve targets, or a mix?
-    A mix. Usually the hardest grids only have one solution. See this (list of 800 insanely hard puzzles) [https://github.com/CatchemAL/genius-square/blob/main/data/Genius%20Square%20-%20Insanely%20Hard%20Mode.pdf]
+    A mix. Usually the hardest grids only have one solution. See this (list of 800 insane puzzles) [https://github.com/CatchemAL/genius-square/blob/main/data/Genius%20Square%20-%20Insanely%20Hard%20Mode.pdf]
 
 ## Piece placement rules and interaction design
 
@@ -241,7 +241,7 @@ There will be three game modes:
 18. Multiplayer disconnects: should there be a grace period/rejoin window and a forfeit timeout?
     30 second grace period to rejoin
 19. Difficulty mapping: define exact difficulty tiers for multiplayer rounds (R1/R2/R3) and daily challenge days (Sun–Sat).
-    Multiplayer: easy/medium/hard. Daily challenge: Mon, Tues - easy. Wed, Thurs - Medium. Fri, Sat, Sun - Hard.
+    Multiplayer: easy/medium/hard. Daily challenge: Mon, Tues - easy. Wed, Thurs - Medium. Fri, Sat - Hard. Sun - Insane
 20. Shared puzzle links: should they open directly into a playable solve, or a spectator/preview screen first?
     Shareable puzzles (when clicking the share button like words) should show an ASCII version of the solve in the shared text. Link should just lead to puzzle without the solve
 21. Ads: confirm provider/SDK choice and target banner size/placement constraints beyond positions listed above.

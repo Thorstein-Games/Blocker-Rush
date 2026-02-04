@@ -70,7 +70,8 @@ Out:
    - Daily challenge difficulty by weekday (local time):
      - Mon, Tue = easy
      - Wed, Thu = medium
-     - Fri, Sat, Sun = hard
+     - Fri, Sat = hard
+     - Sun = insane
    - Store difficulty metadata alongside puzzles in the dataset.
 
 ## Phase 2 — Puzzle Dataset Pipeline
@@ -111,21 +112,42 @@ Out:
    - No limit on hint usage.
    - Wire UI for “watch ad for hint” but leave integration stubbed.
 
-4. [x] **Undo**
-   - Unlimited undo in all modes.
-
-5. [x] **Completion**
+4. [x] **Completion**
    - No animations during play.
    - Celebratory effects only after puzzle completion.
 
-6. [x] **Shareable puzzles**
+5. [x] **Shareable puzzles**
    - “Share” generates text with ASCII solve summary.
    - Link only includes puzzle ID, no solution.
 
-7. [x] **Local telemetry**
+6. [x] **Local telemetry**
    - Store time-to-solve, casual attempts, and settings in localStorage.
 
-## Phase 4 — Multiplayer Mode (Server-Authoritative)
+## Phase 4 — Daily Challenge
+
+1. **Daily puzzle selection**
+   - Deterministic client-side selection based on local date.
+   - Use weekday to select difficulty tier.
+   - Map date to a puzzle ID within the tier using seeded RNG.
+
+2. **Streaks**
+   - Track streak locally.
+   - Reset streak on missed day.
+
+3. **End of day**
+   - Local midnight rollover triggers new puzzle.
+
+## Phase 5 — Accessibility, and UI Polish
+
+1. **Screen reader**
+   - Menus accessible; board itself not fully screen-reader playable.
+
+2. **UI design**
+   - Modern, sleek aesthetic.
+   - Clear focus states and contrast for draggable pieces and blockers.
+   - Placeholder slots for ads but no provider integration.
+
+## Phase 6 — Multiplayer Mode (Server-Authoritative)
 
 1. **Server foundation**
    - Node/TypeScript server with WebSocket (Socket.io).
@@ -151,34 +173,6 @@ Out:
 
 6. **Multiplayer stats**
    - Store win/loss and best times locally only.
-
-## Phase 5 — Daily Challenge
-
-1. **Daily puzzle selection**
-   - Deterministic client-side selection based on local date.
-   - Use weekday to select difficulty tier.
-   - Map date to a puzzle ID within the tier using seeded RNG.
-
-2. **Streaks**
-   - Track streak locally.
-   - Reset streak on missed day.
-
-3. **End of day**
-   - Local midnight rollover triggers new puzzle.
-
-## Phase 6 — Accessibility, Keyboard, and UI Polish
-
-1. **Keyboard play**
-   - Provide standard bindings (best practice): arrows to move, `R` rotate, `F` flip, `Space` place, `Esc` cancel.
-   - Ensure keyboard-only completion is possible.
-
-2. **Screen reader**
-   - Menus accessible; board itself not fully screen-reader playable.
-
-3. **UI design**
-   - Modern, sleek aesthetic.
-   - Clear focus states and contrast for draggable pieces and blockers.
-   - Placeholder slots for ads but no provider integration.
 
 ## Phase 7 — Testing & QA
 

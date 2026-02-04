@@ -3,6 +3,7 @@ import type { BoardSize, Column, Coordinate, Row, Vec2 } from "./types";
 const COLUMN_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 export const DEFAULT_BOARD: BoardSize = { cols: 6, rows: 6 };
+export const DEFAULT_BLOCKER_COUNT = 7;
 
 export const columnLabelToIndex = (label: string): number | null => {
   const normalized = label.trim().toUpperCase();
@@ -70,6 +71,28 @@ export const sortCoordinates = (coords: Coordinate[]): Coordinate[] =>
     if (a.col !== b.col) return a.col < b.col ? -1 : 1;
     return a.row - b.row;
   });
+
+export const canonicalizePuzzleId = (blockers: Coordinate[]): string =>
+  sortCoordinates(blockers)
+    .map((coord) => formatCoordinate(coord))
+    .join("");
+
+export const parsePuzzleId = (raw: string): Coordinate[] => {
+  const normalized = raw.trim().toUpperCase();
+  const tokens = normalized.match(/[A-Z]+[0-9]+/g);
+  if (!tokens || tokens.length === 0) {
+    throw new Error("Puzzle id must contain at least one coordinate.");
+  }
+  if (tokens.join("") !== normalized) {
+    throw new Error("Puzzle id has an invalid format.");
+  }
+  if (tokens.length !== DEFAULT_BLOCKER_COUNT) {
+    throw new Error(
+      `Puzzle id must contain exactly ${DEFAULT_BLOCKER_COUNT} coordinates.`
+    );
+  }
+  return sortCoordinates(tokens.map((token) => parseCoordinate(token)));
+};
 
 export const toIndex = (size: BoardSize, vec: Vec2): number =>
   vec.y * size.cols + vec.x;
