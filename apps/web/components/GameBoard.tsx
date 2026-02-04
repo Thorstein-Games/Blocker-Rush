@@ -144,9 +144,6 @@ export default function GameBoard() {
           </div>
         )}
       </div>
-      <div className="status-row">
-        <span>Up/Down to rotate. Left/Right to flip</span>
-      </div>
     </div>
   );
 }

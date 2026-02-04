@@ -8,6 +8,7 @@ import PiecesTray from "./PiecesTray";
 import { GameProvider, useGame } from "./GameContext";
 import GameHeader from "./GameHeader";
 import type { PieceState } from "./gameTypes";
+import ThemeSelect from "./ThemeSelect";
 
 const DAILY_STATS_KEY = "blockerRush.daily.stats";
 const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
@@ -200,49 +201,12 @@ function DailyGameLayout({ date }: { date: Date }) {
   }, [board, pieceStates, startedAt, puzzleId, dailyPuzzle.id, dateKey]);
 
   const statusLabel =
-    stats.lastCompletedDateKey === dateKey
-      ? "Completed"
-      : "Not yet cleared";
-
-  const howToPlayPanel = (
-    <div className="stack">
-      <div className="stack">
-        <strong>Rules</strong>
-        <span>
-          This is a digital take on The Genius Square. Each puzzle gives you 7
-          blockers on a 6x6 grid. Your goal is to place all 9 pieces so every
-          remaining square is filled. Pieces can be rotated and flipped, but
-          they cannot overlap or cover blockers.
-        </span>
-      </div>
-      <div className="stack">
-        <strong>Interactions</strong>
-        <ul>
-          <li>Click or tap a piece to make it active.</li>
-          <li>Click an active piece again to rotate it.</li>
-          <li>Drag a piece onto the board to place it.</li>
-          <li>Click an empty board cell to place the active piece there.</li>
-          <li>Drag a placed piece to move it, or drag it off the board to remove it.</li>
-          <li>Double-click a placed piece to remove it.</li>
-          <li>Use the Rotate/Flip buttons, or press W/S to rotate and A/D to flip.</li>
-        </ul>
-      </div>
-      <div className="stack">
-        <strong>Modes</strong>
-        <span>
-          Daily gives everyone the same puzzle each day and tracks streaks.
-          Casual lets you pick difficulty, generate random puzzles, or load a
-          specific puzzle ID. Multiplayer is coming soon.
-        </span>
-      </div>
-    </div>
-  );
+    stats.lastCompletedDateKey === dateKey ? "Completed" : "Not yet cleared";
 
   return (
     <main className="page game-page">
       <GameHeader
         mode="daily"
-        howToPlayPanel={howToPlayPanel}
         statsTitle="Daily Challenge"
         statsPanel={
           <div className="stats-grid">
@@ -262,6 +226,11 @@ function DailyGameLayout({ date }: { date: Date }) {
               <span className="stat-label">Date</span>
               <span className="stat-value">{dateKey}</span>
             </div>
+          </div>
+        }
+        settingsPanel={
+          <div className="settings-stack">
+            <ThemeSelect />
           </div>
         }
       />

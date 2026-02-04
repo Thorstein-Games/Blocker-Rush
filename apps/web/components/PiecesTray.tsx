@@ -1,7 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { PIECES } from "@blocker-rush/shared";
+import { useMemo, type CSSProperties } from "react";
+import { PIECES, PIECE_TRANSFORMS } from "@blocker-rush/shared";
 import { PIECE_COLORS } from "./pieceColors";
 import { useGame } from "./GameContext";
 
@@ -22,10 +22,24 @@ export default function PiecesTray() {
     ? PIECES.find((piece) => piece.id === activePieceId)
     : null;
 
+  const trayBoundsByPieceId = useMemo(() => {
+    return PIECES.reduce<Record<string, { cols: number; rows: number }>>(
+      (acc, piece) => {
+        const transforms = PIECE_TRANSFORMS[piece.id];
+        const maxCols = Math.max(...transforms.map((entry) => entry.width));
+        const maxRows = Math.max(...transforms.map((entry) => entry.height));
+        acc[piece.id] = { cols: maxCols, rows: maxRows };
+        return acc;
+      },
+      {},
+    );
+  }, []);
+
   return (
     <div className="pieces-area">
       <div className="pieces-header">
         <h3>Pieces</h3>
+        <span>Up/Down to rotate. Left/Right to flip</span>
         {activePiece ? (
           <div className="pieces-controls">
             <span>Active: {activePiece.name}</span>
@@ -66,6 +80,10 @@ export default function PiecesTray() {
             state.flipped,
           );
           const placed = Boolean(board.placements[piece.id]);
+          const trayBounds = trayBoundsByPieceId[piece.id] ?? {
+            cols: transform.width,
+            rows: transform.height,
+          };
           const slotClassName = [
             "piece-slot",
             placed ? "placed" : null,
@@ -88,6 +106,8 @@ export default function PiecesTray() {
               <div
                 className="piece-grid"
                 style={{
+                  "--piece-cols": trayBounds.cols,
+                  "--piece-rows": trayBounds.rows,
                   gridTemplateColumns: `repeat(${transform.width}, var(--tray-cell))`,
                   gridTemplateRows: `repeat(${transform.height}, var(--tray-cell))`,
                 }}
