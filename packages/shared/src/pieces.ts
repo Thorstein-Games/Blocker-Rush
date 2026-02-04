@@ -10,13 +10,7 @@ const makePiece = (id: PieceId, name: string, cells: Vec2[]): Piece => ({
 
 // TODO: Replace these placeholder shapes with the exact production set.
 export const PIECES: Piece[] = [
-  makePiece("p1", "Crown", [
-    { x: 0, y: 0 },
-    { x: 1, y: 0 },
-    { x: 2, y: 0 },
-    { x: 1, y: 1 },
-    { x: 1, y: 2 },
-  ]),
+  makePiece("p1", "Dot", [{ x: 0, y: 0 }]),
   makePiece("p2", "Spire", [
     { x: 0, y: 0 },
     { x: 0, y: 1 },
@@ -49,13 +43,17 @@ export const PIECES: Piece[] = [
     { x: 0, y: 0 },
     { x: 1, y: 0 },
   ]),
-  makePiece("p8", "Twin", [
+  makePiece("p8", "Square", [
     { x: 0, y: 0 },
     { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 1, y: 1 },
   ]),
-  makePiece("p9", "Twin", [
+  makePiece("p9", "Long Line", [
     { x: 0, y: 0 },
     { x: 1, y: 0 },
+    { x: 2, y: 0 },
+    { x: 3, y: 0 },
   ]),
 ];
 

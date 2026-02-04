@@ -38,7 +38,10 @@ const columnLabelToIndex = (label) => {
 };
 
 const parseCoordinate = (value) => {
-  const match = value.trim().toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  const match = value
+    .trim()
+    .toUpperCase()
+    .match(/^([A-Z]+)(\d+)$/);
   if (!match) {
     throw new Error(`Invalid coordinate: ${value}`);
   }
@@ -72,7 +75,7 @@ const normalizeCells = (cells) => {
 const cellsToKey = (cells) =>
   normalizeCells(cells)
     .slice()
-    .sort((a, b) => (a.y - b.y) || (a.x - b.x))
+    .sort((a, b) => a.y - b.y || a.x - b.x)
     .map((cell) => `${cell.x},${cell.y}`)
     .join("|");
 
@@ -129,14 +132,6 @@ const PIECES = [
     { x: 2, y: 0 },
   ]),
   makePiece("p7", "Twin", [
-    { x: 0, y: 0 },
-    { x: 1, y: 0 },
-  ]),
-  makePiece("p8", "Twin", [
-    { x: 0, y: 0 },
-    { x: 1, y: 0 },
-  ]),
-  makePiece("p9", "Twin", [
     { x: 0, y: 0 },
     { x: 1, y: 0 },
   ]),
@@ -299,7 +294,14 @@ const buildCombinations = () => {
 const main = async () => {
   const combos = buildCombinations();
   const puzzles = [];
-  const stats = { total: 0, easy: 0, medium: 0, hard: 0, insane: 0, unsolved: 0 };
+  const stats = {
+    total: 0,
+    easy: 0,
+    medium: 0,
+    hard: 0,
+    insane: 0,
+    unsolved: 0,
+  };
 
   for (let i = 0; i < combos.length; i += 1) {
     const faces = combos[i];
