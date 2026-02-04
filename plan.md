@@ -75,54 +75,54 @@ Out:
 
 ## Phase 2 — Puzzle Dataset Pipeline
 
-1. **Generate all solvable puzzles**
+1. [x] **Generate all solvable puzzles**
    - Enumerate all 62,208 dice outcomes.
    - Canonicalize each blocker set into its puzzle ID.
    - Run solver validation to guarantee solvable.
 
-2. **Difficulty scoring**
+2. [x] **Difficulty scoring**
    - Compute a difficulty score using a mix of solver depth, branching, and solution count.
    - Tag each puzzle into difficulty tiers (including `insane`).
    - Keep deterministic tier boundaries so IDs remain stable over time.
 
-3. **Data storage**
+3. [x] **Data storage**
    - Store puzzles in a versioned JSON or SQLite file.
    - Include fields: `id`, `blockers`, `difficulty`, `solutionCount`, `rulesVersion`.
 
-4. **Selection helpers**
+4. [x] **Selection helpers**
    - Provide utilities to pick a random puzzle within a difficulty tier.
    - Provide utilities to pick a daily puzzle deterministically from local date and tier.
 
 ## Phase 3 — Core Client (Casual Mode)
 
-1. **Board UI and interaction**
+1. [x] **Board UI and interaction**
    - Drag and drop pieces with “hover ghost” placement.
    - Snap to grid; block invalid placements completely.
    - Tap to cycle rotation on mobile; press and hold to drag.
    - Support reflection (e.g., keyboard `F` or UI toggle).
 
-2. **Game flow**
+2. [x] **Game flow**
    - Start from a puzzle ID or random by difficulty selection.
    - Show blockers fixed on the board.
    - Real-time validation for each piece placement.
 
-3. **Hints (casual only)**
+3. [x] **Hints (casual only)**
    - Constructive hints only.
    - No limit on hint usage.
    - Wire UI for “watch ad for hint” but leave integration stubbed.
 
-4. **Undo**
+4. [x] **Undo**
    - Unlimited undo in all modes.
 
-5. **Completion**
+5. [x] **Completion**
    - No animations during play.
    - Celebratory effects only after puzzle completion.
 
-6. **Shareable puzzles**
+6. [x] **Shareable puzzles**
    - “Share” generates text with ASCII solve summary.
    - Link only includes puzzle ID, no solution.
 
-7. **Local telemetry**
+7. [x] **Local telemetry**
    - Store time-to-solve, casual attempts, and settings in localStorage.
 
 ## Phase 4 — Multiplayer Mode (Server-Authoritative)

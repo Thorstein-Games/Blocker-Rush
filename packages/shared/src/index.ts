@@ -5,5 +5,7 @@ export * from "./pieces.js";
 export * from "./board.js";
 export * from "./solver.js";
 export * from "./difficulty.js";
+export * from "./rules.js";
+export * from "./puzzle-dataset.js";
 export * from "./puzzle.js";
 export * from "./share.js";

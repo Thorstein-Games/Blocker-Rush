@@ -1,8 +1,7 @@
 import type { DailyPuzzle, Difficulty, Coordinate, PuzzleId } from "./types.js";
-import { DEFAULT_BOARD, getDateKey, getWeekday } from "./coords.js";
+import { getDateKey, getWeekday } from "./coords.js";
 import { canonicalizePuzzleId, parsePuzzleId, rollDice } from "./dice.js";
-import { solvePuzzle } from "./solver.js";
-import { isDifficultyMatch, scoreDifficulty } from "./difficulty.js";
+import { getPuzzleById, pickPuzzleByDifficulty, pickRandomPuzzle } from "./puzzle-dataset.js";
 
 const mulberry32 = (seed: number) => {
   let t = seed >>> 0;
@@ -26,7 +25,10 @@ const hashSeed = (value: string): number => {
 export const generatePuzzle = (rng: () => number): { id: PuzzleId; blockers: Coordinate[] } => {
   const blockers = rollDice(rng);
   const id = canonicalizePuzzleId(blockers);
-  return { id, blockers };
+  const record = getPuzzleById(id);
+  if (record) return { id: record.id, blockers: record.blockers };
+  const fallback = pickRandomPuzzle(rng);
+  return { id: fallback.id, blockers: fallback.blockers };
 };
 
 export const puzzleFromId = (id: PuzzleId): { id: PuzzleId; blockers: Coordinate[] } => ({
@@ -37,23 +39,15 @@ export const puzzleFromId = (id: PuzzleId): { id: PuzzleId; blockers: Coordinate
 export const findPuzzleByDifficulty = (
   target: Difficulty,
   seed: string,
-  maxAttempts = 200
+  _maxAttempts = 200
 ) => {
   const rng = mulberry32(hashSeed(seed));
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const candidate = generatePuzzle(rng);
-    const solve = solvePuzzle(candidate.blockers, { maxSolutions: 2 }, DEFAULT_BOARD);
-    const difficulty = scoreDifficulty(solve);
-    if (isDifficultyMatch(difficulty, target)) {
-      return { ...candidate, difficulty, solutionCount: solve.solutionCount };
-    }
-  }
-  const fallback = generatePuzzle(rng);
-  const fallbackSolve = solvePuzzle(fallback.blockers, { maxSolutions: 2 }, DEFAULT_BOARD);
+  const record = pickPuzzleByDifficulty(target, rng);
   return {
-    ...fallback,
-    difficulty: scoreDifficulty(fallbackSolve),
-    solutionCount: fallbackSolve.solutionCount,
+    id: record.id,
+    blockers: record.blockers,
+    difficulty: record.difficulty,
+    solutionCount: record.solutionCount,
   };
 };
 
