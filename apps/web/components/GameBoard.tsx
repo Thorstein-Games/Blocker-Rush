@@ -57,22 +57,10 @@ export default function GameBoard() {
       )
     : null;
 
-  const dragPreviewSize =
-    dragPreview && dragPreviewTransform
-      ? {
-          width:
-            dragPreviewTransform.width * dragPreview.cell +
-            (dragPreviewTransform.width - 1) * dragPreview.gap,
-          height:
-            dragPreviewTransform.height * dragPreview.cell +
-            (dragPreviewTransform.height - 1) * dragPreview.gap,
-        }
-      : null;
-
-  const dragPointerLift =
-    dragPreview && dragPreviewSize
-      ? dragPreviewSize.height / 2 + Math.max(12, dragPreview.cell * 0.4)
-      : 0;
+  const dragPreviewPosition =
+    dragPreview?.isDropping && dragPreview.dropTarget
+      ? dragPreview.dropTarget
+      : dragPreview?.position;
 
   return (
     <div className="board-area">
@@ -124,15 +112,16 @@ export default function GameBoard() {
         {dragPreview && dragPreviewTransform && (
           <div className="drag-preview-layer">
             <div
-              className="drag-preview"
+              className={[
+                "drag-preview",
+                dragPreview.isDropping ? "dropping" : null,
+              ]
+                .filter(Boolean)
+                .join(" ")}
               style={
                 {
-                  left: dragPreview.snap
-                    ? dragPreview.snap.x
-                    : dragPreview.pointer.x,
-                  top: dragPreview.snap
-                    ? dragPreview.snap.y
-                    : dragPreview.pointer.y - dragPointerLift,
+                  "--drag-x": `${dragPreviewPosition?.x ?? 0}px`,
+                  "--drag-y": `${dragPreviewPosition?.y ?? 0}px`,
                   "--drag-cell": `${dragPreview.cell}px`,
                   "--drag-gap": `${dragPreview.gap}px`,
                   "--drag-cols": dragPreviewTransform.width,
