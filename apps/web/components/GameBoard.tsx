@@ -57,6 +57,23 @@ export default function GameBoard() {
       )
     : null;
 
+  const dragPreviewSize =
+    dragPreview && dragPreviewTransform
+      ? {
+          width:
+            dragPreviewTransform.width * dragPreview.cell +
+            (dragPreviewTransform.width - 1) * dragPreview.gap,
+          height:
+            dragPreviewTransform.height * dragPreview.cell +
+            (dragPreviewTransform.height - 1) * dragPreview.gap,
+        }
+      : null;
+
+  const dragPointerLift =
+    dragPreview && dragPreviewSize
+      ? dragPreviewSize.height / 2 + Math.max(12, dragPreview.cell * 0.4)
+      : 0;
+
   return (
     <div className="board-area">
       <div className="board-shell">
@@ -74,8 +91,15 @@ export default function GameBoard() {
           }
         >
           {boardCells}
-          {ghost && draggingPieceId && (
-            <div className="ghost">
+          {ghost?.valid && draggingPieceId && (
+            <div
+              className="ghost"
+              style={
+                {
+                  "--block-color": PIECE_COLORS[draggingPieceId],
+                } as CSSProperties
+              }
+            >
               {(() => {
                 const state = pieceStates[draggingPieceId];
                 const transform = getTransformFor(
@@ -108,7 +132,7 @@ export default function GameBoard() {
                     : dragPreview.pointer.x,
                   top: dragPreview.snap
                     ? dragPreview.snap.y
-                    : dragPreview.pointer.y,
+                    : dragPreview.pointer.y - dragPointerLift,
                   "--drag-cell": `${dragPreview.cell}px`,
                   "--drag-gap": `${dragPreview.gap}px`,
                   "--drag-cols": dragPreviewTransform.width,

@@ -39,7 +39,9 @@ export default function PiecesTray() {
     <div className="pieces-area">
       <div className="pieces-header">
         <h3>Pieces</h3>
-        <span>Up/Down to rotate. Left/Right to flip</span>
+        <span className="status-row">
+          Up/Down to rotate. Left/Right to flip
+        </span>
         {activePiece ? (
           <div className="pieces-controls">
             <span>Active: {activePiece.name}</span>
@@ -110,7 +112,7 @@ export default function PiecesTray() {
                   "--piece-rows": trayBounds.rows,
                   gridTemplateColumns: `repeat(${transform.width}, var(--tray-cell))`,
                   gridTemplateRows: `repeat(${transform.height}, var(--tray-cell))`,
-                }}
+                } as CSSProperties}
               >
                 {transform.cells.map((cell, index) => (
                   <div

@@ -177,7 +177,10 @@ type GameProviderProps = {
   lockOnSolve?: boolean;
 };
 
-export function GameProvider({ children, lockOnSolve = false }: GameProviderProps) {
+export function GameProvider({
+  children,
+  lockOnSolve = false,
+}: GameProviderProps) {
   const [board, setBoard] = useState<BoardState>(() => createBoard());
   const [pieceStates, setPieceStates] =
     useState<Record<PieceId, PieceState>>(initPieceStates());
@@ -198,6 +201,7 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
   const pieceStatesRef = useRef(pieceStates);
   const interactionRef = useRef<InteractionState | null>(null);
   const ghostRef = useRef<DragGhost | null>(null);
+  const lastTapRef = useRef<{ time: number; cellIndex: number } | null>(null);
 
   const solved = useMemo(() => isSolved(board), [board]);
   const readOnly = lockOnSolve && solved;
@@ -307,7 +311,7 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
       cell,
       gap,
       offset,
-      scale: 1.06,
+      scale: 1,
       snap: null,
     };
   };
@@ -423,6 +427,7 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
       window.clearTimeout(interaction.timeoutId);
       interaction.mode = "dragging";
       interactionRef.current = interaction;
+      lastTapRef.current = null;
       setDraggingPieceId(pieceId);
       const previewPointer = interaction.lastPointer ?? {
         x: interaction.startX,
@@ -518,10 +523,22 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
     interaction: InteractionState,
   ) => {
     const { rect, step } = interaction.metrics;
+    const state = pieceStatesRef.current[interaction.pieceId];
+    const transform = getTransformFor(
+      interaction.pieceId,
+      state.rotation,
+      state.flipped,
+    );
+    const width = transform.width * step - interaction.metrics.gap;
+    const height = transform.height * step - interaction.metrics.gap;
+    const lift = height / 2 + Math.max(12, interaction.metrics.cell * 0.4);
+    const adjustedY = clientY - lift;
     const topLeftX = clientX - rect.left - interaction.offset.x;
-    const topLeftY = clientY - rect.top - interaction.offset.y;
+    const topLeftY = adjustedY - rect.top - interaction.offset.y;
+    const centerX = topLeftX + width / 2;
+    const centerY = topLeftY + height / 2;
 
-    const buffer = step;
+    const buffer = step + Math.max(width, height) * 0.35;
     if (
       topLeftX < -buffer ||
       topLeftY < -buffer ||
@@ -549,12 +566,18 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
       return;
     }
 
-    const state = pieceStatesRef.current[interaction.pieceId];
-    const transform = getTransformFor(
-      interaction.pieceId,
-      state.rotation,
-      state.flipped,
-    );
+    const targetCenterX = origin.x * step + width / 2;
+    const targetCenterY = origin.y * step + height / 2;
+    const snapRadius = step * 1.2;
+    if (
+      Math.hypot(centerX - targetCenterX, centerY - targetCenterY) >
+      snapRadius
+    ) {
+      updateGhostState(null);
+      updateDragPreviewSnap(null, interaction);
+      return;
+    }
+
     const valid = canPlace(boardStateRef.current, transform, origin);
     if (!valid) {
       updateGhostState(null);
@@ -631,6 +654,21 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
     if (!cell || cell === "blocker") return;
     const placement = currentBoard.placements[cell as PieceId];
     if (!placement) return;
+    if (event.pointerType === "touch") {
+      const now = Date.now();
+      const lastTap = lastTapRef.current;
+      if (
+        lastTap &&
+        now - lastTap.time < 320 &&
+        lastTap.cellIndex === cellIndex
+      ) {
+        lastTapRef.current = null;
+        commitRemoval(cell as PieceId, currentBoard);
+        setActivePieceId(cell as PieceId);
+        return;
+      }
+      lastTapRef.current = { time: now, cellIndex };
+    }
     startInteraction(event, cell as PieceId, placement.origin);
   };
 
