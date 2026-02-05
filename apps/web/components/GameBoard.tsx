@@ -79,11 +79,9 @@ export default function GameBoard() {
           }
         >
           {boardCells}
-          {ghost && draggingPieceId && (
+          {ghost?.valid && draggingPieceId && (
             <div
-              className={["ghost", ghost.valid ? null : "invalid"]
-                .filter(Boolean)
-                .join(" ")}
+              className="ghost"
               style={
                 {
                   "--block-color": PIECE_COLORS[draggingPieceId],
