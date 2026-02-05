@@ -746,6 +746,7 @@ export function GameProvider({
         ))
     ) {
       commitRemoval(pieceId, previousBoard);
+      setDragPreview(null);
       return;
     }
     boardStateRef.current = previousBoard;
