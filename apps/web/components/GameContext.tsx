@@ -33,6 +33,7 @@ import {
   removePiece,
   withBlockers,
   isSolved,
+  computeAnchorOffset,
 } from "@blocker-rush/shared";
 import type { DragGhost, PieceState } from "./gameTypes";
 
@@ -40,11 +41,13 @@ type InteractionState = {
   mode: "pending" | "dragging";
   pieceId: PieceId;
   pointerId: number;
-  startX: number;
-  startY: number;
-  offset: { x: number; y: number };
+  startPointerX: number;
+  startPointerY: number;
+  /** Offset from pointer to anchor cell center (in world coordinates) */
+  pointerToAnchorOffset: { x: number; y: number };
   previousBoard: BoardState;
   previousPlacement?: { origin: Vec2; transformId: string };
+  /** Cached metrics to avoid layout thrashing during drag */
   metrics: {
     rect: DOMRect;
     gap: number;
@@ -52,7 +55,15 @@ type InteractionState = {
     cell: number;
   };
   timeoutId: number;
-  lastPointer?: { x: number; y: number };
+  /** Latest pointer position (updated in move handler, consumed in RAF) */
+  currentPointerX: number;
+  currentPointerY: number;
+  /** For hysteresis: last snapped grid cell */
+  lastSnappedCell: Vec2 | null;
+  /** RAF ID for drag updates */
+  rafId: number | null;
+  /** Target element for pointer capture */
+  targetElement: HTMLElement | null;
 };
 
 type DragPreview = {
@@ -293,20 +304,21 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
     pieceId: PieceId,
     pointer: { x: number; y: number },
     metrics: { cell: number; gap: number },
+    anchorOffset: { x: number; y: number },
   ): DragPreview => {
     const state = pieceStatesRef.current[pieceId];
     const transform = getTransformFor(pieceId, state.rotation, state.flipped);
     const cell = metrics.cell;
     const gap = metrics.gap;
-    const width = transform.width * cell + (transform.width - 1) * gap;
-    const height = transform.height * cell + (transform.height - 1) * gap;
-    const offset = { x: width / 2, y: height / 2 };
+    
+    // The offset is from the drag preview's top-left to the anchor point
+    // This keeps the anchor under the pointer
     return {
       pieceId,
       pointer,
       cell,
       gap,
-      offset,
+      offset: anchorOffset,
       scale: 1.06,
       snap: null,
     };
@@ -316,12 +328,25 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
     pointer: { x: number; y: number },
     interaction: InteractionState,
   ) => {
+    const state = pieceStatesRef.current[interaction.pieceId];
+    const transform = getTransformFor(
+      interaction.pieceId,
+      state.rotation,
+      state.flipped,
+    );
+    const anchorOffset = computeAnchorOffset(
+      transform.anchorCell,
+      interaction.metrics.cell,
+      interaction.metrics.gap,
+    );
+    
     setDragPreview((prev) => {
       if (!prev || prev.pieceId !== interaction.pieceId) {
         return buildDragPreview(
           interaction.pieceId,
           pointer,
           interaction.metrics,
+          anchorOffset,
         );
       }
       return { ...prev, pointer, snap: null };
@@ -337,37 +362,42 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
       return;
     }
     setDragPreview((prev) => {
-      const preview =
-        prev ??
-        buildDragPreview(
-          interaction.pieceId,
-          interaction.lastPointer ?? {
-            x: interaction.startX,
-            y: interaction.startY,
-          },
-          interaction.metrics,
-        );
       const state = pieceStatesRef.current[interaction.pieceId];
       const transform = getTransformFor(
         interaction.pieceId,
         state.rotation,
         state.flipped,
       );
-      const width =
-        transform.width * preview.cell + (transform.width - 1) * preview.gap;
-      const height =
-        transform.height * preview.cell + (transform.height - 1) * preview.gap;
+      const anchorOffset = computeAnchorOffset(
+        transform.anchorCell,
+        interaction.metrics.cell,
+        interaction.metrics.gap,
+      );
+      
+      const preview =
+        prev ??
+        buildDragPreview(
+          interaction.pieceId,
+          { x: interaction.currentPointerX, y: interaction.currentPointerY },
+          interaction.metrics,
+          anchorOffset,
+        );
+      
+      // Snap position is where the anchor cell should be in world coordinates
+      const anchorWorldX =
+        interaction.metrics.rect.left +
+        (origin.x + transform.anchorCell.x) * interaction.metrics.step +
+        interaction.metrics.cell / 2;
+      const anchorWorldY =
+        interaction.metrics.rect.top +
+        (origin.y + transform.anchorCell.y) * interaction.metrics.step +
+        interaction.metrics.cell / 2;
+      
       return {
         ...preview,
         snap: {
-          x:
-            interaction.metrics.rect.left +
-            origin.x * interaction.metrics.step +
-            width / 2,
-          y:
-            interaction.metrics.rect.top +
-            origin.y * interaction.metrics.step +
-            height / 2,
+          x: anchorWorldX,
+          y: anchorWorldY,
         },
       };
     });
@@ -397,96 +427,189 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
   ) => {
     if (readOnly) return;
     event.preventDefault();
+    
     const wasActive = activePieceId === pieceId;
     const metrics = getMetrics();
     if (!metrics) return;
+    
     const pointerId = event.pointerId;
-    const targetRect = (
-      event.currentTarget as HTMLElement
-    ).getBoundingClientRect();
-    const offset = origin
-      ? {
-          x: event.clientX - (metrics.rect.left + origin.x * metrics.step),
-          y: event.clientY - (metrics.rect.top + origin.y * metrics.step),
-        }
-      : {
-          x: event.clientX - targetRect.left,
-          y: event.clientY - targetRect.top,
-        };
-
+    const targetElement = event.currentTarget as HTMLElement;
+    
+    // Get piece transform to compute anchor offset
+    const state = pieceStatesRef.current[pieceId];
+    const transform = getTransformFor(pieceId, state.rotation, state.flipped);
+    
+    // Compute anchor offset in pixels
+    const anchorOffset = computeAnchorOffset(
+      transform.anchorCell,
+      metrics.cell,
+      metrics.gap,
+    );
+    
+    // Calculate pointer-to-anchor offset in world coordinates
+    let pointerToAnchorOffset: { x: number; y: number };
+    
+    if (origin) {
+      // Dragging from board: anchor is at a known grid position
+      const anchorWorldX =
+        metrics.rect.left +
+        (origin.x + transform.anchorCell.x) * metrics.step +
+        metrics.cell / 2;
+      const anchorWorldY =
+        metrics.rect.top +
+        (origin.y + transform.anchorCell.y) * metrics.step +
+        metrics.cell / 2;
+      
+      pointerToAnchorOffset = {
+        x: event.clientX - anchorWorldX,
+        y: event.clientY - anchorWorldY,
+      };
+      
+      // console.log('Drag from board:', {
+      //   origin,
+      //   anchorCell: transform.anchorCell,
+      //   anchorWorldX,
+      //   anchorWorldY,
+      //   pointerX: event.clientX,
+      //   pointerY: event.clientY,
+      //   pointerToAnchorOffset,
+      // });
+    } else {
+      // Dragging from tray: compute offset from tray element
+      const trayRect = targetElement.getBoundingClientRect();
+      const pointerInTrayX = event.clientX - trayRect.left;
+      const pointerInTrayY = event.clientY - trayRect.top;
+      
+      // Offset from pointer to anchor within the tray element
+      // (assuming tray element positions piece at its top-left)
+      pointerToAnchorOffset = {
+        x: pointerInTrayX - anchorOffset.x,
+        y: pointerInTrayY - anchorOffset.y,
+      };
+      
+      // console.log('Drag from tray:', {
+      //   trayRect,
+      //   pointerInTrayX,
+      //   pointerInTrayY,
+      //   anchorOffset,
+      //   pointerToAnchorOffset,
+      // });
+    }
+    
     const previousBoard = boardStateRef.current;
     const previousPlacement = previousBoard.placements[pieceId] ?? undefined;
-
+    
     const beginDrag = () => {
       const interaction = interactionRef.current;
       if (!interaction || interaction.mode === "dragging") return;
+      
       window.clearTimeout(interaction.timeoutId);
       interaction.mode = "dragging";
-      interactionRef.current = interaction;
+      
       setDraggingPieceId(pieceId);
-      const previewPointer = interaction.lastPointer ?? {
-        x: interaction.startX,
-        y: interaction.startY,
+      
+      const previewPointer = {
+        x: interaction.currentPointerX,
+        y: interaction.currentPointerY,
       };
+      
+      const previewAnchorOffset = computeAnchorOffset(
+        transform.anchorCell,
+        interaction.metrics.cell,
+        interaction.metrics.gap,
+      );
+      
       setDragPreview(
-        buildDragPreview(pieceId, previewPointer, interaction.metrics),
+        buildDragPreview(
+          pieceId,
+          previewPointer,
+          interaction.metrics,
+          previewAnchorOffset,
+        ),
       );
       updateGhostState(null);
+      
       if (interaction.previousPlacement) {
         const nextBoard = removePiece(interaction.previousBoard, pieceId);
         boardStateRef.current = nextBoard;
         setBoard(nextBoard);
       }
+      
+      // Start RAF loop for smooth updates
+      interaction.rafId = requestAnimationFrame(() => rafDragLoop(interaction));
     };
-
+    
     const timeoutId = window.setTimeout(() => {
       beginDrag();
     }, 180);
-
+    
     interactionRef.current = {
       mode: "pending",
       pieceId,
       pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      offset,
+      startPointerX: event.clientX,
+      startPointerY: event.clientY,
+      pointerToAnchorOffset,
       previousBoard,
       previousPlacement,
       metrics,
       timeoutId,
+      currentPointerX: event.clientX,
+      currentPointerY: event.clientY,
+      lastSnappedCell: null,
+      rafId: null,
+      targetElement,
     };
-
+    
     setActivePieceId(pieceId);
-
+    
+    // Set pointer capture immediately for reliable event delivery
+    // This ensures we get move/up events even if pointer leaves element
+    try {
+      targetElement.setPointerCapture(pointerId);
+    } catch (e) {
+      console.warn("Failed to set pointer capture:", e);
+    }
+    
+    // Pointer event handlers
+    // Note: With pointer capture, events are delivered to the capturing element
+    // but we attach to window for broader compatibility
     const handleMove = (moveEvent: PointerEvent) => {
       const interaction = interactionRef.current;
       if (!interaction || moveEvent.pointerId !== interaction.pointerId) return;
-      interaction.lastPointer = {
-        x: moveEvent.clientX,
-        y: moveEvent.clientY,
-      };
-
+      
+      // Update pointer position (consumed by RAF loop)
+      interaction.currentPointerX = moveEvent.clientX;
+      interaction.currentPointerY = moveEvent.clientY;
+      
       if (interaction.mode === "pending") {
-        const dx = moveEvent.clientX - interaction.startX;
-        const dy = moveEvent.clientY - interaction.startY;
+        const dx = moveEvent.clientX - interaction.startPointerX;
+        const dy = moveEvent.clientY - interaction.startPointerY;
         if (Math.hypot(dx, dy) > 6) {
           beginDrag();
         }
-        return;
       }
-
-      updateDragPreviewPointer(
-        { x: moveEvent.clientX, y: moveEvent.clientY },
-        interaction,
-      );
-      updateGhost(moveEvent.clientX, moveEvent.clientY, interaction);
+      // If dragging, RAF loop handles the updates
     };
-
+    
     const handleUp = (upEvent: PointerEvent) => {
       const interaction = interactionRef.current;
       if (!interaction || upEvent.pointerId !== interaction.pointerId) return;
+      
       window.clearTimeout(interaction.timeoutId);
-
+      
+      // Cancel RAF loop
+      if (interaction.rafId !== null) {
+        cancelAnimationFrame(interaction.rafId);
+      }
+      
+      // Release pointer capture
+      try {
+        interaction.targetElement?.releasePointerCapture(interaction.pointerId);
+      } catch (e) {
+        // Ignore - may have been released already
+      }
+      
       if (interaction.mode === "pending") {
         if (!interaction.previousPlacement && wasActive) {
           rotatePiece(pieceId);
@@ -497,19 +620,43 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
           y: upEvent.clientY,
         });
       }
-
+      
       interactionRef.current = null;
       setDraggingPieceId(null);
       setDragPreview(null);
       updateGhostState(null);
+      
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
     };
-
+    
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleUp);
+  };
+  
+  // RAF loop for smooth 60fps drag updates
+  // This decouples pointer events from DOM updates, reducing jank
+  const rafDragLoop = (interaction: InteractionState) => {
+    if (!interaction || interaction.mode !== "dragging") return;
+    
+    const current = interactionRef.current;
+    if (!current || current !== interaction) return;
+    
+    // Update drag preview and ghost using current pointer position
+    updateDragPreviewPointer(
+      { x: interaction.currentPointerX, y: interaction.currentPointerY },
+      interaction,
+    );
+    updateGhost(
+      interaction.currentPointerX,
+      interaction.currentPointerY,
+      interaction,
+    );
+    
+    // Schedule next frame
+    interaction.rafId = requestAnimationFrame(() => rafDragLoop(interaction));
   };
 
   const updateGhost = (
@@ -517,51 +664,129 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
     clientY: number,
     interaction: InteractionState,
   ) => {
-    const { rect, step } = interaction.metrics;
-    const topLeftX = clientX - rect.left - interaction.offset.x;
-    const topLeftY = clientY - rect.top - interaction.offset.y;
-
-    const buffer = step;
-    if (
-      topLeftX < -buffer ||
-      topLeftY < -buffer ||
-      topLeftX > rect.width + buffer ||
-      topLeftY > rect.height + buffer
-    ) {
-      updateGhostState(null);
-      updateDragPreviewSnap(null, interaction);
-      return;
-    }
-
-    const origin = {
-      x: Math.round(topLeftX / step),
-      y: Math.round(topLeftY / step),
-    };
-    const size = boardStateRef.current.size;
-    if (
-      origin.x < 0 ||
-      origin.y < 0 ||
-      origin.x >= size.cols ||
-      origin.y >= size.rows
-    ) {
-      updateGhostState(null);
-      updateDragPreviewSnap(null, interaction);
-      return;
-    }
-
+    // --- DIAGNOSTICS: Current snap computation values ---
+    // console.log('updateGhost called:', {
+    //   pointerX: clientX,
+    //   pointerY: clientY,
+    //   boardRect: interaction.metrics.rect,
+    //   step: interaction.metrics.step,
+    //   pointerToAnchorOffset: interaction.pointerToAnchorOffset,
+    // });
+    
+    const { rect, step, cell, gap } = interaction.metrics;
     const state = pieceStatesRef.current[interaction.pieceId];
     const transform = getTransformFor(
       interaction.pieceId,
       state.rotation,
       state.flipped,
     );
-    const valid = canPlace(boardStateRef.current, transform, origin);
-    if (!valid) {
+    
+    // Convert pointer to anchor position in world coordinates
+    const anchorWorldX = clientX - interaction.pointerToAnchorOffset.x;
+    const anchorWorldY = clientY - interaction.pointerToAnchorOffset.y;
+    
+    // Convert anchor world position to board-relative position
+    const anchorBoardX = anchorWorldX - rect.left;
+    const anchorBoardY = anchorWorldY - rect.top;
+    
+    // console.log('Anchor position:', {
+    //   anchorWorldX,
+    //   anchorWorldY,
+    //   anchorBoardX,
+    //   anchorBoardY,
+    //   anchorCell: transform.anchorCell,
+    // });
+    
+    // Check if anchor is too far outside board (with buffer)
+    const buffer = step * 1.5;
+    if (
+      anchorBoardX < -buffer ||
+      anchorBoardY < -buffer ||
+      anchorBoardX > rect.width + buffer ||
+      anchorBoardY > rect.height + buffer
+    ) {
       updateGhostState(null);
       updateDragPreviewSnap(null, interaction);
       return;
     }
-
+    
+    // Convert anchor board position to grid cell (where anchor cell should snap)
+    const anchorGridX = anchorBoardX / step;
+    const anchorGridY = anchorBoardY / step;
+    
+    // Calculate piece origin from anchor grid position
+    // origin = anchorGridCell - anchorCell
+    const rawOriginX = anchorGridX - transform.anchorCell.x;
+    const rawOriginY = anchorGridY - transform.anchorCell.y;
+    
+    // Apply hysteresis: only snap to new cell if we cross threshold
+    // This prevents jitter at cell boundaries
+    const HYSTERESIS_THRESHOLD = 0.35; // Must move 35% into a cell to snap
+    
+    let snappedOriginX: number;
+    let snappedOriginY: number;
+    
+    if (interaction.lastSnappedCell) {
+      const lastX = interaction.lastSnappedCell.x;
+      const lastY = interaction.lastSnappedCell.y;
+      const deltaX = rawOriginX - lastX;
+      const deltaY = rawOriginY - lastY;
+      
+      // Only change snap if we've moved far enough
+      snappedOriginX =
+        Math.abs(deltaX) > HYSTERESIS_THRESHOLD
+          ? Math.round(rawOriginX)
+          : lastX;
+      snappedOriginY =
+        Math.abs(deltaY) > HYSTERESIS_THRESHOLD
+          ? Math.round(rawOriginY)
+          : lastY;
+    } else {
+      // First snap, just round normally
+      snappedOriginX = Math.round(rawOriginX);
+      snappedOriginY = Math.round(rawOriginY);
+    }
+    
+    const origin = {
+      x: snappedOriginX,
+      y: snappedOriginY,
+    };
+    
+    // console.log('Grid computation:', {
+    //   anchorGridX,
+    //   anchorGridY,
+    //   rawOriginX,
+    //   rawOriginY,
+    //   snappedOrigin: origin,
+    //   lastSnappedCell: interaction.lastSnappedCell,
+    // });
+    
+    // Validate origin is in bounds
+    const size = boardStateRef.current.size;
+    if (
+      origin.x < 0 ||
+      origin.y < 0 ||
+      origin.x + transform.width > size.cols ||
+      origin.y + transform.height > size.rows
+    ) {
+      updateGhostState(null);
+      updateDragPreviewSnap(null, interaction);
+      interaction.lastSnappedCell = null;
+      return;
+    }
+    
+    // Check if placement is valid (no collision)
+    const valid = canPlace(boardStateRef.current, transform, origin);
+    
+    // Update last snapped cell for hysteresis
+    interaction.lastSnappedCell = origin;
+    
+    if (!valid) {
+      updateGhostState({ origin, valid: false });
+      updateDragPreviewSnap(null, interaction);
+      return;
+    }
+    
     updateGhostState({ origin, valid: true });
     updateDragPreviewSnap(origin, interaction);
   };
@@ -589,12 +814,11 @@ export function GameProvider({ children, lockOnSolve = false }: GameProviderProp
     }
     if (
       interaction.previousPlacement &&
-      (!interaction.lastPointer ||
-        isPointerOutsideBoard(
-          dropPoint.x,
-          dropPoint.y,
-          interaction.metrics.rect,
-        ))
+      isPointerOutsideBoard(
+        dropPoint.x,
+        dropPoint.y,
+        interaction.metrics.rect,
+      )
     ) {
       commitRemoval(pieceId, previousBoard);
       return;

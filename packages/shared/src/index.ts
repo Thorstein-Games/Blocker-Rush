@@ -1,5 +1,6 @@
 export * from "./types";
 export * from "./coords";
+export * from "./anchor";
 export * from "./pieces";
 export * from "./board";
 export * from "./solver";

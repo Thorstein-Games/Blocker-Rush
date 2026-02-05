@@ -34,7 +34,7 @@ const useLocalStorage = <T>(
 
   const deserializer = options
     ? options.raw
-      ? (value) => value
+      ? (value: string) => value
       : options.deserializer
     : JSON.parse;
 

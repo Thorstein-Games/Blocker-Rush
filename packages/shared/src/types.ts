@@ -40,6 +40,8 @@ export type PieceTransform = {
   cells: Vec2[];
   width: number;
   height: number;
+  /** Anchor cell in piece-local coordinates (top-left-most occupied cell) */
+  anchorCell: Vec2;
 };
 
 export type Placement = {

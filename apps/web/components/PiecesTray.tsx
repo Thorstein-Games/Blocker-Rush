@@ -106,10 +106,12 @@ export default function PiecesTray() {
               <div
                 className="piece-grid"
                 style={{
-                  "--piece-cols": trayBounds.cols,
-                  "--piece-rows": trayBounds.rows,
                   gridTemplateColumns: `repeat(${transform.width}, var(--tray-cell))`,
                   gridTemplateRows: `repeat(${transform.height}, var(--tray-cell))`,
+                  ...({
+                    "--piece-cols": trayBounds.cols,
+                    "--piece-rows": trayBounds.rows,
+                  } as CSSProperties),
                 }}
               >
                 {transform.cells.map((cell, index) => (

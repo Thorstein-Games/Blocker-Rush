@@ -1,5 +1,6 @@
 import type { Piece, PieceId, PieceTransform, Vec2 } from "./types";
 import { cellsToKey, getBounds, normalizeCells } from "./coords";
+import { computeAnchorCell } from "./anchor";
 
 const makePiece = (id: PieceId, name: string, cells: Vec2[]): Piece => ({
   id,
@@ -72,11 +73,13 @@ export const generateTransforms = (piece: Piece): PieceTransform[] => {
     if (seen.has(key)) return;
     seen.add(key);
     const bounds = getBounds(normalized);
+    const anchorCell = computeAnchorCell(normalized);
     transforms.push({
       id: key,
       cells: normalized,
       width: bounds.width,
       height: bounds.height,
+      anchorCell,
     });
   };
 

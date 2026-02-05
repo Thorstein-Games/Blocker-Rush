@@ -67,7 +67,17 @@ export const solvePuzzle = (
   const baseCells = [...board.cells];
 
   const pieceIds = orderPieces(PIECES.map((piece) => piece.id));
-  const placements: Record<PieceId, { origin: { x: number; y: number }; transformId: string } | undefined> = {};
+  const placements: Record<PieceId, { origin: { x: number; y: number }; transformId: string } | undefined> = {
+    p1: undefined,
+    p2: undefined,
+    p3: undefined,
+    p4: undefined,
+    p5: undefined,
+    p6: undefined,
+    p7: undefined,
+    p8: undefined,
+    p9: undefined,
+  };
   const result: SolveResult = {
     solutionCount: 0,
     nodesVisited: 0,
