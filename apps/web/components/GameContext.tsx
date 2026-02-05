@@ -40,9 +40,11 @@ type InteractionState = {
   mode: "pending" | "dragging";
   pieceId: PieceId;
   pointerId: number;
+  pointerType: PointerEvent["pointerType"];
+  captureTarget?: HTMLElement | null;
   startX: number;
   startY: number;
-  offset: { x: number; y: number };
+  pieceCenterOffsetPx: { x: number; y: number };
   previousBoard: BoardState;
   previousPlacement?: { origin: Vec2; transformId: string };
   metrics: {
@@ -53,16 +55,23 @@ type InteractionState = {
   };
   timeoutId: number;
   lastPointer?: { x: number; y: number };
+  latestPointer?: { x: number; y: number };
+  smoothedCenter?: { x: number; y: number };
+  targetCenter?: { x: number; y: number };
+  latestSnapCenter?: { x: number; y: number };
+  lastSnapOrigin?: Vec2 | null;
+  rafId?: number;
 };
 
 type DragPreview = {
   pieceId: PieceId;
-  pointer: { x: number; y: number };
   cell: number;
   gap: number;
   offset: { x: number; y: number };
   scale: number;
-  snap: { x: number; y: number } | null;
+  position: { x: number; y: number };
+  dropTarget: { x: number; y: number } | null;
+  isDropping?: boolean;
 };
 
 const initPieceStates = (): Record<PieceId, PieceState> =>
@@ -202,6 +211,7 @@ export function GameProvider({
   const interactionRef = useRef<InteractionState | null>(null);
   const ghostRef = useRef<DragGhost | null>(null);
   const lastTapRef = useRef<{ time: number; cellIndex: number } | null>(null);
+  const metricsRef = useRef<InteractionState["metrics"] | null>(null);
 
   const solved = useMemo(() => isSolved(board), [board]);
   const readOnly = lockOnSolve && solved;
@@ -293,51 +303,105 @@ export function GameProvider({
     return { rect, gap, cell, step: cell + gap };
   };
 
-  const buildDragPreview = (
-    pieceId: PieceId,
-    pointer: { x: number; y: number },
-    metrics: { cell: number; gap: number },
-  ): DragPreview => {
-    const state = pieceStatesRef.current[pieceId];
-    const transform = getTransformFor(pieceId, state.rotation, state.flipped);
-    const cell = metrics.cell;
-    const gap = metrics.gap;
-    const width = transform.width * cell + (transform.width - 1) * gap;
-    const height = transform.height * cell + (transform.height - 1) * gap;
-    const offset = { x: width / 2, y: height / 2 };
+  const updateMetrics = () => {
+    const metrics = getMetrics();
+    if (!metrics) return;
+    metricsRef.current = metrics;
+    if (interactionRef.current) {
+      interactionRef.current.metrics = metrics;
+    }
+  };
+
+  useEffect(() => {
+    updateMetrics();
+    const handleResize = () => updateMetrics();
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("scroll", handleResize, true);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleResize, true);
+    };
+  }, []);
+
+  const getPieceVisualCenterLocal = (cells: Vec2[]) => {
+    const xs = cells.map((cell) => cell.x);
+    const ys = cells.map((cell) => cell.y);
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
     return {
-      pieceId,
-      pointer,
-      cell,
-      gap,
-      offset,
-      scale: 1,
-      snap: null,
+      // (C) Orientation math: use the center of the oriented bounding box so the
+      // piece stays centered under the pointer for any rotation/flip.
+      x: (minX + maxX + 1) / 2,
+      y: (minY + maxY + 1) / 2,
     };
   };
 
-  const updateDragPreviewPointer = (
-    pointer: { x: number; y: number },
+  const getPieceVisualCenterPx = (
+    centerLocal: { x: number; y: number },
+    metrics: { step: number; gap: number },
+  ) => ({
+    // Convert from local cell space (cell centers) to pixels.
+    x: centerLocal.x * metrics.step - metrics.gap / 2,
+    y: centerLocal.y * metrics.step - metrics.gap / 2,
+  });
+
+  const buildDragPreview = (
+    pieceId: PieceId,
+    center: { x: number; y: number },
+    metrics: { cell: number; gap: number; step: number },
+  ): DragPreview => {
+    const state = pieceStatesRef.current[pieceId];
+    const transform = getTransformFor(pieceId, state.rotation, state.flipped);
+    const centerLocal = getPieceVisualCenterLocal(transform.cells);
+    const offset = getPieceVisualCenterPx(centerLocal, metrics);
+    return {
+      pieceId,
+      cell: metrics.cell,
+      gap: metrics.gap,
+      offset,
+      scale: 1,
+      position: center,
+      dropTarget: null,
+    };
+  };
+
+  const updateDragPreviewPosition = (
+    center: { x: number; y: number },
     interaction: InteractionState,
   ) => {
     setDragPreview((prev) => {
+      const state = pieceStatesRef.current[interaction.pieceId];
+      const transform = getTransformFor(
+        interaction.pieceId,
+        state.rotation,
+        state.flipped,
+      );
+      const centerLocal = getPieceVisualCenterLocal(transform.cells);
+      const offset = getPieceVisualCenterPx(centerLocal, interaction.metrics);
       if (!prev || prev.pieceId !== interaction.pieceId) {
         return buildDragPreview(
           interaction.pieceId,
-          pointer,
+          center,
           interaction.metrics,
         );
       }
-      return { ...prev, pointer, snap: null };
+      return {
+        ...prev,
+        position: center,
+        offset,
+        dropTarget: prev.dropTarget ?? null,
+      };
     });
   };
 
-  const updateDragPreviewSnap = (
-    origin: Vec2 | null,
+  const updateDragPreviewDropTarget = (
+    snapCenter: { x: number; y: number } | null,
     interaction: InteractionState,
   ) => {
-    if (!origin) {
-      setDragPreview((prev) => (prev ? { ...prev, snap: null } : prev));
+    if (!snapCenter) {
+      setDragPreview((prev) => (prev ? { ...prev, dropTarget: null } : prev));
       return;
     }
     setDragPreview((prev) => {
@@ -345,34 +409,15 @@ export function GameProvider({
         prev ??
         buildDragPreview(
           interaction.pieceId,
-          interaction.lastPointer ?? {
+          interaction.targetCenter ?? {
             x: interaction.startX,
             y: interaction.startY,
           },
           interaction.metrics,
         );
-      const state = pieceStatesRef.current[interaction.pieceId];
-      const transform = getTransformFor(
-        interaction.pieceId,
-        state.rotation,
-        state.flipped,
-      );
-      const width =
-        transform.width * preview.cell + (transform.width - 1) * preview.gap;
-      const height =
-        transform.height * preview.cell + (transform.height - 1) * preview.gap;
       return {
         ...preview,
-        snap: {
-          x:
-            interaction.metrics.rect.left +
-            origin.x * interaction.metrics.step +
-            width / 2,
-          y:
-            interaction.metrics.rect.top +
-            origin.y * interaction.metrics.step +
-            height / 2,
-        },
+        dropTarget: snapCenter,
       };
     });
   };
@@ -402,21 +447,41 @@ export function GameProvider({
     if (readOnly) return;
     event.preventDefault();
     const wasActive = activePieceId === pieceId;
-    const metrics = getMetrics();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    updateMetrics();
+    const metrics = metricsRef.current;
     if (!metrics) return;
     const pointerId = event.pointerId;
+    const captureTarget = event.currentTarget as HTMLElement;
+    const state = pieceStatesRef.current[pieceId];
+    const transform = getTransformFor(pieceId, state.rotation, state.flipped);
+    const centerLocal = getPieceVisualCenterLocal(transform.cells);
+    const centerLocalPx = getPieceVisualCenterPx(centerLocal, metrics);
     const targetRect = (
       event.currentTarget as HTMLElement
     ).getBoundingClientRect();
-    const offset = origin
+    const pieceCenterWorld = origin
       ? {
-          x: event.clientX - (metrics.rect.left + origin.x * metrics.step),
-          y: event.clientY - (metrics.rect.top + origin.y * metrics.step),
+          x:
+            metrics.rect.left +
+            origin.x * metrics.step +
+            centerLocalPx.x,
+          y:
+            metrics.rect.top +
+            origin.y * metrics.step +
+            centerLocalPx.y,
         }
       : {
-          x: event.clientX - targetRect.left,
-          y: event.clientY - targetRect.top,
+          x: targetRect.left + targetRect.width / 2,
+          y: targetRect.top + targetRect.height / 2,
         };
+    const lift =
+      event.pointerType === "touch" ? Math.max(12, metrics.cell * 0.35) : 0;
+    const pieceCenterOffsetPx = {
+      // (A) Drag rendering: keep the piece's visual center under the pointer.
+      x: event.clientX - pieceCenterWorld.x,
+      y: event.clientY - pieceCenterWorld.y + lift,
+    };
 
     const previousBoard = boardStateRef.current;
     const previousPlacement = previousBoard.placements[pieceId] ?? undefined;
@@ -429,12 +494,16 @@ export function GameProvider({
       interactionRef.current = interaction;
       lastTapRef.current = null;
       setDraggingPieceId(pieceId);
-      const previewPointer = interaction.lastPointer ?? {
-        x: interaction.startX,
-        y: interaction.startY,
+      const previewCenter = {
+        x:
+          (interaction.lastPointer?.x ?? interaction.startX) -
+          interaction.pieceCenterOffsetPx.x,
+        y:
+          (interaction.lastPointer?.y ?? interaction.startY) -
+          interaction.pieceCenterOffsetPx.y,
       };
       setDragPreview(
-        buildDragPreview(pieceId, previewPointer, interaction.metrics),
+        buildDragPreview(pieceId, previewCenter, interaction.metrics),
       );
       updateGhostState(null);
       if (interaction.previousPlacement) {
@@ -442,6 +511,7 @@ export function GameProvider({
         boardStateRef.current = nextBoard;
         setBoard(nextBoard);
       }
+      startDragLoop();
     };
 
     const timeoutId = window.setTimeout(() => {
@@ -452,9 +522,11 @@ export function GameProvider({
       mode: "pending",
       pieceId,
       pointerId,
+      pointerType: event.pointerType,
+      captureTarget,
       startX: event.clientX,
       startY: event.clientY,
-      offset,
+      pieceCenterOffsetPx,
       previousBoard,
       previousPlacement,
       metrics,
@@ -480,11 +552,10 @@ export function GameProvider({
         return;
       }
 
-      updateDragPreviewPointer(
-        { x: moveEvent.clientX, y: moveEvent.clientY },
-        interaction,
-      );
-      updateGhost(moveEvent.clientX, moveEvent.clientY, interaction);
+      interaction.latestPointer = {
+        x: moveEvent.clientX,
+        y: moveEvent.clientY,
+      };
     };
 
     const handleUp = (upEvent: PointerEvent) => {
@@ -503,9 +574,14 @@ export function GameProvider({
         });
       }
 
+      if (interaction.rafId) {
+        window.cancelAnimationFrame(interaction.rafId);
+      }
+      if (interaction.captureTarget?.hasPointerCapture(interaction.pointerId)) {
+        interaction.captureTarget.releasePointerCapture(interaction.pointerId);
+      }
       interactionRef.current = null;
       setDraggingPieceId(null);
-      setDragPreview(null);
       updateGhostState(null);
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
@@ -517,9 +593,8 @@ export function GameProvider({
     window.addEventListener("pointercancel", handleUp);
   };
 
-  const updateGhost = (
-    clientX: number,
-    clientY: number,
+  const updateGhostFromCenter = (
+    center: { x: number; y: number },
     interaction: InteractionState,
   ) => {
     const { rect, step } = interaction.metrics;
@@ -529,16 +604,42 @@ export function GameProvider({
       state.rotation,
       state.flipped,
     );
-    const width = transform.width * step - interaction.metrics.gap;
-    const height = transform.height * step - interaction.metrics.gap;
-    const lift = height / 2 + Math.max(12, interaction.metrics.cell * 0.4);
-    const adjustedY = clientY - lift;
-    const topLeftX = clientX - rect.left - interaction.offset.x;
-    const topLeftY = adjustedY - rect.top - interaction.offset.y;
-    const centerX = topLeftX + width / 2;
-    const centerY = topLeftY + height / 2;
+    const centerLocal = getPieceVisualCenterLocal(transform.cells);
+    const centerLocalPx = getPieceVisualCenterPx(centerLocal, interaction.metrics);
+    // (B) Shadow snapping: convert pointer px -> board px -> cell space.
+    const centerLocalInBoard = {
+      x: (center.x - rect.left + interaction.metrics.gap / 2) / step,
+      y: (center.y - rect.top + interaction.metrics.gap / 2) / step,
+    };
+    const candidateOrigin = {
+      // Ensure oriented cells land on integer grid cells when snapped.
+      x: Math.round(centerLocalInBoard.x - centerLocal.x),
+      y: Math.round(centerLocalInBoard.y - centerLocal.y),
+    };
 
-    const buffer = step + Math.max(width, height) * 0.35;
+    const lastSnap = interaction.lastSnapOrigin;
+    let origin = candidateOrigin;
+    if (lastSnap) {
+      const lastCenter = {
+        x: lastSnap.x + centerLocal.x,
+        y: lastSnap.y + centerLocal.y,
+      };
+      const hysteresis = 0.35;
+      if (
+        Math.hypot(
+          centerLocalInBoard.x - lastCenter.x,
+          centerLocalInBoard.y - lastCenter.y,
+        ) < hysteresis
+      ) {
+        origin = lastSnap;
+      }
+    }
+    interaction.lastSnapOrigin = origin;
+
+    const buffer =
+      step + Math.max(transform.width, transform.height) * step * 0.35;
+    const topLeftX = origin.x * step;
+    const topLeftY = origin.y * step;
     if (
       topLeftX < -buffer ||
       topLeftY < -buffer ||
@@ -546,47 +647,55 @@ export function GameProvider({
       topLeftY > rect.height + buffer
     ) {
       updateGhostState(null);
-      updateDragPreviewSnap(null, interaction);
-      return;
-    }
-
-    const origin = {
-      x: Math.round(topLeftX / step),
-      y: Math.round(topLeftY / step),
-    };
-    const size = boardStateRef.current.size;
-    if (
-      origin.x < 0 ||
-      origin.y < 0 ||
-      origin.x >= size.cols ||
-      origin.y >= size.rows
-    ) {
-      updateGhostState(null);
-      updateDragPreviewSnap(null, interaction);
-      return;
-    }
-
-    const targetCenterX = origin.x * step + width / 2;
-    const targetCenterY = origin.y * step + height / 2;
-    const snapRadius = step * 1.2;
-    if (
-      Math.hypot(centerX - targetCenterX, centerY - targetCenterY) >
-      snapRadius
-    ) {
-      updateGhostState(null);
-      updateDragPreviewSnap(null, interaction);
+      updateDragPreviewDropTarget(null, interaction);
       return;
     }
 
     const valid = canPlace(boardStateRef.current, transform, origin);
-    if (!valid) {
-      updateGhostState(null);
-      updateDragPreviewSnap(null, interaction);
-      return;
-    }
+    const snapCenter = {
+      x: rect.left + origin.x * step + centerLocalPx.x,
+      y: rect.top + origin.y * step + centerLocalPx.y,
+    };
 
-    updateGhostState({ origin, valid: true });
-    updateDragPreviewSnap(origin, interaction);
+    interaction.latestSnapCenter = snapCenter;
+    updateGhostState({ origin, valid });
+    updateDragPreviewDropTarget(snapCenter, interaction);
+  };
+
+  const startDragLoop = () => {
+    const tick = () => {
+      const interaction = interactionRef.current;
+      if (!interaction || interaction.mode !== "dragging") return;
+      const pointer = interaction.latestPointer ?? {
+        x: interaction.startX,
+        y: interaction.startY,
+      };
+      const targetCenter = {
+        x: pointer.x - interaction.pieceCenterOffsetPx.x,
+        y: pointer.y - interaction.pieceCenterOffsetPx.y,
+      };
+      interaction.targetCenter = targetCenter;
+      const alpha = interaction.pointerType === "touch" ? 0.28 : 0.4;
+      const smoothed = interaction.smoothedCenter ?? targetCenter;
+      const nextSmoothed = {
+        x: smoothed.x + (targetCenter.x - smoothed.x) * alpha,
+        y: smoothed.y + (targetCenter.y - smoothed.y) * alpha,
+      };
+      interaction.smoothedCenter = nextSmoothed;
+
+      updateDragPreviewPosition(nextSmoothed, interaction);
+      // Keep the shadow responsive: snap from the raw target center.
+      updateGhostFromCenter(targetCenter, interaction);
+
+      interaction.rafId = window.requestAnimationFrame(tick);
+    };
+    const interaction = interactionRef.current;
+    if (interaction?.rafId) {
+      window.cancelAnimationFrame(interaction.rafId);
+    }
+    if (interaction) {
+      interaction.rafId = window.requestAnimationFrame(tick);
+    }
   };
 
   const finalizeDrop = (
@@ -608,6 +717,23 @@ export function GameProvider({
       setHistory((prev) => [...prev, previousBoard]);
       boardStateRef.current = nextBoard;
       setBoard(nextBoard);
+      const snapCenter = interaction.latestSnapCenter;
+      if (snapCenter) {
+        setDragPreview((prev) =>
+          prev
+            ? {
+                ...prev,
+                dropTarget: snapCenter,
+                isDropping: true,
+              }
+            : prev,
+        );
+        window.setTimeout(() => {
+          setDragPreview(null);
+        }, 120);
+      } else {
+        setDragPreview(null);
+      }
       return;
     }
     if (
@@ -624,6 +750,7 @@ export function GameProvider({
     }
     boardStateRef.current = previousBoard;
     setBoard(previousBoard);
+    setDragPreview(null);
     const previousPlacement = previousBoard.placements[pieceId];
     if (previousPlacement) {
       setPieceStates((current) => ({

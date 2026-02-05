@@ -758,6 +758,11 @@ input {
   --block-color: #1b1f2a;
 }
 
+.ghost.invalid {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+
 .ghost-cell {
   width: var(--cell);
   height: var(--cell);
@@ -889,11 +894,14 @@ input {
 
 .drag-preview {
   position: absolute;
-  transform: translate(
-    calc(-1 * var(--drag-offset-x)),
-    calc(-1 * var(--drag-offset-y))
-  );
-  transition: transform 0.05s ease-out;
+  transform: translate3d(var(--drag-x), var(--drag-y), 0)
+    translate3d(calc(-1 * var(--drag-offset-x)), calc(-1 * var(--drag-offset-y)), 0);
+  transition: transform 0s linear;
+  will-change: transform;
+}
+
+.drag-preview.dropping {
+  transition: transform 0.12s ease-out;
 }
 
 .drag-preview-grid {
