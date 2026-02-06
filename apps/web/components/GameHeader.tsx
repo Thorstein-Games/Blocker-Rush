@@ -90,7 +90,8 @@ const howToPlayPanel = (
         </li>
         <li>Double-click a placed piece to remove it.</li>
         <li>
-          Use the Rotate/Flip buttons, or press W/S to rotate and A/D to flip.
+          Use the Rotate/Flip buttons, or press D/Right to rotate forward,
+          S/Left to rotate backward, and F to flip.
         </li>
       </ul>
     </div>

@@ -30,7 +30,13 @@ export class RoomManager {
 
   listLobbyRooms(): RoomListEntry[] {
     return [...this.rooms.values()]
-      .filter((room) => room.status === "lobby" && room.visibility === "public")
+      .filter(
+        (room) =>
+          room.status === "lobby" ||
+          room.status === "countdown" ||
+          room.status === "in_game" ||
+          room.status === "winner_window",
+      )
       .map((room) => {
         const host = room.players[room.hostId];
         return {

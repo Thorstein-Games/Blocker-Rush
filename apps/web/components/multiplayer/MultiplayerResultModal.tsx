@@ -16,8 +16,7 @@ export default function MultiplayerResultModal() {
     ? (state.players[state.result.winnerId]?.name ?? state.result.winnerId)
     : "";
   const selfIsWinner =
-    Boolean(state.selfPlayerId) &&
-    state.result.winnerId === state.selfPlayerId;
+    Boolean(state.selfPlayerId) && state.result.winnerId === state.selfPlayerId;
   const winnerBoards = [...state.result.winnerBoards].sort(
     (a, b) => a.roundIndex - b.roundIndex,
   );
@@ -64,7 +63,9 @@ export default function MultiplayerResultModal() {
                           className={[
                             "board-cell",
                             cell === "blocker" ? "blocker" : null,
-                            cell && cell !== "blocker" ? "piece block-cell" : null,
+                            cell && cell !== "blocker"
+                              ? "piece block-cell"
+                              : null,
                           ]
                             .filter(Boolean)
                             .join(" ")}
@@ -72,7 +73,9 @@ export default function MultiplayerResultModal() {
                             cell && cell !== "blocker"
                               ? ({
                                   "--block-color":
-                                    PIECE_COLORS[cell as keyof typeof PIECE_COLORS],
+                                    PIECE_COLORS[
+                                      cell as keyof typeof PIECE_COLORS
+                                    ],
                                 } as CSSProperties)
                               : undefined
                           }
@@ -91,7 +94,11 @@ export default function MultiplayerResultModal() {
               Play Again with Same Group
             </button>
           )}
-          <button className="button secondary" type="button" onClick={leaveRoom}>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={leaveRoom}
+          >
             Return to Lobby
           </button>
         </div>

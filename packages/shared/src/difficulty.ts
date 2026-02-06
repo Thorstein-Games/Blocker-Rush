@@ -16,6 +16,9 @@ const scoreDifficultyFromCount = (solutionCount: number) => {
   return "easy";
 };
 
+export const scoreDifficulty = (result: SolveResult): Difficulty =>
+  scoreDifficultyFromCount(result.solutionCount);
+
 export const isDifficultyMatch = (
   difficulty: Difficulty,
   target: Difficulty,

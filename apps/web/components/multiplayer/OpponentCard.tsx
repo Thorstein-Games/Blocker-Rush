@@ -6,9 +6,10 @@ import { buildMiniCells, formatMs } from "./multiplayerViewUtils";
 
 type OpponentCardProps = {
   player: TrackedPlayer;
+  showSplits: boolean;
 };
 
-export default function OpponentCard({ player }: OpponentCardProps) {
+export default function OpponentCard({ player, showSplits }: OpponentCardProps) {
   const cells = useMemo(
     () =>
       player.round?.puzzleId
@@ -39,12 +40,14 @@ export default function OpponentCard({ player }: OpponentCardProps) {
           />
         ))}
       </div>
-      <div className="pieces-hint">
-        Splits:{" "}
-        {player.splitsMs
-          .map((split) => (split ? formatMs(split) : "--"))
-          .join(" · ")}
-      </div>
+      {showSplits && (
+        <div className="pieces-hint">
+          Splits:{" "}
+          {player.splitsMs
+            .map((split) => (split ? formatMs(split) : "--"))
+            .join(" · ")}
+        </div>
+      )}
     </article>
   );
 }

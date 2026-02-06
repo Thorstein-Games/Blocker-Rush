@@ -17,6 +17,7 @@ import {
   getPuzzleById,
   parsePuzzleId,
   pickPuzzleByDifficulty,
+  scoreDifficulty,
   solvePuzzle,
   vecToCoord,
 } from "@blocker-rush/shared";
@@ -32,6 +33,8 @@ import ThemeSelect from "./ThemeSelect";
 
 const SETTINGS_KEY = "blockerRush.casual.settings";
 const STATS_KEY = "blockerRush.casual.stats";
+const INVALID_PUZZLE_MESSAGE =
+  "Invalid puzzle ID. Use 7 coordinates on a 6x6 grid, for example: A1A2B4B6C5D5F1";
 
 type CasualSettings = {
   difficulty: Difficulty;
@@ -54,6 +57,12 @@ type SolutionCache = Record<
   PieceId,
   { origin: Vec2; transformId: string } | undefined
 >;
+
+type PuzzleSpec = {
+  id: string;
+  blockers: Coordinate[];
+  difficulty: Difficulty | null;
+};
 
 const readSettings = (): CasualSettings => {
   if (typeof window === "undefined") {
@@ -145,6 +154,7 @@ function CasualGameLayout() {
   );
   const [stats, setStats] = useState<CasualStats>(() => readStats());
   const [hasRecordedSolve, setHasRecordedSolve] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     const settings = readSettings();
@@ -154,6 +164,14 @@ function CasualGameLayout() {
   useEffect(() => {
     writeSettings({ difficulty });
   }, [difficulty]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 981px)");
+    const sync = () => setIsDesktop(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -174,65 +192,76 @@ function CasualGameLayout() {
     }
   }, [puzzleId]);
 
-  const applyPuzzleAndSync = useCallback(
-    (next: {
-      id: string;
-      blockers: Coordinate[];
-      difficulty: Difficulty | null;
-    }) => {
-      applyPuzzle({
-        id: next.id,
-        blockers: next.blockers,
-        difficulty: next.difficulty,
-      });
-      setPuzzleInput(next.id);
-      router.replace(`/casual?p=${next.id}`, { scroll: false });
+  const setPuzzleParam = useCallback(
+    (nextId: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("p", nextId);
+      router.replace(`/casual?${params.toString()}`, { scroll: false });
     },
-    [applyPuzzle, router],
+    [router, searchParams],
   );
+
+  const resolvePuzzleSpec = useCallback((raw: string): PuzzleSpec => {
+    const parsed = parsePuzzleId(raw);
+    const canonical = canonicalizePuzzleId(parsed);
+    const record = getPuzzleById(canonical);
+    if (record) {
+      return {
+        id: record.id,
+        blockers: record.blockers,
+        difficulty: record.difficulty,
+      };
+    }
+
+    const solveResult = solvePuzzle(parsed, { maxSolutions: 51 });
+    return {
+      id: canonical,
+      blockers: parsed,
+      difficulty: scoreDifficulty(solveResult),
+    };
+  }, []);
 
   const loadRandomPuzzle = useCallback(
     (tier: Difficulty) => {
       const record = pickPuzzleByDifficulty(tier);
-      applyPuzzleAndSync({
-        id: record.id,
-        blockers: record.blockers,
-        difficulty: record.difficulty,
-      });
+      setPuzzleParam(record.id);
     },
-    [applyPuzzleAndSync],
+    [setPuzzleParam],
   );
 
   const loadPuzzleFromId = useCallback(
-    (raw: string, fallbackDifficulty: Difficulty) => {
+    (raw: string) => {
       try {
-        const parsed = parsePuzzleId(raw);
-        const canonical = canonicalizePuzzleId(parsed);
-        const record = getPuzzleById(canonical);
-        if (!record) {
-          throw new Error("Puzzle not found in dataset.");
-        }
-        applyPuzzleAndSync({
-          id: record.id,
-          blockers: record.blockers,
-          difficulty: record.difficulty,
-        });
+        const next = resolvePuzzleSpec(raw);
+        setPuzzleParam(next.id);
+        setHint(null);
       } catch {
-        loadRandomPuzzle(fallbackDifficulty);
+        setHint(INVALID_PUZZLE_MESSAGE);
       }
     },
-    [applyPuzzleAndSync, loadRandomPuzzle],
+    [resolvePuzzleSpec, setPuzzleParam],
   );
 
   useEffect(() => {
-    if (!puzzleParam || puzzleParam === puzzleId) return;
-    loadPuzzleFromId(puzzleParam, difficulty);
-  }, [puzzleParam, puzzleId, difficulty, loadPuzzleFromId]);
+    if (!puzzleParam) return;
+    try {
+      const next = resolvePuzzleSpec(puzzleParam);
+      if (next.id !== puzzleParam) {
+        setPuzzleParam(next.id);
+      }
+      if (next.id === puzzleId) return;
+      applyPuzzle(next);
+      setPuzzleInput(next.id);
+      setHint(null);
+    } catch {
+      setHint(INVALID_PUZZLE_MESSAGE);
+    }
+  }, [puzzleParam, puzzleId, applyPuzzle, resolvePuzzleSpec, setPuzzleParam]);
 
   useEffect(() => {
-    if (puzzleParam || puzzleId) return;
+    if (puzzleParam) return;
     loadRandomPuzzle(difficulty);
-  }, [puzzleParam, puzzleId, difficulty, loadRandomPuzzle]);
+  }, [puzzleParam, difficulty, loadRandomPuzzle]);
 
   useEffect(() => {
     if (!solved || !puzzleId || !startedAt) return;
@@ -269,7 +298,7 @@ function CasualGameLayout() {
   }, [puzzleId, stats, moveCount]);
 
   const loadPuzzleFromInput = () => {
-    loadPuzzleFromId(puzzleInput, difficulty);
+    loadPuzzleFromId(puzzleInput);
   };
 
   const handleHint = () => {
@@ -331,93 +360,87 @@ function CasualGameLayout() {
     }
   };
 
+  const settingsContent = (
+    <div className="settings-stack">
+      <ThemeSelect />
+      <div className="stack">
+        <label htmlFor="difficulty">Difficulty</label>
+        <select
+          id="difficulty"
+          value={difficulty}
+          onChange={(event) => setDifficulty(event.target.value as Difficulty)}
+        >
+          {difficultyOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="stack">
+        <label htmlFor="puzzle-input">Puzzle ID</label>
+        <input
+          id="puzzle-input"
+          value={puzzleInput}
+          onChange={(event) => setPuzzleInput(event.target.value)}
+          placeholder="A1A2B4B6C5D5F1"
+        />
+        <div className="settings-actions">
+          <button
+            className="button"
+            type="button"
+            onClick={loadPuzzleFromInput}
+          >
+            Load
+          </button>
+          <button
+            className="button secondary"
+            type="button"
+            onClick={() => loadRandomPuzzle(difficulty)}
+          >
+            New Random
+          </button>
+        </div>
+      </div>
+      <div className="settings-row">
+        {puzzleDifficulty && <span className="badge">{puzzleDifficulty}</span>}
+        {currentStats && (
+          <span>
+            Moves: {currentStats.moves} · Best: {currentStats.bestMoves ?? "--"}
+          </span>
+        )}
+      </div>
+      <div className="settings-actions">
+        <button className="button secondary" type="button" onClick={handleHint}>
+          Hint
+        </button>
+        <button
+          className="button secondary"
+          type="button"
+          onClick={handleShare}
+        >
+          Share
+        </button>
+      </div>
+      {hint && <div className="notice">{hint}</div>}
+      {shareStatus && <div className="notice">{shareStatus}</div>}
+    </div>
+  );
+
   return (
     <main className="page game-page">
       <GameHeader
         mode="casual"
         settingsTitle="Casual Settings"
-        settingsPanel={
-          <div className="settings-stack">
-            <ThemeSelect />
-            <div className="stack">
-              <label htmlFor="difficulty">Difficulty</label>
-              <select
-                id="difficulty"
-                value={difficulty}
-                onChange={(event) =>
-                  setDifficulty(event.target.value as Difficulty)
-                }
-              >
-                {difficultyOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="stack">
-              <label htmlFor="puzzle-input">Puzzle ID</label>
-              <input
-                id="puzzle-input"
-                value={puzzleInput}
-                onChange={(event) => setPuzzleInput(event.target.value)}
-                placeholder="A1A2B4B6C5D5F1"
-              />
-              <div className="settings-actions">
-                <button
-                  className="button"
-                  type="button"
-                  onClick={loadPuzzleFromInput}
-                >
-                  Load Puzzle
-                </button>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => loadRandomPuzzle(difficulty)}
-                >
-                  New Random
-                </button>
-              </div>
-            </div>
-            <div className="settings-row">
-              {puzzleDifficulty && (
-                <span className="badge">{puzzleDifficulty}</span>
-              )}
-              {currentStats && (
-                <span>
-                  Moves: {currentStats.moves} · Best:{" "}
-                  {currentStats.bestMoves ?? "--"}
-                </span>
-              )}
-            </div>
-            <div className="settings-actions">
-              <button
-                className="button secondary"
-                type="button"
-                onClick={handleHint}
-              >
-                Hint
-              </button>
-              <button className="button secondary" type="button" disabled>
-                Watch Ad for Hint
-              </button>
-              <button
-                className="button secondary"
-                type="button"
-                onClick={handleShare}
-                disabled={!solved}
-              >
-                Share
-              </button>
-            </div>
-            {hint && <div className="notice">{hint}</div>}
-            {shareStatus && <div className="notice">{shareStatus}</div>}
-            <div className="ad-slot">Ad slot placeholder</div>
-          </div>
-        }
+        settingsPanel={isDesktop ? undefined : settingsContent}
       />
       <section className="game-layout">
+        {isDesktop && (
+          <aside className="panel side-panel">
+            <h3>Casual Settings</h3>
+            {settingsContent}
+          </aside>
+        )}
         <div className="game-center">
           <GameBoard />
           <PiecesTray />

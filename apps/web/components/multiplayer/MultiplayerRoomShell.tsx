@@ -20,19 +20,6 @@ export default function MultiplayerRoomShell() {
       <main className="page game-page multiplayer-page">
         <GameHeader
           mode="multiplayer"
-          statsTitle="Room"
-          statsPanel={
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span className="stat-label">Room</span>
-                <span className="stat-value">{state.roomCode}</span>
-              </div>
-              <div className="stat-card">
-                <span className="stat-label">Status</span>
-                <span className="stat-value">{state.status}</span>
-              </div>
-            </div>
-          }
           settingsTitle="Multiplayer Settings"
           settingsPanel={
             <div className="settings-stack">

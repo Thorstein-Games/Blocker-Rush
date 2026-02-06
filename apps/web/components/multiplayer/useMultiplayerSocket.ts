@@ -47,6 +47,8 @@ export type TrackedPlayer = {
 
 export type MultiplayerState = {
   connected: boolean;
+  lastConnectionLostAt?: number;
+  reconnectRoomCode?: string;
   roomCode?: string;
   roomVisibility?: "public" | "private";
   status?: "lobby" | "countdown" | "in_game" | "winner_window" | "finished";
@@ -129,12 +131,30 @@ export function useMultiplayerSocket() {
     socketRef.current = socket;
 
     const handleConnect = () => {
-      setState((prev) => ({ ...prev, connected: true, error: undefined }));
+      setState((prev) => ({
+        ...prev,
+        connected: true,
+        error: undefined,
+      }));
       socket.emit(SOCKET_EVENT_NAME, { type: "listRooms", data: {} });
     };
 
     const handleDisconnect = () => {
-      setState((prev) => ({ ...prev, connected: false }));
+      setState((prev) => ({
+        ...prev,
+        connected: false,
+        lastConnectionLostAt: Date.now(),
+        reconnectRoomCode: prev.roomCode ?? prev.reconnectRoomCode,
+        roomCode: undefined,
+        roomVisibility: undefined,
+        status: undefined,
+        hostId: undefined,
+        selfPlayerId: undefined,
+        players: {},
+        match: undefined,
+        winner: undefined,
+        result: undefined,
+      }));
     };
 
     const handleMessage = (payload: unknown) => {
@@ -214,6 +234,8 @@ export function useMultiplayerSocket() {
     setState((prev) => ({
       ...createInitialState(),
       connected: prev.connected,
+      lastConnectionLostAt: prev.lastConnectionLostAt,
+      reconnectRoomCode: prev.reconnectRoomCode,
       lobbyRooms: prev.lobbyRooms,
       clockOffsetMs: prev.clockOffsetMs,
       settings: prev.settings,
@@ -326,6 +348,18 @@ export function useMultiplayerSocket() {
     [emit, state.match?.matchId],
   );
 
+  const kickPlayer = useCallback(
+    (playerId: string) => {
+      emit({
+        type: "kickPlayer",
+        data: {
+          playerId,
+        },
+      });
+    },
+    [emit],
+  );
+
   return useMemo(
     () => ({
       state,
@@ -341,6 +375,7 @@ export function useMultiplayerSocket() {
       sendRemove,
       sendUndo,
       submitFinish,
+      kickPlayer,
     }),
     [
       state,
@@ -356,6 +391,7 @@ export function useMultiplayerSocket() {
       sendRemove,
       sendUndo,
       submitFinish,
+      kickPlayer,
     ],
   );
 }
@@ -379,10 +415,10 @@ const reduceServerEvent = (
         );
       }
 
-      const existingPlayers = { ...prev.players };
+      const nextPlayers: Record<string, TrackedPlayer> = {};
       for (const roomPlayer of event.data.players) {
-        const previous = existingPlayers[roomPlayer.playerId];
-        existingPlayers[roomPlayer.playerId] = {
+        const previous = prev.players[roomPlayer.playerId];
+        nextPlayers[roomPlayer.playerId] = {
           playerId: roomPlayer.playerId,
           name: roomPlayer.name,
           connected: roomPlayer.connected,
@@ -397,12 +433,14 @@ const reduceServerEvent = (
       return {
         ...prev,
         roomCode: event.data.roomCode,
+        reconnectRoomCode: event.data.roomCode,
         roomVisibility: event.data.visibility,
         status: event.data.status,
         hostId: event.data.hostId,
         settings: event.data.settings,
         selfPlayerId: event.data.you?.playerId ?? prev.selfPlayerId,
-        players: existingPlayers,
+        players: nextPlayers,
+        lastConnectionLostAt: undefined,
         error: undefined,
       };
     }
@@ -567,12 +605,14 @@ const reduceServerEvent = (
       return {
         ...prev,
         roomCode: event.data.roomCode,
+        reconnectRoomCode: event.data.roomCode,
         roomVisibility: event.data.visibility,
         status: event.data.status,
         hostId: event.data.hostId,
         settings: event.data.settings,
         players,
         selfPlayerId: event.data.you?.playerId ?? prev.selfPlayerId,
+        lastConnectionLostAt: undefined,
         match: event.data.match
           ? {
               matchId: event.data.match.matchId,
@@ -586,6 +626,22 @@ const reduceServerEvent = (
       };
     }
     case "error": {
+      if (event.data.code === "kicked") {
+        return {
+          ...prev,
+          roomCode: undefined,
+          reconnectRoomCode: prev.reconnectRoomCode,
+          roomVisibility: undefined,
+          status: undefined,
+          hostId: undefined,
+          selfPlayerId: undefined,
+          players: {},
+          match: undefined,
+          winner: undefined,
+          result: undefined,
+          error: event.data.message,
+        };
+      }
       return {
         ...prev,
         error: event.data.message,

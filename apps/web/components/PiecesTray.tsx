@@ -47,7 +47,7 @@ export default function PiecesTray() {
     <div className="pieces-area">
       <div className="pieces-header">
         <h3>Pieces</h3>
-        <span className="status-row">Keys S or D to rotate. F to flip</span>
+        <span className="status-row">Keys D or S rotate. F flips</span>
         {activePiece ? (
           <div className="pieces-controls">
             <span>Active: {activePiece.name}</span>
@@ -73,7 +73,7 @@ export default function PiecesTray() {
             )}
           </div>
         ) : (
-          <span className="pieces-hint">Tap a piece to start.</span>
+          <span className="pieces-hint">Tap or drag a piece</span>
         )}
       </div>
       <div className="pieces-tray">

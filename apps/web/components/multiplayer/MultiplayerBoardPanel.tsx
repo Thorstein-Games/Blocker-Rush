@@ -57,7 +57,6 @@ type MultiplayerBoardInnerProps = {
     y: number;
   }) => void;
   onRemove: (input: { roundIndex: number; pieceId: string }) => void;
-  onUndo: (roundIndex: number) => void;
   onSubmitFinish: (roundIndex: number) => void;
   authoritativeReject?: {
     roundIndex: number;
@@ -70,7 +69,6 @@ function MultiplayerBoardInner({
   active,
   onPlace,
   onRemove,
-  onUndo,
   onSubmitFinish,
   authoritativeReject,
 }: MultiplayerBoardInnerProps) {
@@ -243,19 +241,6 @@ function MultiplayerBoardInner({
 
   return (
     <>
-      <div className="multiplayer-board-controls">
-        <button
-          className="button secondary"
-          type="button"
-          onClick={() => onUndo(roundIndex)}
-          disabled={!active}
-        >
-          Undo
-        </button>
-        <span className="status-row">
-          Round {roundIndex + 1} · {active ? "Live" : "Locked"}
-        </span>
-      </div>
       <GameBoard />
       <PiecesTray />
     </>
@@ -267,7 +252,6 @@ type MultiplayerBoardPanelProps = {
   active: boolean;
   onPlace: MultiplayerBoardInnerProps["onPlace"];
   onRemove: MultiplayerBoardInnerProps["onRemove"];
-  onUndo: MultiplayerBoardInnerProps["onUndo"];
   onSubmitFinish: MultiplayerBoardInnerProps["onSubmitFinish"];
   authoritativeReject?: MultiplayerBoardInnerProps["authoritativeReject"];
 };

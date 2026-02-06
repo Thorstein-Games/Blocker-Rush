@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { MatchSettings } from "@blocker-rush/protocol";
+import { REJOIN_GRACE_MS, type MatchSettings } from "@blocker-rush/protocol";
 import type { Difficulty } from "@blocker-rush/shared";
 import { difficultyOptions } from "@blocker-rush/shared";
 import useLocalStorage from "../../lib/useLocalStorage";
 import GameHeader from "../GameHeader";
 import { useMultiplayerStore } from "./MultiplayerStore";
 import ThemeSelect from "../ThemeSelect";
+import { formatMs } from "./multiplayerViewUtils";
 
 const randomPlayerSuffix = (length = 5): string => {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -17,7 +18,15 @@ const randomPlayerSuffix = (length = 5): string => {
   }).join("");
 };
 
-export default function MultiplayerLobbyLanding() {
+type MultiplayerLobbyLandingProps = {
+  roomCodeFromUrl?: string;
+  reconnectRoomCode?: string;
+};
+
+export default function MultiplayerLobbyLanding({
+  roomCodeFromUrl = "",
+  reconnectRoomCode = "",
+}: MultiplayerLobbyLandingProps) {
   const { state, requestLobby, joinPublic, joinByCode, createPrivate } =
     useMultiplayerStore();
 
@@ -28,14 +37,34 @@ export default function MultiplayerLobbyLanding() {
     { raw: true },
   );
   const name = storedName ?? defaultPlayerName;
-  const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [roomCodeInput, setRoomCodeInput] = useState(roomCodeFromUrl);
+  const [roomCodeByPrivateRoom, setRoomCodeByPrivateRoom] = useState<
+    Record<string, string>
+  >({});
   const [createRounds, setCreateRounds] = useState(1);
   const [createDifficulties, setCreateDifficulties] =
     useState<Difficulty[]>(difficultyOptions);
+  const [renderNow, setRenderNow] = useState(() => Date.now());
 
   useEffect(() => {
     requestLobby();
   }, [requestLobby]);
+
+  useEffect(() => {
+    if (!roomCodeFromUrl) return;
+    setRoomCodeInput(roomCodeFromUrl);
+  }, [roomCodeFromUrl]);
+
+  useEffect(() => {
+    if (!state.lastConnectionLostAt || !reconnectRoomCode) return;
+    setRenderNow(Date.now());
+    const timer = window.setInterval(() => setRenderNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [state.lastConnectionLostAt, reconnectRoomCode]);
+
+  const reconnectRemainingMs = state.lastConnectionLostAt
+    ? Math.max(0, REJOIN_GRACE_MS - (renderNow - state.lastConnectionLostAt))
+    : 0;
 
   const settings = useMemo<MatchSettings>(() => {
     const difficulties = createDifficulties.slice(0, createRounds);
@@ -74,6 +103,16 @@ export default function MultiplayerLobbyLanding() {
           >
             Join Public Matchmaking
           </button>
+          {reconnectRoomCode && reconnectRemainingMs > 0 && (
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => joinByCode(name, reconnectRoomCode)}
+              disabled={!state.connected}
+            >
+              Rejoin {reconnectRoomCode} ({formatMs(reconnectRemainingMs)})
+            </button>
+          )}
           <div className="stack">
             <label htmlFor="room-code">Room code</label>
             <input
@@ -145,7 +184,7 @@ export default function MultiplayerLobbyLanding() {
         </div>
 
         <div className="panel stack">
-          <h3>Open Public Rooms</h3>
+          <h3>Rooms</h3>
           <button
             className="button secondary"
             type="button"
@@ -155,23 +194,58 @@ export default function MultiplayerLobbyLanding() {
           </button>
           <div className="multiplayer-room-list">
             {state.lobbyRooms.length === 0 ? (
-              <span className="pieces-hint">No open rooms yet.</span>
+              <span className="pieces-hint">
+                No waiting or in-progress rooms.
+              </span>
             ) : (
               state.lobbyRooms.map((room) => (
-                <div className="room-row" key={room.roomCode}>
+                <div className="multiplayer-lobby room-row" key={room.roomCode}>
                   <div>
-                    <strong>{room.roomCode} </strong>
+                    <strong>
+                      {room.visibility === "private"
+                        ? "Private Room"
+                        : room.roomCode}
+                    </strong>
                     <span className="pieces-hint">
-                      · {room.hostName} · {room.playerCount}/{room.maxPlayers}
+                      {" "}
+                      · {room.hostName} · {room.playerCount}/{room.maxPlayers} ·{" "}
+                      {room.status.replace("_", " ")}
                     </span>
                   </div>
-                  <button
-                    className="button secondary"
-                    type="button"
-                    onClick={() => joinByCode(name, room.roomCode)}
-                  >
-                    Join
-                  </button>
+                  <div className="settings-actions code">
+                    {room.visibility === "private" &&
+                      room.status === "lobby" && (
+                        <input
+                          value={roomCodeByPrivateRoom[room.roomCode] ?? ""}
+                          onChange={(event) =>
+                            setRoomCodeByPrivateRoom((prev) => ({
+                              ...prev,
+                              [room.roomCode]: event.target.value.toUpperCase(),
+                            }))
+                          }
+                          placeholder="Code"
+                        />
+                      )}
+                    <button
+                      className="button secondary"
+                      type="button"
+                      onClick={() =>
+                        joinByCode(
+                          name,
+                          room.visibility === "private"
+                            ? (roomCodeByPrivateRoom[room.roomCode] ?? "")
+                            : room.roomCode,
+                        )
+                      }
+                      disabled={
+                        room.status !== "lobby" ||
+                        (room.visibility === "private" &&
+                          !(roomCodeByPrivateRoom[room.roomCode] ?? "").trim())
+                      }
+                    >
+                      {room.status === "lobby" ? "Join" : "In Progress"}
+                    </button>
+                  </div>
                 </div>
               ))
             )}

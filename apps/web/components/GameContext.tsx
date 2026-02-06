@@ -252,14 +252,14 @@ export function GameProvider({
       if (readOnly) return;
       if (!activePieceId) return;
       const key = event.key.toLowerCase();
-      if (
-        key === "d" ||
-        key === "s" ||
-        key === "arrowleft" ||
-        key === "arrowright"
-      ) {
+      if (key === "d" || key === "arrowright") {
         event.preventDefault();
         rotatePiece(activePieceId);
+        return;
+      }
+      if (key === "s" || key === "arrowleft") {
+        event.preventDefault();
+        rotatePieceBackward(activePieceId);
         return;
       }
       if (key === "f" || key === "arrowup" || key === "arrowdown") {
@@ -271,15 +271,23 @@ export function GameProvider({
     return () => window.removeEventListener("keydown", handleKey);
   }, [activePieceId, readOnly]);
 
-  const rotatePiece = (pieceId: PieceId) => {
+  const rotatePieceBy = (pieceId: PieceId, delta: number) => {
     if (readOnly) return;
     setPieceStates((prev) => ({
       ...prev,
       [pieceId]: {
         ...prev[pieceId],
-        rotation: (prev[pieceId].rotation + 1) % 4,
+        rotation: (prev[pieceId].rotation + delta + 4) % 4,
       },
     }));
+  };
+
+  const rotatePiece = (pieceId: PieceId) => {
+    rotatePieceBy(pieceId, 1);
+  };
+
+  const rotatePieceBackward = (pieceId: PieceId) => {
+    rotatePieceBy(pieceId, -1);
   };
 
   const flipPiece = (pieceId: PieceId) => {

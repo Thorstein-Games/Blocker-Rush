@@ -142,8 +142,8 @@ html[data-theme="dark"] {
   --board-cell-1: rgba(35, 42, 58, 0.9);
   --board-cell-2: #151b28;
   --board-cell-border: rgba(9, 12, 18, 0.7);
-  --tray-1: rgba(37, 48, 45, 0.55);
-  --tray-2: rgba(15, 19, 18, 0.75);
+  --tray-1: rgb(37, 48, 45);
+  --tray-2: rgb(15, 19, 18);
   --interactive-grid-vignette: radial-gradient(
     120% 90% at 50% -10%,
     rgba(88, 127, 119, 0.16) 0%,
@@ -465,9 +465,18 @@ input {
 
 .game-layout {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: 100%;
+  align-items: flex-start;
+  justify-content: center;
   gap: 24px;
+}
+
+.side-panel {
+  width: min(300px, 100%);
+}
+
+.side-panel .stats-grid {
+  grid-template-columns: 1fr;
 }
 
 .multiplayer-page {
@@ -503,10 +512,17 @@ input {
   background: var(--glass-2);
 }
 
+.room-row.multiplayer-lobby {
+  flex-wrap: wrap;
+}
+
 .multiplayer-game-layout {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  grid-template-columns: minmax(200px, 260px) minmax(0, 1fr) minmax(
+      220px,
+      280px
+    );
   gap: 16px;
   align-items: start;
 }
@@ -514,6 +530,12 @@ input {
 .opponents-column {
   display: flex;
   flex-direction: column;
+  gap: 10px;
+}
+
+.opponents-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -543,13 +565,16 @@ input {
 }
 
 .opponent-mini-board {
+  --mini-cell: 10px;
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(6, var(--mini-cell));
+  justify-content: center;
   gap: 2px;
 }
 
 .opponent-mini-cell {
-  aspect-ratio: 1;
+  width: var(--mini-cell);
+  height: var(--mini-cell);
   border-radius: 3px;
   background: rgba(128, 136, 142, 0.3);
 }
@@ -564,6 +589,11 @@ input {
 
 .multiplayer-main-board {
   align-items: center;
+}
+
+.multiplayer-side-card {
+  display: grid;
+  gap: 12px;
 }
 
 .multiplayer-board-controls {
@@ -597,6 +627,7 @@ input {
 }
 
 .multiplayer-result-modal {
+  color: #f0f7f4;
   position: relative;
   overflow: hidden;
   width: min(760px, calc(100vw - 32px));
@@ -612,6 +643,10 @@ input {
   gap: 18px;
   box-shadow: 0 22px 56px rgba(0, 0, 0, 0.46);
   animation: matchResultIn 380ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.multiplayer-result-modal .button.secondary {
+  border: 1px solid rgba(240, 247, 244, 0.2);
+  color: #f0f7f4;
 }
 
 .multiplayer-result-fireworks {
@@ -670,7 +705,7 @@ input {
 }
 
 .multiplayer-result-mini-board {
-  --cell: 18px;
+  --cell: 14px;
   --board-gap: 3px;
 }
 
@@ -725,6 +760,14 @@ input {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.settings-actions.code {
+  flex-wrap: nowrap;
+}
+
+.settings-actions.code input {
+  width: 85px;
 }
 
 .stats-grid {
@@ -1253,7 +1296,7 @@ input {
   border: 1px solid rgba(71, 229, 179, 0.2);
   border-radius: 12px;
   padding: 10px 12px;
-  color: #d7f8ec;
+  color: var(--text);
   font-size: 0.85rem;
 }
 
@@ -1320,6 +1363,10 @@ input {
   .multiplayer-main-board {
     order: 1;
   }
+
+  .multiplayer-side-card {
+    display: none;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1339,8 +1386,13 @@ input {
   }
 
   .multiplayer-result-mini-board {
-    --cell: 16px;
+    --cell: 12px;
     --board-gap: 2px;
+  }
+
+  .game-layout {
+    flex-direction: column;
+    align-items: center;
   }
 
   .game-center {

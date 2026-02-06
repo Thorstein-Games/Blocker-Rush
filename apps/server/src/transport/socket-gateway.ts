@@ -648,6 +648,76 @@ export const createSocketGateway = (port: number) => {
         return;
       }
 
+      if (event.type === "kickPlayer") {
+        const seat = roomManager.getSeat(socket.id);
+        if (!seat) return;
+        const room = roomManager.getRoom(seat.roomCode);
+        if (!room) return;
+        if (room.hostId !== seat.playerId) {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "not_host",
+              message: "Only host can remove players.",
+            },
+          });
+          return;
+        }
+        if (room.status !== "lobby") {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "invalid_state",
+              message: "Players can only be removed in the room lobby.",
+            },
+          });
+          return;
+        }
+        if (event.data.playerId === seat.playerId) {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "invalid_target",
+              message: "Host cannot kick themselves.",
+            },
+          });
+          return;
+        }
+
+        const target = roomManager.getPlayer(room.roomCode, event.data.playerId);
+        if (!target) {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "player_not_found",
+              message: "Player is not in this room.",
+            },
+          });
+          return;
+        }
+
+        const targetSocket =
+          target.socketId ? io.sockets.sockets.get(target.socketId) : null;
+        const updatedRoom = roomManager.leavePlayer(room.roomCode, target.playerId);
+
+        if (targetSocket) {
+          targetSocket.leave(room.roomCode);
+          emitEvent(targetSocket, {
+            type: "error",
+            data: {
+              code: "kicked",
+              message: "You were removed by the host.",
+            },
+          });
+        }
+
+        if (updatedRoom) {
+          emitRoomState(updatedRoom);
+        }
+        emitLobbyState();
+        return;
+      }
+
       if (event.type === "startMatch") {
         const seat = roomManager.getSeat(socket.id);
         if (!seat) return;

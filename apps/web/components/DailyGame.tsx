@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Placement, PieceId } from "@blocker-rush/shared";
-import { getDateKey, getDailyPuzzle, PIECES } from "@blocker-rush/shared";
+import {
+  buildShareText,
+  getDateKey,
+  getDailyPuzzle,
+  PIECES,
+} from "@blocker-rush/shared";
 import GameBoard from "./GameBoard";
 import PiecesTray from "./PiecesTray";
 import { GameProvider, useGame } from "./GameContext";
@@ -114,6 +120,7 @@ function DailyGameLayout({ date }: { date: Date }) {
     startedAt,
     restoreState,
   } = useGame();
+  const router = useRouter();
   const dateKey = getDateKey(date);
   const dailyPuzzle = useMemo(() => getDailyPuzzle(date), [dateKey]);
   const [stats, setStats] = useState<DailyStats>(() =>
@@ -121,7 +128,17 @@ function DailyGameLayout({ date }: { date: Date }) {
   );
   const [hasRecorded, setHasRecorded] = useState(false);
   const [progress, setProgress] = useState<DailyProgress | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
   const hasRestoredRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 981px)");
+    const sync = () => setIsDesktop(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (dailyPuzzle.id === puzzleId) return;
@@ -202,32 +219,52 @@ function DailyGameLayout({ date }: { date: Date }) {
 
   const statusLabel =
     stats.lastCompletedDateKey === dateKey ? "Completed" : "Not yet cleared";
+  const statsPanel = (
+    <div className="stats-grid">
+      <div className="stat-card">
+        <span className="stat-label">Streak</span>
+        <span className="stat-value">{stats.streak}</span>
+      </div>
+      <div className="stat-card">
+        <span className="stat-label">Status</span>
+        <span className="stat-value">{statusLabel}</span>
+      </div>
+      <div className="stat-card">
+        <span className="stat-label">Difficulty</span>
+        <span className="badge">{dailyPuzzle.difficulty}</span>
+      </div>
+      <div className="stat-card">
+        <span className="stat-label">Date</span>
+        <span className="stat-value">{dateKey}</span>
+      </div>
+    </div>
+  );
+
+  const handleShare = async () => {
+    if (!puzzleId) return;
+    const baseUrl = `${window.location.origin}`;
+    const text = buildShareText(puzzleId, board.placements, baseUrl, {
+      messageText: "Play today's Blocker Rush challenge",
+      revealPieceCount: 3,
+    });
+    try {
+      if (navigator.share) {
+        await navigator.share({ text });
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
+      setShareStatus("Copied share text.");
+    } catch {
+      setShareStatus("Unable to share right now.");
+    }
+  };
 
   return (
     <main className="page game-page">
       <GameHeader
         mode="daily"
         statsTitle="Daily Challenge"
-        statsPanel={
-          <div className="stats-grid">
-            <div className="stat-card">
-              <span className="stat-label">Streak</span>
-              <span className="stat-value">{stats.streak}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Status</span>
-              <span className="stat-value">{statusLabel}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Difficulty</span>
-              <span className="badge">{dailyPuzzle.difficulty}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Date</span>
-              <span className="stat-value">{dateKey}</span>
-            </div>
-          </div>
-        }
+        statsPanel={isDesktop ? undefined : statsPanel}
         settingsPanel={
           <div className="settings-stack">
             <ThemeSelect />
@@ -235,9 +272,30 @@ function DailyGameLayout({ date }: { date: Date }) {
         }
       />
       <section className="game-layout">
+        {isDesktop && (
+          <aside className="panel side-panel">
+            <h3>Daily Challenge</h3>
+            {statsPanel}
+          </aside>
+        )}
         <div className="game-center">
           <GameBoard />
           <PiecesTray />
+          {solved && (
+            <div className="settings-actions">
+              <button className="button" type="button" onClick={handleShare}>
+                Share
+              </button>
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => router.push("/multiplayer")}
+              >
+                Play Multiplayer
+              </button>
+            </div>
+          )}
+          {shareStatus && <div className="notice">{shareStatus}</div>}
         </div>
       </section>
     </main>
