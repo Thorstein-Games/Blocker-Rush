@@ -1,9 +1,26 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { PieceId } from "@blocker-rush/shared";
 import { PIECE_COLORS } from "./pieceColors";
+import WinnerFireworks from "./multiplayer/WinnerFireworks";
 import { useGame } from "./GameContext";
+
+const WINNER_MESSAGES = [
+  "That last snap hits just right.",
+  "Clean finish. Puzzle locked.",
+  "Perfect fit. No notes.",
+  "You solved it like clockwork.",
+  "Board cleared. Momentum maintained.",
+  "Every move paid off.",
+  "Precision win. Nicely done.",
+  "That was a sharp close.",
+  "Solved with style.",
+  "Another puzzle in the books.",
+] as const;
+
+let winnerMessageCursor = 0;
 
 export default function GameBoard() {
   const {
@@ -61,6 +78,22 @@ export default function GameBoard() {
     dragPreview?.isDropping && dragPreview.dropTarget
       ? dragPreview.dropTarget
       : dragPreview?.position;
+  const [winnerMessage, setWinnerMessage] = useState<string>(
+    WINNER_MESSAGES[0] ?? "Puzzle solved.",
+  );
+  const wasSolvedRef = useRef(solved);
+
+  useEffect(() => {
+    if (solved && !wasSolvedRef.current) {
+      const nextMessage =
+        WINNER_MESSAGES[winnerMessageCursor % WINNER_MESSAGES.length] ??
+        "Puzzle solved.";
+      winnerMessageCursor += 1;
+      setWinnerMessage(nextMessage);
+    }
+
+    wasSolvedRef.current = solved;
+  }, [solved]);
 
   return (
     <div className="board-area">
@@ -150,9 +183,10 @@ export default function GameBoard() {
         )}
         {solved && (
           <div className="celebration">
+            <WinnerFireworks className="celebration-fireworks" />
             <div className="celebration-card">
               <strong>Puzzle Complete</strong>
-              <span>That last snap hits just right.</span>
+              <span>{winnerMessage}</span>
             </div>
           </div>
         )}

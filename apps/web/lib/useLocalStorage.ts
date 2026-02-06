@@ -32,16 +32,16 @@ const useLocalStorage = <T>(
     throw new Error("useLocalStorage key may not be falsy");
   }
 
-  const deserializer = options
+  const deserializer: (value: string) => T = options
     ? options.raw
-      ? (value) => value
+      ? (value: string) => value as unknown as T
       : options.deserializer
-    : JSON.parse;
+    : (value: string) => JSON.parse(value) as T;
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const initializer = useRef((key: string) => {
     try {
-      const serializer = options
+      const serializer: (value: unknown) => string = options
         ? options.raw
           ? String
           : options.serializer
@@ -51,7 +51,9 @@ const useLocalStorage = <T>(
       if (localStorageValue !== null) {
         return deserializer(localStorageValue);
       } else {
-        initialValue && localStorage.setItem(key, serializer(initialValue));
+        if (typeof initialValue !== "undefined") {
+          localStorage.setItem(key, serializer(initialValue));
+        }
         return initialValue;
       }
     } catch {

@@ -12,7 +12,6 @@ const themeOptions: Array<{ value: ThemePreference; label: string }> = [
 
 export default function ThemeSelect() {
   const [theme, setTheme] = useLocalStorage<ThemePreference>(THEME_KEY, "dark");
-  console.log("theme", theme);
 
   useEffect(() => {
     if (theme) {
