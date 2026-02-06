@@ -35,6 +35,14 @@ export default function PiecesTray() {
     );
   }, []);
 
+  const allPiecesPlaced = PIECES.every((piece) =>
+    Boolean(board.placements[piece.id]),
+  );
+
+  if (allPiecesPlaced) {
+    return null;
+  }
+
   return (
     <div className="pieces-area">
       <div className="pieces-header">

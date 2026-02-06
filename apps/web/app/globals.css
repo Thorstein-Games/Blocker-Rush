@@ -19,18 +19,24 @@
   --radius: 16px;
   --block-radius: 15px;
   --board-cell: #dbe3ee;
-  --glass: rgba(255, 255, 255, 0.9);
-  --glass-2: rgba(255, 255, 255, 0.7);
+  --glass: rgb(255, 255, 255);
+  --glass-2: rgb(255, 255, 255);
   --border-soft: rgba(27, 36, 34, 0.12);
   --border-strong: rgba(27, 36, 34, 0.2);
   --overlay: rgba(9, 12, 11, 0.2);
-  --board-shell-1: rgba(210, 220, 214, 0.6);
-  --board-shell-2: rgba(240, 245, 241, 0.9);
+  --board-shell-1: rgb(210, 220, 214);
+  --board-shell-2: rgb(240, 245, 241);
   --board-cell-1: rgba(228, 234, 242, 0.95);
   --board-cell-2: #c9d2e1;
   --board-cell-border: rgba(27, 36, 34, 0.12);
-  --tray-1: rgba(235, 240, 236, 0.8);
-  --tray-2: rgba(220, 228, 223, 0.9);
+  --tray-1: rgb(235, 240, 236);
+  --tray-2: rgb(220, 228, 223);
+  --interactive-grid-vignette: radial-gradient(
+    130% 90% at 50% -15%,
+    rgba(117, 188, 156, 0.2) 0%,
+    rgba(215, 235, 227, 0.12) 45%,
+    rgba(243, 246, 242, 0.75) 100%
+  );
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,18 +57,24 @@
     --blocker: #0f1312;
     --shadow: rgba(0, 0, 0, 0.35);
     --board-cell: #232a3a;
-    --glass: rgba(12, 18, 17, 0.9);
-    --glass-2: rgba(9, 12, 12, 0.6);
+    --glass: rgb(12, 18, 17);
+    --glass-2: rgb(9, 12, 12);
     --border-soft: rgba(240, 247, 244, 0.12);
     --border-strong: rgba(240, 247, 244, 0.2);
     --overlay: rgba(5, 8, 7, 0.75);
-    --board-shell-1: rgba(37, 48, 45, 0.7);
-    --board-shell-2: rgba(15, 19, 18, 0.9);
+    --board-shell-1: rgb(37, 48, 45);
+    --board-shell-2: rgb(15, 19, 18);
     --board-cell-1: rgba(35, 42, 58, 0.9);
     --board-cell-2: #151b28;
     --board-cell-border: rgba(9, 12, 18, 0.7);
-    --tray-1: rgba(37, 48, 45, 0.55);
-    --tray-2: rgba(15, 19, 18, 0.75);
+    --tray-1: rgb(37, 48, 45);
+    --tray-2: rgb(15, 19, 18);
+    --interactive-grid-vignette: radial-gradient(
+      120% 90% at 50% -10%,
+      rgba(88, 127, 119, 0.16) 0%,
+      rgba(8, 12, 12, 0.04) 42%,
+      rgba(4, 7, 7, 0.58) 100%
+    );
   }
 }
 
@@ -83,18 +95,24 @@ html[data-theme="light"] {
   --blocker: #cfd7d3;
   --shadow: rgba(15, 20, 19, 0.12);
   --board-cell: #dbe3ee;
-  --glass: rgba(255, 255, 255, 0.9);
-  --glass-2: rgba(255, 255, 255, 0.7);
+  --glass: rgb(255, 255, 255);
+  --glass-2: rgb(255, 255, 255);
   --border-soft: rgba(27, 36, 34, 0.12);
   --border-strong: rgba(27, 36, 34, 0.2);
   --overlay: rgba(9, 12, 11, 0.2);
-  --board-shell-1: rgba(240, 245, 241, 0.9);
-  --board-shell-2: rgba(240, 245, 241, 0.9);
+  --board-shell-1: rgb(240, 245, 241);
+  --board-shell-2: rgb(240, 245, 241);
   --board-cell-1: rgba(228, 234, 242, 0.95);
   --board-cell-2: #c9d2e1;
   --board-cell-border: rgba(27, 36, 34, 0.12);
-  --tray-1: rgba(235, 240, 236, 0.8);
-  --tray-2: rgba(240, 240, 240, 0.9);
+  --tray-1: rgb(235, 240, 236);
+  --tray-2: rgb(240, 240, 240);
+  --interactive-grid-vignette: radial-gradient(
+    130% 90% at 50% -15%,
+    rgba(117, 188, 156, 0.2) 0%,
+    rgba(215, 235, 227, 0.12) 45%,
+    rgba(243, 246, 242, 0.75) 100%
+  );
 }
 
 html[data-theme="dark"] {
@@ -114,8 +132,8 @@ html[data-theme="dark"] {
   --blocker: #0f1312;
   --shadow: rgba(0, 0, 0, 0.35);
   --board-cell: #232a3a;
-  --glass: rgba(12, 18, 17, 0.9);
-  --glass-2: rgba(9, 12, 12, 0.6);
+  --glass: rgb(12, 18, 17);
+  --glass-2: rgb(9, 12, 12);
   --border-soft: rgba(240, 247, 244, 0.12);
   --border-strong: rgba(240, 247, 244, 0.2);
   --overlay: rgba(5, 8, 7, 0.75);
@@ -126,6 +144,12 @@ html[data-theme="dark"] {
   --board-cell-border: rgba(9, 12, 18, 0.7);
   --tray-1: rgba(37, 48, 45, 0.55);
   --tray-2: rgba(15, 19, 18, 0.75);
+  --interactive-grid-vignette: radial-gradient(
+    120% 90% at 50% -10%,
+    rgba(88, 127, 119, 0.16) 0%,
+    rgba(8, 12, 12, 0.04) 42%,
+    rgba(4, 7, 7, 0.58) 100%
+  );
 }
 
 * {
@@ -135,6 +159,7 @@ html[data-theme="dark"] {
 body {
   margin: 0;
   min-height: 100vh;
+  position: relative;
   background: radial-gradient(
     1200px 800px at 10% 10%,
     var(--bg-2) 0%,
@@ -144,6 +169,27 @@ body {
   color: var(--text);
   font-family: "Space Grotesk", system-ui, sans-serif;
   letter-spacing: -0.01em;
+}
+
+.app-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.app-background-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0.9;
+}
+
+.app-background-vignette {
+  position: absolute;
+  inset: 0;
+  background: var(--interactive-grid-vignette);
 }
 
 a {
@@ -159,9 +205,12 @@ input {
 }
 
 .app-shell {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .page {
@@ -537,7 +586,8 @@ input {
   padding: 24px;
   display: grid;
   place-items: center;
-  background: radial-gradient(
+  background:
+    radial-gradient(
       circle at 50% 18%,
       rgba(242, 193, 78, 0.14),
       transparent 58%
@@ -1130,7 +1180,11 @@ input {
 .drag-preview {
   position: absolute;
   transform: translate3d(var(--drag-x), var(--drag-y), 0)
-    translate3d(calc(-1 * var(--drag-offset-x)), calc(-1 * var(--drag-offset-y)), 0);
+    translate3d(
+      calc(-1 * var(--drag-offset-x)),
+      calc(-1 * var(--drag-offset-y)),
+      0
+    );
   transition: transform 0s linear;
   will-change: transform;
 }
