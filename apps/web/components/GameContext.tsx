@@ -252,12 +252,17 @@ export function GameProvider({
       if (readOnly) return;
       if (!activePieceId) return;
       const key = event.key.toLowerCase();
-      if (key === "w" || key === "s") {
+      if (
+        key === "d" ||
+        key === "s" ||
+        key === "arrowleft" ||
+        key === "arrowright"
+      ) {
         event.preventDefault();
         rotatePiece(activePieceId);
         return;
       }
-      if (key === "a" || key === "d") {
+      if (key === "f" || key === "arrowup" || key === "arrowdown") {
         event.preventDefault();
         flipPiece(activePieceId);
       }
@@ -464,14 +469,8 @@ export function GameProvider({
     ).getBoundingClientRect();
     const pieceCenterWorld = origin
       ? {
-          x:
-            metrics.rect.left +
-            origin.x * metrics.step +
-            centerLocalPx.x,
-          y:
-            metrics.rect.top +
-            origin.y * metrics.step +
-            centerLocalPx.y,
+          x: metrics.rect.left + origin.x * metrics.step + centerLocalPx.x,
+          y: metrics.rect.top + origin.y * metrics.step + centerLocalPx.y,
         }
       : {
           x: targetRect.left + targetRect.width / 2,
@@ -606,10 +605,7 @@ export function GameProvider({
     return {
       x: interaction.startCenter.x + dx * DRAG_GAIN,
       // Apply a constant upward offset so the piece sits above the pointer.
-      y:
-        interaction.startCenter.y +
-        dy * DRAG_GAIN -
-        DRAG_VISUAL_OFFSET_Y,
+      y: interaction.startCenter.y + dy * DRAG_GAIN - DRAG_VISUAL_OFFSET_Y,
     };
   };
 
@@ -625,7 +621,10 @@ export function GameProvider({
       state.flipped,
     );
     const centerLocal = getPieceVisualCenterLocal(transform.cells);
-    const centerLocalPx = getPieceVisualCenterPx(centerLocal, interaction.metrics);
+    const centerLocalPx = getPieceVisualCenterPx(
+      centerLocal,
+      interaction.metrics,
+    );
     // (B) Shadow snapping: convert pointer px -> board px -> cell space.
     const centerLocalInBoard = {
       x: (center.x - rect.left + interaction.metrics.gap / 2) / step,

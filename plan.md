@@ -139,29 +139,32 @@ Out:
 
 ## Phase 5 — Multiplayer Mode (Server-Authoritative)
 
-1. **Server foundation**
+See server-plan.md for the full details
+
+1. [x] **Server foundation**
    - Node/TypeScript server with WebSocket (Socket.io).
    - Server owns authoritative puzzle state, clocks, and round transitions.
 
-2. **Matchmaking**
-   - Public queue and private room codes.
-   - Support up to 20 players per room.
+2.[x] **Matchmaking**
 
-3. **Round flow**
+- Public queue and private room codes.
+- Support up to 8 players per room.
+
+3. [x] **Round flow**
    - Countdown start before round begins.
    - All players receive the same puzzle ID for each round.
    - Players who finish instantly advance to the next puzzle.
-   - First to complete 3 puzzles wins.
+   - First to complete all rounds wins.
 
-4. **Disconnect handling**
+4. [x] **Disconnect handling**
    - 30-second rejoin grace period.
    - Forfeit on timeout.
 
-5. **Anti-cheat**
+5. [x] **Anti-cheat**
    - Server checks for impossible completion times.
    - Server validates move sequences and final board states.
 
-6. **Multiplayer stats**
+6. [x] **Multiplayer stats**
    - Store win/loss and best times locally only.
 
 ## Phase 6 — Testing & QA

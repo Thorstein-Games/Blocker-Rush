@@ -11,7 +11,10 @@ const themeOptions: Array<{ value: ThemePreference; label: string }> = [
 ];
 
 export default function ThemeSelect() {
-  const [theme, setTheme] = useLocalStorage<ThemePreference>(THEME_KEY, "dark");
+  const [theme, setTheme] = useLocalStorage<ThemePreference>(
+    THEME_KEY,
+    "system",
+  );
 
   useEffect(() => {
     if (theme) {

@@ -160,9 +160,9 @@ export default function MultiplayerLobbyLanding() {
               state.lobbyRooms.map((room) => (
                 <div className="room-row" key={room.roomCode}>
                   <div>
-                    <strong>{room.roomCode}</strong>
+                    <strong>{room.roomCode} </strong>
                     <span className="pieces-hint">
-                      {room.hostName} · {room.playerCount}/{room.maxPlayers}
+                      · {room.hostName} · {room.playerCount}/{room.maxPlayers}
                     </span>
                   </div>
                   <button
