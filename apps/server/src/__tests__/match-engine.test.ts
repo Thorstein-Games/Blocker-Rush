@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { getPuzzlesForDifficulty, solvePuzzle } from "@blocker-rush/shared";
 import type { BoardCell } from "@blocker-rush/shared";
+import { REJOIN_GRACE_MS } from "@blocker-rush/protocol";
 import {
   applyFinish,
   applyPlacePiece,
@@ -205,4 +206,42 @@ test("finalizePlacements returns winner only", () => {
   assert.equal(result.placements.length, 1);
   assert.equal(result.placements[0]?.playerId, "a");
   assert.equal(result.placements[0]?.status, "finished");
+});
+
+test("cleanup removes non-lobby room after all players disconnect and grace expires", () => {
+  const manager = new RoomManager();
+  const joined = manager.joinByRequest({
+    socket: makeSocket("s1"),
+    name: "Kai",
+    queue: "public",
+  });
+
+  const room = manager.getRoom(joined.room.roomCode);
+  assert.ok(room);
+  if (!room) return;
+  room.status = "in_game";
+
+  manager.markDisconnected("s1");
+  const cleanup = manager.cleanupExpiredGraces(Date.now() + REJOIN_GRACE_MS + 1);
+
+  assert.equal(manager.getRoom(joined.room.roomCode), undefined);
+  assert.ok(cleanup.removedRoomCodes.includes(joined.room.roomCode));
+});
+
+test("cleanup removes stale rooms by max room age", () => {
+  const manager = new RoomManager();
+  const joined = manager.joinByRequest({
+    socket: makeSocket("s1"),
+    name: "Mina",
+    queue: "public",
+  });
+
+  const room = manager.getRoom(joined.room.roomCode);
+  assert.ok(room);
+  if (!room) return;
+
+  const sevenHoursMs = 7 * 60 * 60 * 1000;
+  const cleanup = manager.cleanupExpiredGraces(room.createdAt + sevenHoursMs);
+  assert.equal(manager.getRoom(joined.room.roomCode), undefined);
+  assert.ok(cleanup.removedRoomCodes.includes(joined.room.roomCode));
 });

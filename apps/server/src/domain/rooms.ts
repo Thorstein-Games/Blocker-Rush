@@ -1,9 +1,38 @@
-import { MAX_PLAYERS, REJOIN_GRACE_MS, type MatchSettings } from "@blocker-rush/protocol";
-import type { InternalPlayerState, InternalRoom, PlayerSeat, RoomJoinResult, RoomListEntry } from "./types";
+import {
+  MAX_PLAYERS,
+  REJOIN_GRACE_MS,
+  type MatchSettings,
+} from "@blocker-rush/protocol";
+import type {
+  InternalPlayerState,
+  InternalRoom,
+  PlayerSeat,
+  RoomJoinResult,
+  RoomListEntry,
+} from "./types";
 import { createId, createRoomCode, normalizeSettings, now } from "./utils";
 
 type SocketLike = {
   id: string;
+};
+
+const FINISHED_ROOM_TTL_MS = 15 * 60_000;
+const MAX_ROOM_AGE_MS = 6 * 60 * 60_000;
+
+const shouldClearStaleRoom = (
+  room: InternalRoom,
+  currentNow: number,
+): boolean => {
+  const roomAgeMs = currentNow - room.createdAt;
+  if (roomAgeMs >= MAX_ROOM_AGE_MS) {
+    return true;
+  }
+
+  if (room.status === "finished") {
+    return currentNow - room.updatedAt >= FINISHED_ROOM_TTL_MS;
+  }
+
+  return false;
 };
 
 const makePlayer = (
@@ -59,7 +88,10 @@ export class RoomManager {
     return this.socketSeats.get(socketId);
   }
 
-  getPlayer(roomCode: string, playerId: string): InternalPlayerState | undefined {
+  getPlayer(
+    roomCode: string,
+    playerId: string,
+  ): InternalPlayerState | undefined {
     return this.rooms.get(roomCode)?.players[playerId];
   }
 
@@ -132,7 +164,12 @@ export class RoomManager {
       );
 
       if (!room) {
-        room = this.createRoom("public", normalizeSettings(), params.socket.id, trimmedName);
+        room = this.createRoom(
+          "public",
+          normalizeSettings(),
+          params.socket.id,
+          trimmedName,
+        );
         createdRoom = true;
       }
     } else {
@@ -162,7 +199,11 @@ export class RoomManager {
       throw new Error("room_full");
     }
 
-    const player = makePlayer(trimmedName, params.socket.id, room.settings.rounds);
+    const player = makePlayer(
+      trimmedName,
+      params.socket.id,
+      room.settings.rounds,
+    );
     room.players[player.playerId] = player;
     if (!room.hostId) {
       room.hostId = player.playerId;
@@ -270,12 +311,20 @@ export class RoomManager {
     return room;
   }
 
-  cleanupExpiredGraces(currentNow = now()): string[] {
+  cleanupExpiredGraces(currentNow = now()): {
+    touchedRoomCodes: string[];
+    removedRoomCodes: string[];
+  } {
     const touched = new Set<string>();
+    const removed = new Set<string>();
 
-    for (const room of this.rooms.values()) {
+    for (const room of [...this.rooms.values()]) {
       for (const player of Object.values(room.players)) {
-        if (!player.connected && player.graceExpiresAt && player.graceExpiresAt <= currentNow) {
+        if (
+          !player.connected &&
+          player.graceExpiresAt &&
+          player.graceExpiresAt <= currentNow
+        ) {
           player.graceExpiresAt = undefined;
           player.disconnectedAt = undefined;
 
@@ -286,18 +335,38 @@ export class RoomManager {
         }
       }
 
+      const players = Object.values(room.players);
+      const connectedPlayers = players.filter((player) => player.connected);
+      const allDisconnected =
+        players.length > 0 && connectedPlayers.length === 0;
+      const allDisconnectedGraceExpired =
+        allDisconnected &&
+        players.every(
+          (player) =>
+            !player.graceExpiresAt || player.graceExpiresAt <= currentNow,
+        );
+
+      if (
+        players.length === 0 ||
+        allDisconnectedGraceExpired ||
+        shouldClearStaleRoom(room, currentNow)
+      ) {
+        removed.add(room.roomCode);
+        this.clearRoom(room.roomCode);
+        continue;
+      }
+
       if (!room.players[room.hostId]) {
         const nextHost = Object.values(room.players)[0];
         room.hostId = nextHost?.playerId ?? "";
         touched.add(room.roomCode);
       }
-
-      if (Object.keys(room.players).length === 0) {
-        this.clearRoom(room.roomCode);
-      }
     }
 
-    return [...touched];
+    return {
+      touchedRoomCodes: [...touched],
+      removedRoomCodes: [...removed],
+    };
   }
 
   clearRoom(roomCode: string) {

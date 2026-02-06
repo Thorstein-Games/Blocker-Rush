@@ -21,7 +21,11 @@ import {
 } from "../domain/match-engine";
 import { TokenBucket } from "../domain/rateLimiter";
 import { RoomManager } from "../domain/rooms";
-import type { InternalPlayerState, InternalRoom, RoundPuzzle } from "../domain/types";
+import type {
+  InternalPlayerState,
+  InternalRoom,
+  RoundPuzzle,
+} from "../domain/types";
 import { countdownMs, createId, now } from "../domain/utils";
 
 const hashSeed = (value: string): number => {
@@ -43,7 +47,10 @@ const mulberry32 = (seed: number) => {
   };
 };
 
-const serializePlayerState = (room: InternalRoom, player: InternalPlayerState): ServerEvent => {
+const serializePlayerState = (
+  room: InternalRoom,
+  player: InternalPlayerState,
+): ServerEvent => {
   const match = room.match;
   const round = player.rounds[player.currentRoundIndex];
 
@@ -144,7 +151,9 @@ const serializeStateSync = (
   },
 });
 
-const serializeLobbyState = (rooms: ReturnType<RoomManager["listLobbyRooms"]>): ServerEvent => ({
+const serializeLobbyState = (
+  rooms: ReturnType<RoomManager["listLobbyRooms"]>,
+): ServerEvent => ({
   type: "lobbyState",
   data: {
     rooms,
@@ -197,7 +206,10 @@ export const createSocketGateway = (port: number) => {
   };
 
   const emitLobbyState = () => {
-    io.emit(SOCKET_EVENT_NAME, serializeLobbyState(roomManager.listLobbyRooms()));
+    io.emit(
+      SOCKET_EVENT_NAME,
+      serializeLobbyState(roomManager.listLobbyRooms()),
+    );
   };
 
   const emitRoomState = (room: InternalRoom) => {
@@ -263,16 +275,20 @@ export const createSocketGateway = (port: number) => {
   };
 
   const buildRounds = (room: InternalRoom, matchId: string): RoundPuzzle[] =>
-    room.settings.difficulties.map((difficulty: RoundPuzzle["difficulty"], roundIndex: number) => {
-      const seed = hashSeed(`${room.roomCode}:${matchId}:${roundIndex}:${difficulty}`);
-      const rng = mulberry32(seed);
-      const puzzle = pickPuzzleByDifficulty(difficulty, rng);
-      return {
-        roundIndex,
-        difficulty,
-        puzzleId: puzzle.id,
-      };
-    });
+    room.settings.difficulties.map(
+      (difficulty: RoundPuzzle["difficulty"], roundIndex: number) => {
+        const seed = hashSeed(
+          `${room.roomCode}:${matchId}:${roundIndex}:${difficulty}`,
+        );
+        const rng = mulberry32(seed);
+        const puzzle = pickPuzzleByDifficulty(difficulty, rng);
+        return {
+          roundIndex,
+          difficulty,
+          puzzleId: puzzle.id,
+        };
+      },
+    );
 
   const startMatch = (room: InternalRoom) => {
     const matchId = createId("m");
@@ -314,11 +330,17 @@ export const createSocketGateway = (port: number) => {
     emitLobbyState();
   };
 
-  const maybeFinishRound = (room: InternalRoom, player: InternalPlayerState, clientSeq: number) => {
+  const maybeFinishRound = (
+    room: InternalRoom,
+    player: InternalPlayerState,
+    clientSeq: number,
+  ) => {
     const finished = applyFinish(player, now());
     if (!finished.ok || !room.match) {
       if (!finished.ok) {
-        const seatSocket = player.socketId ? io.sockets.sockets.get(player.socketId) : null;
+        const seatSocket = player.socketId
+          ? io.sockets.sockets.get(player.socketId)
+          : null;
         if (seatSocket) {
           emitEvent(
             seatSocket,
@@ -334,6 +356,7 @@ export const createSocketGateway = (port: number) => {
       return;
     }
 
+    room.updatedAt = now();
     const round = finished.round;
     if (!finished.alreadyFinished) {
       emitToRoom(room.roomCode, {
@@ -384,13 +407,22 @@ export const createSocketGateway = (port: number) => {
     emitToRoom(room.roomCode, serializePlayerState(room, player));
   };
 
-  const getSocketForSeat = (roomCode: string, playerId: string): Socket | null => {
+  const getSocketForSeat = (
+    roomCode: string,
+    playerId: string,
+  ): Socket | null => {
     const player = roomManager.getPlayer(roomCode, playerId);
     if (!player?.socketId) return null;
     return io.sockets.sockets.get(player.socketId) ?? null;
   };
 
-  const processAction = (socket: Socket, event: Extract<ReturnType<typeof safeParseClientEvent>, { success: true }>['data']) => {
+  const processAction = (
+    socket: Socket,
+    event: Extract<
+      ReturnType<typeof safeParseClientEvent>,
+      { success: true }
+    >["data"],
+  ) => {
     if (
       event.type !== "placePiece" &&
       event.type !== "removePiece" &&
@@ -411,7 +443,8 @@ export const createSocketGateway = (port: number) => {
       return;
     }
 
-    const limiter = rateLimiterBySocket.get(socket.id) ?? new TokenBucket(15, 20);
+    const limiter =
+      rateLimiterBySocket.get(socket.id) ?? new TokenBucket(15, 20);
     rateLimiterBySocket.set(socket.id, limiter);
 
     if (!limiter.tryTake()) {
@@ -505,6 +538,7 @@ export const createSocketGateway = (port: number) => {
         return;
       }
 
+      roomManager.touchRoom(room.roomCode);
       emitToRoom(room.roomCode, serializePlayerState(room, player));
 
       if (outcome.solved) {
@@ -534,6 +568,7 @@ export const createSocketGateway = (port: number) => {
         );
         return;
       }
+      roomManager.touchRoom(room.roomCode);
       emitToRoom(room.roomCode, serializePlayerState(room, player));
       return;
     }
@@ -552,6 +587,7 @@ export const createSocketGateway = (port: number) => {
         );
         return;
       }
+      roomManager.touchRoom(room.roomCode);
       emitToRoom(room.roomCode, serializePlayerState(room, player));
       return;
     }
@@ -684,7 +720,10 @@ export const createSocketGateway = (port: number) => {
           return;
         }
 
-        const target = roomManager.getPlayer(room.roomCode, event.data.playerId);
+        const target = roomManager.getPlayer(
+          room.roomCode,
+          event.data.playerId,
+        );
         if (!target) {
           emitEvent(socket, {
             type: "error",
@@ -696,9 +735,13 @@ export const createSocketGateway = (port: number) => {
           return;
         }
 
-        const targetSocket =
-          target.socketId ? io.sockets.sockets.get(target.socketId) : null;
-        const updatedRoom = roomManager.leavePlayer(room.roomCode, target.playerId);
+        const targetSocket = target.socketId
+          ? io.sockets.sockets.get(target.socketId)
+          : null;
+        const updatedRoom = roomManager.leavePlayer(
+          room.roomCode,
+          target.playerId,
+        );
 
         if (targetSocket) {
           targetSocket.leave(room.roomCode);
@@ -795,18 +838,21 @@ export const createSocketGateway = (port: number) => {
   });
 
   const cleanupInterval = setInterval(() => {
-    const touchedRooms = roomManager.cleanupExpiredGraces(now());
-    for (const roomCode of touchedRooms) {
+    const cleanup = roomManager.cleanupExpiredGraces(now());
+    for (const roomCode of cleanup.touchedRoomCodes) {
       const room = roomManager.getRoom(roomCode);
       if (room) {
         emitRoomState(room);
       }
     }
 
-    if (touchedRooms.length > 0) {
+    if (
+      cleanup.touchedRoomCodes.length > 0 ||
+      cleanup.removedRoomCodes.length > 0
+    ) {
       emitLobbyState();
     }
-  }, 1000);
+  }, 5000);
 
   httpServer.on("close", () => {
     clearInterval(cleanupInterval);
