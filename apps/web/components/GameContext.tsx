@@ -35,6 +35,7 @@ import {
   isSolved,
 } from "@blocker-rush/shared";
 import type { DragGhost, PieceState } from "./gameTypes";
+import { DRAG_GAIN, DRAG_VISUAL_OFFSET_Y } from "./dragConfig";
 
 type InteractionState = {
   mode: "pending" | "dragging";
@@ -44,6 +45,7 @@ type InteractionState = {
   captureTarget?: HTMLElement | null;
   startX: number;
   startY: number;
+  startCenter: { x: number; y: number };
   pieceCenterOffsetPx: { x: number; y: number };
   previousBoard: BoardState;
   previousPlacement?: { origin: Vec2; transformId: string };
@@ -475,12 +477,14 @@ export function GameProvider({
           x: targetRect.left + targetRect.width / 2,
           y: targetRect.top + targetRect.height / 2,
         };
-    const lift =
-      event.pointerType === "touch" ? Math.max(12, metrics.cell * 0.35) : 0;
     const pieceCenterOffsetPx = {
-      // (A) Drag rendering: keep the piece's visual center under the pointer.
+      // (A) Drag rendering: keep the piece's grab anchor stable at drag start.
       x: event.clientX - pieceCenterWorld.x,
-      y: event.clientY - pieceCenterWorld.y + lift,
+      y: event.clientY - pieceCenterWorld.y,
+    };
+    const startCenter = {
+      x: event.clientX - pieceCenterOffsetPx.x,
+      y: event.clientY - pieceCenterOffsetPx.y,
     };
 
     const previousBoard = boardStateRef.current;
@@ -494,14 +498,13 @@ export function GameProvider({
       interactionRef.current = interaction;
       lastTapRef.current = null;
       setDraggingPieceId(pieceId);
-      const previewCenter = {
-        x:
-          (interaction.lastPointer?.x ?? interaction.startX) -
-          interaction.pieceCenterOffsetPx.x,
-        y:
-          (interaction.lastPointer?.y ?? interaction.startY) -
-          interaction.pieceCenterOffsetPx.y,
-      };
+      const previewCenter = getAmplifiedCenter(
+        interaction,
+        interaction.lastPointer ?? {
+          x: interaction.startX,
+          y: interaction.startY,
+        },
+      );
       setDragPreview(
         buildDragPreview(pieceId, previewCenter, interaction.metrics),
       );
@@ -526,6 +529,7 @@ export function GameProvider({
       captureTarget,
       startX: event.clientX,
       startY: event.clientY,
+      startCenter,
       pieceCenterOffsetPx,
       previousBoard,
       previousPlacement,
@@ -591,6 +595,22 @@ export function GameProvider({
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleUp);
     window.addEventListener("pointercancel", handleUp);
+  };
+
+  const getAmplifiedCenter = (
+    interaction: InteractionState,
+    pointer: { x: number; y: number },
+  ) => {
+    const dx = pointer.x - interaction.startX;
+    const dy = pointer.y - interaction.startY;
+    return {
+      x: interaction.startCenter.x + dx * DRAG_GAIN,
+      // Apply a constant upward offset so the piece sits above the pointer.
+      y:
+        interaction.startCenter.y +
+        dy * DRAG_GAIN -
+        DRAG_VISUAL_OFFSET_Y,
+    };
   };
 
   const updateGhostFromCenter = (
@@ -670,10 +690,7 @@ export function GameProvider({
         x: interaction.startX,
         y: interaction.startY,
       };
-      const targetCenter = {
-        x: pointer.x - interaction.pieceCenterOffsetPx.x,
-        y: pointer.y - interaction.pieceCenterOffsetPx.y,
-      };
+      const targetCenter = getAmplifiedCenter(interaction, pointer);
       interaction.targetCenter = targetCenter;
       const alpha = interaction.pointerType === "touch" ? 0.28 : 0.4;
       const smoothed = interaction.smoothedCenter ?? targetCenter;
