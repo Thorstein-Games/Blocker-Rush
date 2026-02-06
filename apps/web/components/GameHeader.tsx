@@ -24,7 +24,7 @@ const modeLinks: Array<{
 }> = [
   { key: "daily", label: "Daily", href: "/" },
   { key: "casual", label: "Casual", href: "/casual" },
-  { key: "multiplayer", label: "Multiplayer" },
+  { key: "multiplayer", label: "Multiplayer", href: "/multiplayer" },
 ];
 
 const ChartIcon = () => (
@@ -104,7 +104,7 @@ const howToPlayPanel = (
           Casual lets you pick difficulty, generate random puzzles, or load a
           specific puzzle ID
         </li>
-        <li>Multiplayer is coming soon.</li>
+        <li>Multiplayer is a live race with synchronized rounds.</li>
       </ul>
     </div>
   </div>

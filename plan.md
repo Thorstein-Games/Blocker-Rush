@@ -125,29 +125,19 @@ Out:
 
 ## Phase 4 — Daily Challenge
 
-1. **Daily puzzle selection**
+1. [x] **Daily puzzle selection**
    - Deterministic client-side selection based on local date.
    - Use weekday to select difficulty tier.
    - Map date to a puzzle ID within the tier using seeded RNG.
 
-2. **Streaks**
+2. [x] **Streaks**
    - Track streak locally.
    - Reset streak on missed day.
 
-3. **End of day**
+3. [x] **End of day**
    - Local midnight rollover triggers new puzzle.
 
-## Phase 5 — Accessibility, and UI Polish
-
-1. **Screen reader**
-   - Menus accessible; board itself not fully screen-reader playable.
-
-2. **UI design**
-   - Modern, sleek aesthetic.
-   - Clear focus states and contrast for draggable pieces and blockers.
-   - Placeholder slots for ads but no provider integration.
-
-## Phase 6 — Multiplayer Mode (Server-Authoritative)
+## Phase 5 — Multiplayer Mode (Server-Authoritative)
 
 1. **Server foundation**
    - Node/TypeScript server with WebSocket (Socket.io).
@@ -174,7 +164,7 @@ Out:
 6. **Multiplayer stats**
    - Store win/loss and best times locally only.
 
-## Phase 7 — Testing & QA
+## Phase 6 — Testing & QA
 
 1. **Unit tests**
    - Piece transforms (rotations/reflections).
@@ -196,7 +186,7 @@ Out:
    - Mobile-first usability validation.
    - Performance check in modern browsers.
 
-## Phase 8 — Deployment & Operations (MVP)
+## Phase 7 — Deployment & Operations (MVP)
 
 1. **Client deploy**
    - Build and host Next.js web app.
@@ -207,39 +197,3 @@ Out:
 
 3. **Monitoring**
    - Basic logging for multiplayer errors and disconnects.
-
-## Important Interfaces & Types (Initial Draft)
-
-- `Coordinate`: `{ col: "A"|...|"F", row: 1|...|6 }`
-- `PuzzleId`: string, canonicalized `p=...` format
-- `PuzzleRecord`: `{ id, blockers, difficulty, solutionCount, rulesVersion }`
-- `Move`: `{ pieceId, transformId, origin, placedAt }`
-- WebSocket events:
-  - `room:join`, `room:state`, `round:start`, `move:place`, `move:undo`, `round:complete`, `match:complete`, `player:disconnect`, `player:reconnect`
-
-## Open Decisions to Confirm
-
-- Final UI layout and art direction (modern + sleek requirement).
-  You decide.
-- Whether to expose a public API for puzzle lookup or keep all puzzle data bundled client-side.
-  Keep it bundled on the client side based on URL param
-- Exact keyboard bindings if you want something other than the suggested defaults.
-  You decide.
-- Whether multiplayer uses a shared server-side puzzle dataset or ships precomputed IDs from the client.
-  Ships precomputed IDs of the coordinates of the blockers
-
-## Acceptance Scenarios
-
-1. Casual:
-   - Player selects difficulty, solves puzzle, receives completion effects, share link generated with ASCII summary.
-2. Multiplayer:
-   - Player joins room (public or private), countdown starts, three rounds complete, winner declared, and late rejoin within 30 seconds works.
-3. Daily:
-   - Player gets correct difficulty by weekday, streak increments on win, and resets on missed day.
-
-## Assumptions & Constraints
-
-- Modern browsers only; no offline mode.
-- Ads are placeholders only for now.
-- All personal stats stored locally (no cloud sync).
-- Puzzle IDs are permanent and shareable.

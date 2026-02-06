@@ -12,6 +12,21 @@ const orderPieces = (pieceIds: PieceId[]): PieceId[] =>
     return bSize - aSize || bTransforms - aTransforms || a.localeCompare(b);
   });
 
+const createEmptyPlacements = (): Record<
+  PieceId,
+  { origin: { x: number; y: number }; transformId: string } | undefined
+> =>
+  PIECES.reduce(
+    (acc, piece) => {
+      acc[piece.id] = undefined;
+      return acc;
+    },
+    {} as Record<
+      PieceId,
+      { origin: { x: number; y: number }; transformId: string } | undefined
+    >,
+  );
+
 const canPlaceAt = (
   cells: (PieceId | "blocker" | null)[],
   size: BoardSize,
@@ -67,7 +82,7 @@ export const solvePuzzle = (
   const baseCells = [...board.cells];
 
   const pieceIds = orderPieces(PIECES.map((piece) => piece.id));
-  const placements: Record<PieceId, { origin: { x: number; y: number }; transformId: string } | undefined> = {};
+  const placements = createEmptyPlacements();
   const result: SolveResult = {
     solutionCount: 0,
     nodesVisited: 0,

@@ -1,0 +1,21 @@
+{
+  "name": "@blocker-rush/protocol",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "tsc -p tsconfig.build.json --noEmit"
+  },
+  "dependencies": {
+    "@blocker-rush/shared": "*",
+    "zod": "3.23.8"
+  }
+}

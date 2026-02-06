@@ -421,6 +421,115 @@ input {
   gap: 24px;
 }
 
+.multiplayer-page {
+  gap: 16px;
+}
+
+.multiplayer-lobby {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.multiplayer-room-stage {
+  width: min(760px, 100%);
+  margin-inline: auto;
+}
+
+.multiplayer-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.room-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--glass-2);
+}
+
+.multiplayer-game-layout {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.opponents-column {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.opponents-column h3 {
+  margin: 0;
+  font-family: "Oxanium", system-ui, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+}
+
+.opponent-card {
+  border: 1px solid var(--border-soft);
+  background: var(--glass);
+  border-radius: 14px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.opponent-card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.opponent-mini-board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.opponent-mini-cell {
+  aspect-ratio: 1;
+  border-radius: 3px;
+  background: rgba(128, 136, 142, 0.3);
+}
+
+.opponent-mini-cell.blocker {
+  background: rgba(227, 90, 72, 0.8);
+}
+
+.opponent-mini-cell.piece {
+  background: rgba(43, 191, 139, 0.8);
+}
+
+.multiplayer-main-board {
+  align-items: center;
+}
+
+.multiplayer-board-controls {
+  width: min(720px, 100%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.multiplayer-result {
+  width: min(760px, 100%);
+  margin-inline: auto;
+}
+
 .settings-stack {
   display: flex;
   flex-direction: column;
@@ -1008,6 +1117,18 @@ input {
 @media (max-width: 980px) {
   .casual-layout {
     grid-template-columns: 1fr;
+  }
+
+  .multiplayer-game-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .opponents-column {
+    order: 2;
+  }
+
+  .multiplayer-main-board {
+    order: 1;
   }
 }
 
