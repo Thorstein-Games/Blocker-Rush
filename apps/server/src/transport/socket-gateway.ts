@@ -22,7 +22,7 @@ import {
 import { TokenBucket } from "../domain/rateLimiter";
 import { RoomManager } from "../domain/rooms";
 import type { InternalPlayerState, InternalRoom, RoundPuzzle } from "../domain/types";
-import { clampLockInMs, countdownMs, createId, now } from "../domain/utils";
+import { countdownMs, createId, now } from "../domain/utils";
 
 const hashSeed = (value: string): number => {
   let hash = 2166136261;
@@ -204,36 +204,26 @@ export const createSocketGateway = (port: number) => {
     emitToRoom(room.roomCode, serializeRoomState(room));
   };
 
-  const scheduleFinalize = (room: InternalRoom) => {
-    if (!room.match?.lockEndsAt || !room.match.winnerId) return;
+  const finishMatch = (room: InternalRoom, winnerId: string) => {
+    if (!room.match) return;
+    const result = finalizePlacements(room.players, winnerId);
+    room.match.winnerId = winnerId;
+    room.status = "finished";
+    room.updatedAt = now();
 
-    if (room.match.finalizeTimerId) {
-      clearTimeout(room.match.finalizeTimerId);
-    }
-
-    const delay = Math.max(0, room.match.lockEndsAt - now());
-    room.match.finalizeTimerId = setTimeout(() => {
-      const freshRoom = roomManager.getRoom(room.roomCode);
-      if (!freshRoom?.match?.winnerId) return;
-      if (freshRoom.status !== "winner_window") return;
-
-      const result = finalizePlacements(freshRoom.players, freshRoom.match.winnerId);
-      freshRoom.status = "finished";
-      freshRoom.updatedAt = now();
-
-      emitRoomState(freshRoom);
-      emitToRoom(freshRoom.roomCode, {
-        type: "matchResult",
-        data: {
-          roomCode: freshRoom.roomCode,
-          matchId: freshRoom.match.matchId,
-          winnerId: result.winnerId,
-          placements: result.placements,
-          splitsByPlayer: result.splitsByPlayer,
-        },
-      });
-      emitLobbyState();
-    }, delay);
+    emitRoomState(room);
+    emitToRoom(room.roomCode, {
+      type: "matchResult",
+      data: {
+        roomCode: room.roomCode,
+        matchId: room.match.matchId,
+        winnerId: result.winnerId,
+        placements: result.placements,
+        splitsByPlayer: result.splitsByPlayer,
+        winnerBoards: result.winnerBoards,
+      },
+    });
+    emitLobbyState();
   };
 
   const scheduleCountdown = (room: InternalRoom) => {
@@ -365,35 +355,11 @@ export const createSocketGateway = (port: number) => {
       player.finalFinishedAt = round.finishedAt;
 
       if (!room.match.winnerId) {
-        const decidedAt = now();
-        const lockInMs = clampLockInMs(room.settings.lockInMs);
-        room.match.winnerId = player.playerId;
-        room.match.winnerDecidedAt = decidedAt;
-        room.match.lockEndsAt = decidedAt + lockInMs;
-        room.status = "winner_window";
-        room.updatedAt = now();
-
-        emitRoomState(room);
-        emitToRoom(room.roomCode, {
-          type: "winnerDecided",
-          data: {
-            roomCode: room.roomCode,
-            matchId: room.match.matchId,
-            winnerId: player.playerId,
-            decidedAt,
-            lockInMs,
-            lockEndsAt: room.match.lockEndsAt,
-          },
-        });
-
-        scheduleFinalize(room);
+        finishMatch(room, player.playerId);
+        emitToRoom(room.roomCode, serializePlayerState(room, player));
+        return;
       }
 
-      emitToRoom(room.roomCode, serializePlayerState(room, player));
-      return;
-    }
-
-    if (room.status === "winner_window") {
       emitToRoom(room.roomCode, serializePlayerState(room, player));
       return;
     }
@@ -461,7 +427,7 @@ export const createSocketGateway = (port: number) => {
       return;
     }
 
-    if (room.status !== "in_game" && room.status !== "winner_window") {
+    if (room.status !== "in_game") {
       emitEvent(
         socket,
         serializeActionRejected({

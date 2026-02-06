@@ -163,7 +163,7 @@ test("round finish computes split and advances", () => {
   assert.equal(nextRound?.startedAt, 2300);
 });
 
-test("finalizePlacements ranks by completion then rounds", () => {
+test("finalizePlacements returns winner only", () => {
   const players = {
     a: {
       playerId: "a",
@@ -176,9 +176,9 @@ test("finalizePlacements ranks by completion then rounds", () => {
       splitsMs: [1000, 1000, 1000],
       lastProcessedSeq: 1,
       rounds: {
-        0: { finishedAt: 1 },
-        1: { finishedAt: 1 },
-        2: { finishedAt: 1 },
+        0: { roundIndex: 0, puzzleId: "p0", placedPieces: [], finishedAt: 1 },
+        1: { roundIndex: 1, puzzleId: "p1", placedPieces: [], finishedAt: 1 },
+        2: { roundIndex: 2, puzzleId: "p2", placedPieces: [], finishedAt: 1 },
       },
       ready: false,
     },
@@ -192,9 +192,9 @@ test("finalizePlacements ranks by completion then rounds", () => {
       splitsMs: [1200, null, null],
       lastProcessedSeq: 1,
       rounds: {
-        0: { finishedAt: 1 },
-        1: {},
-        2: {},
+        0: { roundIndex: 0, puzzleId: "p0", placedPieces: [], finishedAt: 1 },
+        1: { roundIndex: 1, puzzleId: "p1", placedPieces: [] },
+        2: { roundIndex: 2, puzzleId: "p2", placedPieces: [] },
       },
       ready: false,
     },
@@ -202,6 +202,7 @@ test("finalizePlacements ranks by completion then rounds", () => {
 
   const result = finalizePlacements(players, "a");
   assert.equal(result.winnerId, "a");
+  assert.equal(result.placements.length, 1);
   assert.equal(result.placements[0]?.playerId, "a");
-  assert.equal(result.placements[1]?.status, "dnf");
+  assert.equal(result.placements[0]?.status, "finished");
 });

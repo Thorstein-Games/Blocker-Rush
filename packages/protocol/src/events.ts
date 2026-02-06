@@ -402,6 +402,15 @@ const matchResultSchema = z
         splitsByPlayer: z.record(
           z.array(z.number().int().min(0).nullable()),
         ),
+        winnerBoards: z.array(
+          z
+            .object({
+              roundIndex: z.number().int().min(0),
+              puzzleId: z.string().min(1),
+              placedPieces: z.array(piecePlacementSchema),
+            })
+            .strict(),
+        ),
       })
       .strict(),
   })

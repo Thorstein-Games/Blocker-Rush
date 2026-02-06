@@ -84,63 +84,109 @@ function MultiplayerBoardInner({
 
   const round = selfPlayer?.round;
   const roundIndex = selfPlayer?.currentRoundIndex ?? 0;
+  const roundPuzzleId = round?.puzzleId ?? "";
+  const roundStartedAt = round?.startedAt;
+  const roundPlacedPieces = round?.placedPieces ?? [];
 
-  const puzzleId = round?.puzzleId ?? "";
   const blockers = useMemo(() => {
-    if (!puzzleId) return [];
-    const record = getPuzzleById(puzzleId);
+    if (!roundPuzzleId) return [];
+    const record = getPuzzleById(roundPuzzleId);
     if (record) return record.blockers;
     try {
-      return parsePuzzleId(puzzleId);
+      return parsePuzzleId(roundPuzzleId);
     } catch {
       return [];
     }
-  }, [puzzleId]);
+  }, [roundPuzzleId]);
 
   const syncedRef = useRef(false);
   const suppressDiffRef = useRef(false);
   const prevPlacementsRef = useRef(board.placements);
   const submittedRoundsRef = useRef(new Set<number>());
+  const applyPuzzleRef = useRef(applyPuzzle);
+  const restoreStateRef = useRef(restoreState);
+  const appliedRoundKeyRef = useRef<string | null>(null);
+  const restoredRoundStateKeyRef = useRef<string | null>(null);
+  const restoredRejectKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!round || blockers.length === 0) return;
+    applyPuzzleRef.current = applyPuzzle;
+  }, [applyPuzzle]);
 
-    applyPuzzle({
-      id: round.puzzleId,
+  useEffect(() => {
+    restoreStateRef.current = restoreState;
+  }, [restoreState]);
+
+  const placedPiecesKey = useMemo(
+    () =>
+      roundPlacedPieces
+        .map(
+          (piece) =>
+            `${piece.pieceId}:${piece.transformId}:${piece.x}:${piece.y}`,
+        )
+        .sort()
+        .join("|"),
+    [roundPlacedPieces],
+  );
+
+  const roundSyncKey = useMemo(() => {
+    if (!roundPuzzleId) return "";
+    return `${roundIndex}:${roundPuzzleId}:${roundStartedAt ?? ""}`;
+  }, [roundIndex, roundPuzzleId, roundStartedAt]);
+
+  const roundStateKey = useMemo(() => {
+    if (!roundSyncKey) return "";
+    return `${roundSyncKey}:${placedPiecesKey}`;
+  }, [placedPiecesKey, roundSyncKey]);
+
+  useEffect(() => {
+    if (!roundSyncKey || blockers.length === 0) return;
+    if (appliedRoundKeyRef.current === roundSyncKey) return;
+
+    applyPuzzleRef.current({
+      id: roundPuzzleId,
       blockers,
       difficulty: null,
     });
 
+    appliedRoundKeyRef.current = roundSyncKey;
     suppressDiffRef.current = true;
     syncedRef.current = false;
-  }, [applyPuzzle, round?.puzzleId, blockers, round]);
+  }, [blockers, roundPuzzleId, roundSyncKey]);
 
   useEffect(() => {
-    if (!round) return;
-    if (!round.puzzleId) return;
+    if (!roundStateKey) return;
+    if (restoredRoundStateKeyRef.current === roundStateKey) return;
 
-    restoreState({
-      placements: round.placedPieces.map(toPlacement),
-      pieceStates: buildPieceStates(round.placedPieces),
+    restoreStateRef.current({
+      placements: roundPlacedPieces.map(toPlacement),
+      pieceStates: buildPieceStates(roundPlacedPieces),
       blockers,
-      startedAt: round.startedAt,
+      startedAt: roundStartedAt,
     });
+    restoredRoundStateKeyRef.current = roundStateKey;
     suppressDiffRef.current = true;
     syncedRef.current = true;
-  }, [restoreState, round, blockers]);
+  }, [blockers, roundPlacedPieces, roundStartedAt, roundStateKey]);
 
   useEffect(() => {
     if (!authoritativeReject) return;
     if (authoritativeReject.roundIndex !== roundIndex) return;
+    const rejectKey = `${authoritativeReject.roundIndex}:${authoritativeReject.placedPieces
+      .map((piece) => `${piece.pieceId}:${piece.transformId}:${piece.x}:${piece.y}`)
+      .sort()
+      .join("|")}`;
+    if (restoredRejectKeyRef.current === rejectKey) return;
 
-    restoreState({
+    restoreStateRef.current({
       placements: authoritativeReject.placedPieces.map(toPlacement),
       pieceStates: buildPieceStates(authoritativeReject.placedPieces),
       blockers,
-      startedAt: round?.startedAt,
+      startedAt: roundStartedAt,
     });
+    restoredRejectKeyRef.current = rejectKey;
     suppressDiffRef.current = true;
-  }, [authoritativeReject, roundIndex, restoreState, blockers, round?.startedAt]);
+  }, [authoritativeReject, blockers, roundIndex, roundStartedAt]);
 
   useEffect(() => {
     const previous = prevPlacementsRef.current;

@@ -77,6 +77,7 @@ export type MultiplayerState = {
     lockEndsAt: number;
   };
   result?: {
+    state: "finished";
     winnerId: string;
     placements: Array<{
       playerId: string;
@@ -86,6 +87,11 @@ export type MultiplayerState = {
       status: "finished" | "dnf";
     }>;
     splitsByPlayer: Record<string, Array<number | null>>;
+    winnerBoards: Array<{
+      roundIndex: number;
+      puzzleId: string;
+      placedPieces: PiecePlacement[];
+    }>;
   };
   clockOffsetMs: number;
   lastRejected?: {
@@ -518,9 +524,11 @@ const reduceServerEvent = (
       return {
         ...prev,
         result: {
+          state: "finished",
           winnerId: event.data.winnerId,
           placements: event.data.placements,
           splitsByPlayer: event.data.splitsByPlayer,
+          winnerBoards: event.data.winnerBoards,
         },
       };
     }

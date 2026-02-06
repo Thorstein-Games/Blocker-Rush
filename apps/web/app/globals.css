@@ -530,6 +530,132 @@ input {
   margin-inline: auto;
 }
 
+.multiplayer-result-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(
+      circle at 50% 18%,
+      rgba(242, 193, 78, 0.14),
+      transparent 58%
+    ),
+    rgba(6, 10, 11, 0.64);
+  backdrop-filter: blur(8px);
+}
+
+.multiplayer-result-modal {
+  position: relative;
+  overflow: hidden;
+  width: min(760px, calc(100vw - 32px));
+  background: linear-gradient(
+    165deg,
+    rgba(13, 21, 20, 0.97),
+    rgba(9, 15, 16, 0.95)
+  );
+  border: 1px solid rgba(242, 193, 78, 0.24);
+  border-radius: 24px;
+  padding: 26px;
+  display: grid;
+  gap: 18px;
+  box-shadow: 0 22px 56px rgba(0, 0, 0, 0.46);
+  animation: matchResultIn 380ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.multiplayer-result-fireworks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.multiplayer-result-header {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+.multiplayer-result-header h3 {
+  margin: 0;
+}
+
+.multiplayer-result-header p {
+  margin: 0;
+}
+
+.multiplayer-result-list {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+}
+
+.multiplayer-result-boards {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+}
+
+.multiplayer-result-boards h4 {
+  margin: 0;
+}
+
+.multiplayer-result-boards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.multiplayer-result-board-card {
+  background: rgba(16, 28, 30, 0.7);
+  border: 1px solid rgba(124, 151, 148, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.multiplayer-result-mini-board {
+  --cell: 18px;
+  --board-gap: 3px;
+}
+
+.multiplayer-result-row {
+  background: rgba(16, 28, 30, 0.7);
+  border: 1px solid rgba(124, 151, 148, 0.24);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.multiplayer-result-row-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.multiplayer-result-actions {
+  position: relative;
+  z-index: 1;
+  padding-top: 4px;
+}
+
+@keyframes matchResultIn {
+  from {
+    opacity: 0;
+    transform: translateY(22px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .settings-stack {
   display: flex;
   flex-direction: column;
@@ -1081,6 +1207,7 @@ input {
 .celebration {
   position: absolute;
   inset: 0;
+  overflow: hidden;
   background: radial-gradient(
     circle at top,
     rgba(242, 193, 78, 0.3),
@@ -1094,7 +1221,16 @@ input {
   animation: flare 1.4s ease-out infinite alternate;
 }
 
+.celebration-fireworks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
 .celebration-card {
+  position: relative;
+  z-index: 1;
   background: rgba(12, 18, 17, 0.92);
   border-radius: 18px;
   padding: 18px 20px;
@@ -1133,6 +1269,26 @@ input {
 }
 
 @media (max-width: 720px) {
+  .multiplayer-result-modal-backdrop {
+    padding: 10px;
+  }
+
+  .multiplayer-result-modal {
+    width: min(100vw - 16px, 760px);
+    padding: 18px;
+    gap: 14px;
+    border-radius: 18px;
+  }
+
+  .multiplayer-result-row {
+    padding: 10px 12px;
+  }
+
+  .multiplayer-result-mini-board {
+    --cell: 16px;
+    --board-gap: 2px;
+  }
+
   .game-center {
     gap: 8px;
   }

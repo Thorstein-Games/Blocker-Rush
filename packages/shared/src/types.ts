@@ -15,6 +15,13 @@ export type PuzzleId = string;
 
 export type Difficulty = "easy" | "medium" | "hard" | "insane";
 
+export const difficultyOptions: Difficulty[] = [
+  "easy",
+  "medium",
+  "hard",
+  "insane",
+];
+
 export type PieceId =
   | "p1"
   | "p2"

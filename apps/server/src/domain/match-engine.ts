@@ -307,45 +307,37 @@ export const tryAdvancePlayer = (
 const roundsCompleted = (player: InternalPlayerState): number =>
   Object.values(player.rounds).filter((round) => Boolean(round.finishedAt)).length;
 
-const splitTotalMs = (player: InternalPlayerState): number =>
-  player.splitsMs.reduce<number>((acc, split) => acc + (split ?? 0), 0);
-
 export const finalizePlacements = (
   players: Record<string, InternalPlayerState>,
   winnerId: string,
 ): MatchResultPayload => {
-  const list = Object.values(players);
-  const sorted = [...list].sort((a, b) => {
-    if (a.completedFinal !== b.completedFinal) {
-      return a.completedFinal ? -1 : 1;
-    }
+  const winner = players[winnerId];
+  if (!winner) {
+    throw new Error(`Winner not found in room players: ${winnerId}`);
+  }
 
-    if (a.completedFinal && b.completedFinal) {
-      return (a.finalFinishedAt ?? Number.MAX_SAFE_INTEGER) -
-        (b.finalFinishedAt ?? Number.MAX_SAFE_INTEGER);
-    }
-
-    const roundsDiff = roundsCompleted(b) - roundsCompleted(a);
-    if (roundsDiff !== 0) {
-      return roundsDiff;
-    }
-
-    return splitTotalMs(a) - splitTotalMs(b);
-  });
-
-  const placements: MatchResultPayload["placements"] = sorted.map((player, index) => ({
-    playerId: player.playerId,
-    place: index + 1,
-    roundsCompleted: roundsCompleted(player),
-    finalFinishAt: player.finalFinishedAt,
-    status: player.completedFinal ? "finished" : "dnf",
-  }));
+  const placements: MatchResultPayload["placements"] = [
+    {
+      playerId: winner.playerId,
+      place: 1,
+      roundsCompleted: roundsCompleted(winner),
+      finalFinishAt: winner.finalFinishedAt,
+      status: "finished",
+    },
+  ];
 
   return {
     winnerId,
     placements,
     splitsByPlayer: Object.fromEntries(
-      sorted.map((player) => [player.playerId, player.splitsMs]),
+      Object.values(players).map((player) => [player.playerId, player.splitsMs]),
     ),
+    winnerBoards: Object.values(winner.rounds)
+      .sort((a, b) => a.roundIndex - b.roundIndex)
+      .map((round) => ({
+        roundIndex: round.roundIndex,
+        puzzleId: round.puzzleId,
+        placedPieces: round.placedPieces.map(clonePlacement),
+      })),
   };
 };

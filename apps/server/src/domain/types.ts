@@ -20,7 +20,6 @@ export type InternalPlayerState = Omit<PlayerState, "rounds"> & {
 export type InternalRoom = Omit<Room, "players" | "match"> & {
   players: Record<string, InternalPlayerState>;
   match?: MatchState & {
-    finalizeTimerId?: ReturnType<typeof setTimeout>;
     countdownTimerId?: ReturnType<typeof setTimeout>;
   };
 };
@@ -56,4 +55,9 @@ export type MatchResultPayload = {
   winnerId: string;
   placements: MatchPlacement[];
   splitsByPlayer: Record<string, Array<number | null>>;
+  winnerBoards: Array<{
+    roundIndex: number;
+    puzzleId: string;
+    placedPieces: PlayerRoundState["placedPieces"];
+  }>;
 };

@@ -12,6 +12,7 @@ import {
   PIECES,
   buildShareText,
   canonicalizePuzzleId,
+  difficultyOptions,
   formatCoordinate,
   getPuzzleById,
   parsePuzzleId,
@@ -31,8 +32,6 @@ import ThemeSelect from "./ThemeSelect";
 
 const SETTINGS_KEY = "blockerRush.casual.settings";
 const STATS_KEY = "blockerRush.casual.stats";
-
-const difficultyOptions: Difficulty[] = ["easy", "medium", "hard", "insane"];
 
 type CasualSettings = {
   difficulty: Difficulty;

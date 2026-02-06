@@ -301,10 +301,6 @@ export class RoomManager {
     if (room.match?.countdownTimerId) {
       clearTimeout(room.match.countdownTimerId);
     }
-    if (room.match?.finalizeTimerId) {
-      clearTimeout(room.match.finalizeTimerId);
-    }
-
     for (const player of Object.values(room.players)) {
       if (player.socketId) {
         this.socketSeats.delete(player.socketId);

@@ -34,9 +34,9 @@ const useLocalStorage = <T>(
 
   const deserializer: (value: string) => T = options
     ? options.raw
-      ? ((value: string) => value as unknown as T)
+      ? (value: string) => value as unknown as T
       : options.deserializer
-    : ((value: string) => JSON.parse(value) as T);
+    : (value: string) => JSON.parse(value) as T;
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const initializer = useRef((key: string) => {
