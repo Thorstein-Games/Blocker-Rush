@@ -120,8 +120,8 @@ export function useMultiplayerSocket() {
   const clientSeqRef = useRef(0);
 
   useEffect(() => {
-    const isDev = process.env.NODE_ENV === 'development';
-    const socket = io(isDev ? 'http://localhost:3001' : undefined, {
+    // Connects to same origin with custom path
+    const socket = io({
       path: '/api/socket',
       transports: ["websocket"],
       autoConnect: true,

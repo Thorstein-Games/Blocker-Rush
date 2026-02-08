@@ -186,16 +186,8 @@ const serializeActionRejected = (args: {
   };
 };
 
-export const createSocketGateway = (port: number) => {
+export const attachSocketHandlers = (io: Server) => {
   const roomManager = new RoomManager();
-  const httpServer = createServer();
-  const io = new Server(httpServer, {
-    path: "/api/socket",
-    cors: {
-      origin: "*",
-    },
-  });
-
   const rateLimiterBySocket = new Map<string, TokenBucket>();
 
   const emitEvent = (socket: Socket, event: ServerEvent) => {
@@ -855,8 +847,24 @@ export const createSocketGateway = (port: number) => {
     }
   }, 5000);
 
+  return {
+    cleanup: () => clearInterval(cleanupInterval),
+  };
+};
+
+export const createSocketGateway = (port: number) => {
+  const httpServer = createServer();
+  const io = new Server(httpServer, {
+    path: "/api/socket",
+    cors: {
+      origin: "*",
+    },
+  });
+
+  const handlers = attachSocketHandlers(io);
+
   httpServer.on("close", () => {
-    clearInterval(cleanupInterval);
+    handlers.cleanup();
   });
 
   return {
