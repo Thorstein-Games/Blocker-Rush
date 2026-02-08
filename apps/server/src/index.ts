@@ -1,6 +1,6 @@
 import { createSocketGateway } from "./transport/socket-gateway";
 
-const port = Number.parseInt(process.env.PORT ?? "3001", 10);
+const port = Number.parseInt(process.env.SERVER_PORT ?? "3001", 10);
 
 const gateway = createSocketGateway(port);
 
