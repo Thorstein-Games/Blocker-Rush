@@ -190,6 +190,7 @@ export const createSocketGateway = (port: number) => {
   const roomManager = new RoomManager();
   const httpServer = createServer();
   const io = new Server(httpServer, {
+    path: "/api/socket",
     cors: {
       origin: "*",
     },

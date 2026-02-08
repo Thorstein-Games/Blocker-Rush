@@ -17,9 +17,6 @@ const DEFAULT_SETTINGS: MatchSettings = {
   lockInMs: 20_000,
 };
 
-const serverUrl =
-  process.env.NEXT_PUBLIC_MULTIPLAYER_URL ?? "http://localhost:3001";
-
 const resumeKey = (roomCode: string) =>
   `blockerRush.multiplayer.resume.${roomCode.toUpperCase()}`;
 
@@ -123,7 +120,9 @@ export function useMultiplayerSocket() {
   const clientSeqRef = useRef(0);
 
   useEffect(() => {
-    const socket = io(serverUrl, {
+    const isDev = process.env.NODE_ENV === 'development';
+    const socket = io(isDev ? 'http://localhost:3001' : undefined, {
+      path: '/api/socket',
       transports: ["websocket"],
       autoConnect: true,
     });
