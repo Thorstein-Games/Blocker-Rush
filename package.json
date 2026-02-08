@@ -8,7 +8,12 @@
   ],
   "scripts": {
     "dev": "npm run dev -w apps/web",
-    "build": "npm run build -w apps/web",
+    "build": "npm run build:server && npm run build:client",
+    "build:client": "npm run build -w apps/web",
+    "build:server": "npm run build -w apps/server",
+    "start": "npm run start:server & npm run start:client",
+    "start:client": "npm run start -w apps/web",
+    "start:server": "npm run start -w apps/server",
     "dev:server": "npm run dev -w apps/server",
     "lint": "npm run lint -w apps/web && npm run lint -w packages/shared && npm run lint -w packages/protocol",
     "typecheck": "npm run typecheck -w apps/web && npm run typecheck -w apps/server && npm run build -w packages/shared && npm run build -w packages/protocol",

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import MultiplayerGame from "../../components/multiplayer/MultiplayerGame";
 import { buildPageMetadata } from "../../lib/seo";
 
@@ -9,5 +10,9 @@ export const metadata = buildPageMetadata({
 });
 
 export default function MultiplayerPage() {
-  return <MultiplayerGame />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MultiplayerGame />
+    </Suspense>
+  );
 }

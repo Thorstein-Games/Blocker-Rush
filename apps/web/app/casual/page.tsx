@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import CasualGame from "../../components/CasualGame";
 import { buildPageMetadata } from "../../lib/seo";
 
@@ -9,5 +10,9 @@ export const metadata = buildPageMetadata({
 });
 
 export default function CasualPage() {
-  return <CasualGame />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CasualGame />
+    </Suspense>
+  );
 }
