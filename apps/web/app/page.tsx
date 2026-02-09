@@ -1,4 +1,3 @@
-import "./home.css";
 import DailyGame from "../components/DailyGame";
 import { buildPageMetadata } from "../lib/seo";
 
