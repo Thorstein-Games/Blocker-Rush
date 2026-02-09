@@ -114,6 +114,32 @@ const createInitialState = (): MultiplayerState => ({
   clockOffsetMs: 0,
 });
 
+const getRoundDef = (state: MultiplayerState, roundIndex: number) =>
+  state.match?.rounds.find((round) => round.roundIndex === roundIndex);
+
+const fallbackRoundSnapshot = (
+  state: MultiplayerState,
+  player: TrackedPlayer | undefined,
+  roundIndex: number,
+) => {
+  const sameRound = player?.round?.roundIndex === roundIndex;
+  const roundDef = getRoundDef(state, roundIndex);
+  const fallbackStartTime =
+    sameRound && player?.round
+      ? player.round.startedAt
+      : roundIndex === 0
+        ? (state.match?.startTime ?? player?.round?.startedAt ?? 0)
+        : (player?.round?.startedAt ?? 0);
+
+  return {
+    puzzleId:
+      sameRound && player?.round
+        ? player.round.puzzleId
+        : (roundDef?.puzzleId ?? ""),
+    startedAt: fallbackStartTime,
+  };
+};
+
 export function useMultiplayerSocket() {
   const [state, setState] = useState<MultiplayerState>(createInitialState);
   const socketRef = useRef<Socket | null>(null);
@@ -467,29 +493,47 @@ const reduceServerEvent = (
     }
     case "roundStart": {
       const player = prev.players[event.data.playerId];
-      if (!player) return prev;
+      const nextRound = {
+        roundIndex: event.data.roundIndex,
+        puzzleId: event.data.puzzleId,
+        startedAt: event.data.startTime,
+        placedPieces: [],
+        remainingPieceIds: [],
+        boardFilledCount: 0,
+      };
+
+      const nextPlayer: TrackedPlayer = player
+        ? {
+            ...player,
+            currentRoundIndex: event.data.roundIndex,
+            round: nextRound,
+          }
+        : {
+            playerId: event.data.playerId,
+            name: event.data.playerId,
+            connected: true,
+            ready: false,
+            currentRoundIndex: event.data.roundIndex,
+            splitsMs: [],
+            lastAppliedSeq: 0,
+            round: nextRound,
+          };
+
       return {
         ...prev,
         players: {
           ...prev.players,
-          [event.data.playerId]: {
-            ...player,
-            currentRoundIndex: event.data.roundIndex,
-            round: {
-              roundIndex: event.data.roundIndex,
-              puzzleId: event.data.puzzleId,
-              startedAt: event.data.startTime,
-              placedPieces: [],
-              remainingPieceIds: [],
-              boardFilledCount: 0,
-            },
-          },
+          [event.data.playerId]: nextPlayer,
         },
       };
     }
     case "playerState": {
       const player = prev.players[event.data.playerId];
-      const sameRound = player?.round?.roundIndex === event.data.roundIndex;
+      const fallbackRound = fallbackRoundSnapshot(
+        prev,
+        player,
+        event.data.roundIndex,
+      );
       return {
         ...prev,
         players: {
@@ -504,8 +548,8 @@ const reduceServerEvent = (
             lastAppliedSeq: event.data.lastAppliedSeq,
             round: {
               roundIndex: event.data.roundIndex,
-              puzzleId: sameRound ? (player?.round?.puzzleId ?? "") : "",
-              startedAt: player?.round?.startedAt ?? 0,
+              puzzleId: fallbackRound.puzzleId,
+              startedAt: fallbackRound.startedAt,
               finishedAt: event.data.finishedAt,
               splitMs: event.data.splitMs,
               placedPieces: event.data.placedPieces,
