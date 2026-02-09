@@ -72,21 +72,6 @@ export default function MultiplayerActiveMatch() {
     );
 
     return [...players]
-      .sort((a, b) => {
-        const aWinner = a.playerId === winnerId ? -1 : 0;
-        const bWinner = b.playerId === winnerId ? -1 : 0;
-        if (aWinner !== bWinner) return aWinner - bWinner;
-
-        const aPlacement = placementsByPlayer.get(a.playerId)?.place;
-        const bPlacement = placementsByPlayer.get(b.playerId)?.place;
-        if (aPlacement && bPlacement && aPlacement !== bPlacement) {
-          return aPlacement - bPlacement;
-        }
-        if (aPlacement && !bPlacement) return -1;
-        if (!aPlacement && bPlacement) return 1;
-
-        return a.name.localeCompare(b.name);
-      })
       .map((player) => {
         const placement = placementsByPlayer.get(player.playerId);
         const splits =
@@ -111,6 +96,19 @@ export default function MultiplayerActiveMatch() {
           isWinner: player.playerId === winnerId,
           place: placement?.place,
         };
+      })
+      .sort((a, b) => {
+        if (a.roundsCompleted !== b.roundsCompleted) {
+          return b.roundsCompleted - a.roundsCompleted;
+        }
+
+        const aTime = a.totalMs ?? Number.POSITIVE_INFINITY;
+        const bTime = b.totalMs ?? Number.POSITIVE_INFINITY;
+        if (aTime !== bTime) {
+          return aTime - bTime;
+        }
+
+        return a.player.name.localeCompare(b.player.name);
       });
   }, [players, state.result]);
 

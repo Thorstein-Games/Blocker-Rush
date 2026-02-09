@@ -145,6 +145,39 @@ export function useMultiplayerSocket() {
   const socketRef = useRef<Socket | null>(null);
   const clientSeqRef = useRef(0);
 
+  const syncClientSeqFromServer = useCallback(
+    (prev: MultiplayerState, event: ServerEvent) => {
+      if (event.type === "matchStart") {
+        clientSeqRef.current = 0;
+        return;
+      }
+
+      if (event.type === "actionRejected") {
+        const authoritativeSeq = event.data.authoritativeState?.lastAppliedSeq;
+        if (typeof authoritativeSeq === "number") {
+          clientSeqRef.current = authoritativeSeq;
+        }
+        return;
+      }
+
+      if (event.type === "stateSync") {
+        const selfId = event.data.you?.playerId ?? prev.selfPlayerId;
+        if (!selfId) return;
+        const self = event.data.players.find(
+          (player) => player.playerId === selfId,
+        );
+        if (!self) return;
+        clientSeqRef.current = self.lastAppliedSeq;
+        return;
+      }
+
+      if (event.type === "playerState" && event.data.playerId === prev.selfPlayerId) {
+        clientSeqRef.current = event.data.lastAppliedSeq;
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     // Connects to same origin with custom path
     const socket = io({
@@ -189,7 +222,10 @@ export function useMultiplayerSocket() {
       }
 
       const event = parsed.data;
-      setState((prev) => reduceServerEvent(prev, event));
+      setState((prev) => {
+        syncClientSeqFromServer(prev, event);
+        return reduceServerEvent(prev, event);
+      });
     };
 
     socket.on("connect", handleConnect);
@@ -203,7 +239,7 @@ export function useMultiplayerSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, []);
+  }, [syncClientSeqFromServer]);
 
   const emit = useCallback((event: unknown) => {
     const socket = socketRef.current;
@@ -255,6 +291,7 @@ export function useMultiplayerSocket() {
   );
 
   const leaveRoom = useCallback(() => {
+    clientSeqRef.current = 0;
     emit({ type: "leaveRoom", data: {} });
     setState((prev) => ({
       ...createInitialState(),

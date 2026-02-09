@@ -47,6 +47,18 @@ const buildPieceStates = (
   return base;
 };
 
+const EMPTY_PLACEMENTS: Record<PieceId, Placement | undefined> = {
+  p1: undefined,
+  p2: undefined,
+  p3: undefined,
+  p4: undefined,
+  p5: undefined,
+  p6: undefined,
+  p7: undefined,
+  p8: undefined,
+  p9: undefined,
+};
+
 type MultiplayerBoardInnerProps = {
   selfPlayer?: TrackedPlayer;
   active: boolean;
@@ -153,6 +165,8 @@ function MultiplayerBoardInner({
     appliedRoundKeyRef.current = roundSyncKey;
     suppressDiffRef.current = true;
     syncedRef.current = false;
+    prevPlacementsRef.current = EMPTY_PLACEMENTS;
+    restoredRejectKeyRef.current = null;
   }, [blockers, roundPuzzleId, roundSyncKey]);
 
   useEffect(() => {
