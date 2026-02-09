@@ -4,7 +4,7 @@ import MultiplayerGame from "../../components/multiplayer/MultiplayerGame";
 import { buildPageMetadata } from "../../lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Multiplayer | Blocker Rush",
+  title: "Multiplayer | Daily Challenge | Play Genius Square Online",
   description:
     "Create or join a Blocker Rush room and race another player in real time.",
   path: "/multiplayer",

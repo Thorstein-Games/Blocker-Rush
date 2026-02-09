@@ -1088,6 +1088,13 @@ input {
   }
 }
 
+@media (max-width: 980px) {
+  .page.game-page.no-scroll-mobile {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
 @media (min-width: 744px) {
   .header-menu-toggle {
     display: none;

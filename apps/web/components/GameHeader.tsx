@@ -191,7 +191,15 @@ export default function GameHeader({
               />
             </svg>
           </button>
-          <span className="game-title">{title}</span>
+          <img
+            src="/icon.svg"
+            alt=""
+            aria-hidden="true"
+            width={28}
+            height={28}
+            style={{ display: "block", borderRadius: "6px" }}
+          />
+          <h1 className="game-title">{title}</h1>
         </div>
         <div className="header-center">
           <div className="mode-switch" role="tablist" aria-label="Game mode">

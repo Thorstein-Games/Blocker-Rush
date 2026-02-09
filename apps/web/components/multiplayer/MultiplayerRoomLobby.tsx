@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { Difficulty } from "@blocker-rush/shared";
 import { difficultyOptions } from "@blocker-rush/shared";
 import { useMultiplayerStore } from "./MultiplayerStore";
-import { formatMs } from "./multiplayerViewUtils";
 
 export default function MultiplayerRoomLobby() {
   const { state, setReady, startMatch, kickPlayer, updateSettings } =
@@ -15,45 +14,17 @@ export default function MultiplayerRoomLobby() {
     ? state.players[state.selfPlayerId]
     : undefined;
   const selfIsHost = state.hostId === state.selfPlayerId;
-  const isPublicWaitRoom =
-    state.status === "lobby" &&
-    state.roomVisibility === "public" &&
-    players.length <= 1;
 
-  const [renderNow, setRenderNow] = useState(() => Date.now());
   const [shareStatus, setShareStatus] = useState<string | null>(null);
-  const [publicWaitStartedAt, setPublicWaitStartedAt] = useState<number | null>(
-    null,
-  );
   const [hostRounds, setHostRounds] = useState(state.settings.rounds);
   const [hostDifficulties, setHostDifficulties] = useState<Difficulty[]>(
     state.settings.difficulties,
   );
 
   useEffect(() => {
-    if (isPublicWaitRoom) {
-      setPublicWaitStartedAt((prev) => prev ?? Date.now());
-      return;
-    }
-    setPublicWaitStartedAt(null);
-  }, [isPublicWaitRoom]);
-
-  useEffect(() => {
-    if (!isPublicWaitRoom) return;
-
-    setRenderNow(Date.now());
-    const timer = window.setInterval(() => setRenderNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [isPublicWaitRoom]);
-
-  useEffect(() => {
     setHostRounds(state.settings.rounds);
     setHostDifficulties(state.settings.difficulties);
   }, [state.settings.difficulties, state.settings.rounds]);
-
-  const publicWaitRemainingMs = publicWaitStartedAt
-    ? Math.max(0, 30_000 - (renderNow - publicWaitStartedAt))
-    : 0;
 
   const handleShareRoom = async () => {
     if (!state.roomCode) return;
@@ -110,13 +81,6 @@ export default function MultiplayerRoomLobby() {
           {state.roomCode}
         </button>
       </h3>
-      {isPublicWaitRoom && (
-        <div className="notice">
-          Matchmaking wait: {formatMs(publicWaitRemainingMs)} remaining.
-          {publicWaitRemainingMs === 0 &&
-            " No opponent found yet. Keep waiting or return to lobby."}
-        </div>
-      )}
       <div className="multiplayer-room-list">
         {players.map((player) => (
           <div className="room-row" key={player.playerId}>
@@ -163,7 +127,9 @@ export default function MultiplayerRoomLobby() {
               </label>
               <select
                 id={`host-difficulty-${index}`}
-                value={hostDifficulties[index] ?? difficultyOptions[index] ?? "easy"}
+                value={
+                  hostDifficulties[index] ?? difficultyOptions[index] ?? "easy"
+                }
                 onChange={(event) => {
                   const nextDifficulties = [...hostDifficulties];
                   nextDifficulties[index] = event.target.value as Difficulty;

@@ -432,7 +432,7 @@ function CasualGameLayout() {
   );
 
   return (
-    <main className="page game-page">
+    <main className="page game-page no-scroll-mobile">
       <GameHeader
         mode="casual"
         settingsTitle="Casual Settings"

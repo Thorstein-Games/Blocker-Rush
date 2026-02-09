@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { applyThemePreference, THEME_KEY, ThemePreference } from "../theme";
-import useLocalStorage from "apps/web/lib/useLocalStorage";
+import { useTheme } from "../theme";
 
 type ActiveCell = {
   col: number;
@@ -55,13 +54,7 @@ const getThemeProfile = () => {
 };
 
 export default function InteractiveGridBackground() {
-  const [theme] = useLocalStorage<ThemePreference>(THEME_KEY, "system");
-
-  useEffect(() => {
-    if (theme) {
-      applyThemePreference(theme);
-    }
-  }, [theme]);
+  useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {

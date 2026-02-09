@@ -230,15 +230,12 @@ export function GameProvider({
     if (!draggingPieceId) return;
     const previousCursor = document.body.style.cursor;
     const previousUserSelect = document.body.style.userSelect;
-    const previousWebkitUserSelect = document.body.style.webkitUserSelect;
     document.body.style.cursor = "grabbing";
     document.body.style.userSelect = "none";
-    document.body.style.webkitUserSelect = "none";
     document.body.style.touchAction = "none";
     return () => {
       document.body.style.cursor = previousCursor;
       document.body.style.userSelect = previousUserSelect;
-      document.body.style.webkitUserSelect = previousWebkitUserSelect;
       document.body.style.touchAction = "auto";
     };
   }, [draggingPieceId]);

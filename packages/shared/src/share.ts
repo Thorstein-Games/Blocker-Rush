@@ -20,6 +20,7 @@ const pieceEmoji = (pieceId: PieceId): string => {
 type ShareOptions = {
   revealPieceCount?: number;
   messageText?: string;
+  renderEmojis?: boolean;
 };
 
 const filterPlacements = (
@@ -51,7 +52,7 @@ const filterPlacements = (
   return next;
 };
 
-export const renderAsciiBoard = (
+export const renderEmojiBoard = (
   blockers: Coordinate[],
   placements: Record<
     PieceId,
@@ -107,10 +108,23 @@ export const buildShareText = (
     { origin: { x: number; y: number }; transformId: string } | undefined
   >,
   originUrl: string,
-  options: ShareOptions = {},
+  options: ShareOptions = {
+    renderEmojis: false,
+  },
 ): string => {
-  const ascii = renderAsciiBoard(parsePuzzleId(puzzleId), placements, options);
   const url = `${originUrl}?p=${puzzleId}`;
+  const finalShareText = [url];
+  if (options.renderEmojis === true) {
+    const emojiBoard = renderEmojiBoard(
+      parsePuzzleId(puzzleId),
+      placements,
+      options,
+    );
+    finalShareText.unshift("\n");
+    finalShareText.unshift(emojiBoard);
+    finalShareText.unshift("\n");
+  }
   const msg = options.messageText ?? "Play Blocker Rush!";
-  return [msg, "", ascii, "", url].join("\n");
+  finalShareText.unshift(msg);
+  return finalShareText.join();
 };

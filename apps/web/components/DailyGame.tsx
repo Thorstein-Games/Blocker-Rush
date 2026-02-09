@@ -263,17 +263,19 @@ function DailyGameLayout({ date }: { date: Date }) {
   const handleShare = async () => {
     if (!puzzleId) return;
     const baseUrl = `${window.location.origin}`;
+    const messageText =
+      solvedMoveCount > 0
+        ? `I solved today's Blocker Rush in ${solvedMoveCount} moves! Can you beat that?`
+        : "Play today's Blocker Rush challenge";
     const text = buildShareText(puzzleId, board.placements, baseUrl, {
-      messageText: "Play today's Blocker Rush challenge",
+      messageText,
       revealPieceCount: 3,
     });
-    const textWithMoves =
-      solvedMoveCount > 0 ? `${text}\nMoves: ${solvedMoveCount}` : text;
     try {
       if (navigator.share) {
-        await navigator.share({ text: textWithMoves });
+        await navigator.share({ text });
       } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(textWithMoves);
+        await navigator.clipboard.writeText(text);
       }
       setShareStatus("Copied share text.");
     } catch {
@@ -282,7 +284,7 @@ function DailyGameLayout({ date }: { date: Date }) {
   };
 
   return (
-    <main className="page game-page">
+    <main className="page game-page no-scroll-mobile">
       <GameHeader
         mode="daily"
         statsTitle="Daily Challenge"

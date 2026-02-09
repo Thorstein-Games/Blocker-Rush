@@ -1,6 +1,4 @@
 import { ImageResponse } from "next/og";
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 
 export const alt = "Blocker Rush puzzle game";
 export const size = {
@@ -10,15 +8,7 @@ export const size = {
 export const contentType = "image/png";
 export const runtime = "nodejs";
 
-const loadIconSvg = async () => {
-  const svgPath = join(process.cwd(), "app/icon.svg");
-  const svgContent = await readFile(svgPath, "utf8");
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svgContent)}`;
-};
-
 export default async function OpenGraphImage() {
-  const iconDataUrl = await loadIconSvg();
-
   return new ImageResponse(
     <div
       style={{
@@ -48,17 +38,23 @@ export default async function OpenGraphImage() {
           padding: 28,
         }}
       >
-        <img
-          src={iconDataUrl}
-          width="256"
-          height="256"
-          alt="Blocker Rush icon"
+        <div
           style={{
             display: "flex",
             width: 256,
             height: 256,
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 28,
+            background: "linear-gradient(145deg, #08111d 0%, #193c5f 100%)",
+            color: "#eaf6ff",
+            fontSize: 104,
+            fontWeight: 800,
+            letterSpacing: 4,
           }}
-        />
+        >
+          BR
+        </div>
       </div>
       <div
         style={{

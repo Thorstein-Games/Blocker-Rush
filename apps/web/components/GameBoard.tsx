@@ -47,7 +47,7 @@ export default function GameBoard({ overlay }: GameBoardProps) {
     solved,
     readOnly,
   } = useGame();
-
+  const [winnerMessage] = useState(getRandomWinnerMessage());
   const boardCells = board.cells.map((cell, index) => {
     const isBlocker = cell === "blocker";
     const isPiece = cell && cell !== "blocker";
@@ -181,7 +181,7 @@ export default function GameBoard({ overlay }: GameBoardProps) {
             <WinnerFireworks className="celebration-fireworks" />
             <div className="celebration-card">
               <strong>Puzzle Complete</strong>
-              <span>{getRandomWinnerMessage()}</span>
+              <span>{winnerMessage}</span>
             </div>
           </div>
         )}

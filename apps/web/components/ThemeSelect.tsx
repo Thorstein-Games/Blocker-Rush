@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
-import useLocalStorage from "../lib/useLocalStorage";
-import { applyThemePreference, THEME_KEY, type ThemePreference } from "./theme";
+import { useTheme, type ThemePreference } from "./theme";
 
 const themeOptions: Array<{ value: ThemePreference; label: string }> = [
   { value: "system", label: "System" },
@@ -11,16 +9,7 @@ const themeOptions: Array<{ value: ThemePreference; label: string }> = [
 ];
 
 export default function ThemeSelect() {
-  const [theme, setTheme] = useLocalStorage<ThemePreference>(
-    THEME_KEY,
-    "system",
-  );
-
-  useEffect(() => {
-    if (theme) {
-      applyThemePreference(theme);
-    }
-  }, [theme]);
+  const [theme, setTheme] = useTheme();
 
   return (
     <div className="stack">
