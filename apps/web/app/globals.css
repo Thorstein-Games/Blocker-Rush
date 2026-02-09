@@ -161,8 +161,6 @@ body {
   min-height: 100vh;
   overflow-y: auto;
   scrollbar-gutter: stable both-edges; /* Prevents layout shift */
-  -webkit-user-select: none;
-  user-select: none;
   position: relative;
   background: radial-gradient(
     1200px 800px at 10% 10%,
@@ -1079,7 +1077,8 @@ input {
   }
 
   .pieces-area {
-    --tray-cell: clamp(20px, 7vw, 28px);
+    --block-radius: 6px;
+    --tray-cell: clamp(20px, 5vw, 28px);
     gap: 8px;
   }
 
