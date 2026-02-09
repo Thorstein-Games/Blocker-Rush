@@ -322,37 +322,6 @@ export default function GameHeader({
                 ),
               )}
             </div>
-            {(statsPanel || settingsPanel || howToPlayPanel) && (
-              <div className="header-menu-section">
-                {statsPanel && (
-                  <button
-                    className="menu-link"
-                    type="button"
-                    onClick={() => togglePanel("stats")}
-                  >
-                    {statsTitle}
-                  </button>
-                )}
-                {settingsPanel && (
-                  <button
-                    className="menu-link"
-                    type="button"
-                    onClick={() => togglePanel("settings")}
-                  >
-                    {settingsTitle}
-                  </button>
-                )}
-                {howToPlayPanel && (
-                  <button
-                    className="menu-link"
-                    type="button"
-                    onClick={() => togglePanel("howToPlay")}
-                  >
-                    {howToPlayTitle}
-                  </button>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}

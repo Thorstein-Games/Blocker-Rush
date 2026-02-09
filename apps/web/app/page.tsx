@@ -2,7 +2,7 @@ import DailyGame from "../components/DailyGame";
 import { buildPageMetadata } from "../lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Blocker Rush | Daily Challenge | Play Genius Square Online",
+  title: "Daily Challenge",
   description:
     "Solve today's Blocker Rush puzzle, track your streak, and share your result.",
   path: "/",

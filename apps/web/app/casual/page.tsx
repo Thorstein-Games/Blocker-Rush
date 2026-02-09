@@ -4,7 +4,7 @@ import CasualGame from "../../components/CasualGame";
 import { buildPageMetadata } from "../../lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Casual | Daily Challenge | Play Genius Square Online",
+  title: "Casual Play",
   description:
     "Play unlimited practice boards in Blocker Rush. Pick a difficulty and train your solve speed.",
   path: "/casual",

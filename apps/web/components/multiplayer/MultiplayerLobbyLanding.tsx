@@ -9,6 +9,10 @@ import GameHeader from "../GameHeader";
 import { useMultiplayerStore } from "./MultiplayerStore";
 import ThemeSelect from "../ThemeSelect";
 import { formatMs } from "./multiplayerViewUtils";
+import {
+  getMultiplayerRatio,
+  readMultiplayerStats,
+} from "./multiplayerStatsStorage";
 
 const randomPlayerSuffix = (length = 5): string => {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -45,6 +49,7 @@ export default function MultiplayerLobbyLanding({
   const [createDifficulties, setCreateDifficulties] =
     useState<Difficulty[]>(difficultyOptions);
   const [renderNow, setRenderNow] = useState(() => Date.now());
+  const [stats] = useState(() => readMultiplayerStats());
   const autoJoinAttemptedRoomRef = useRef("");
 
   useEffect(() => {
@@ -85,10 +90,32 @@ export default function MultiplayerLobbyLanding({
     };
   }, [createDifficulties, createRounds]);
 
+  const statsPanel = useMemo(
+    () => (
+      <div className="stats-grid">
+        <div className="stat-card">
+          <span className="stat-label">Wins</span>
+          <span className="stat-value">{stats.wins}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">Losses</span>
+          <span className="stat-value">{stats.losses}</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-label">W/L Ratio</span>
+          <span className="stat-value">{getMultiplayerRatio(stats)}</span>
+        </div>
+      </div>
+    ),
+    [stats],
+  );
+
   return (
     <main className="page game-page multiplayer-page">
       <GameHeader
         mode="multiplayer"
+        statsTitle="Multiplayer Stats"
+        statsPanel={statsPanel}
         settingsTitle="Multiplayer Settings"
         settingsPanel={
           <div className="settings-stack">

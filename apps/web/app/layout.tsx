@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: SITE_NAME,
   title: {
-    default: `${SITE_NAME} | Daily Puzzle Challenge | Play Genius Square Online`,
+    default: `${SITE_NAME} | Play Genius Square Online Free`,
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,

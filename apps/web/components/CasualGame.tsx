@@ -41,16 +41,12 @@ type CasualSettings = {
 };
 
 type CasualStats = {
-  bestTimesMs: Record<string, number>;
-  lastTimesMs: Record<string, number>;
-  bestMoves: Record<string, number>;
-  lastMoves: Record<string, number>;
+  winsByDifficulty: Record<Difficulty, number>;
 };
 
-type CurrentStats = {
+type RoundStats = {
   moves: number;
-  bestMoves?: number;
-  lastMoves?: number;
+  elapsedMs: number;
 };
 
 type SolutionCache = Record<
@@ -87,44 +83,45 @@ const writeSettings = (settings: CasualSettings) => {
 };
 
 const readStats = (): CasualStats => {
+  const emptyWins: Record<Difficulty, number> = {
+    easy: 0,
+    medium: 0,
+    hard: 0,
+    insane: 0,
+  };
+
   if (typeof window === "undefined") {
-    return {
-      bestTimesMs: {},
-      lastTimesMs: {},
-      bestMoves: {},
-      lastMoves: {},
-    };
+    return { winsByDifficulty: emptyWins };
   }
   try {
     const raw = window.localStorage.getItem(STATS_KEY);
     if (!raw) {
-      return {
-        bestTimesMs: {},
-        lastTimesMs: {},
-        bestMoves: {},
-        lastMoves: {},
-      };
+      return { winsByDifficulty: emptyWins };
     }
-    const parsed = JSON.parse(raw) as CasualStats;
+    const parsed = JSON.parse(raw) as Partial<CasualStats>;
     return {
-      bestTimesMs: parsed.bestTimesMs ?? {},
-      lastTimesMs: parsed.lastTimesMs ?? {},
-      bestMoves: parsed.bestMoves ?? {},
-      lastMoves: parsed.lastMoves ?? {},
+      winsByDifficulty: {
+        easy: parsed.winsByDifficulty?.easy ?? 0,
+        medium: parsed.winsByDifficulty?.medium ?? 0,
+        hard: parsed.winsByDifficulty?.hard ?? 0,
+        insane: parsed.winsByDifficulty?.insane ?? 0,
+      },
     };
   } catch {
-    return {
-      bestTimesMs: {},
-      lastTimesMs: {},
-      bestMoves: {},
-      lastMoves: {},
-    };
+    return { winsByDifficulty: emptyWins };
   }
 };
 
 const writeStats = (stats: CasualStats) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+};
+
+const formatElapsedTime = (elapsedMs: number) => {
+  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
 function CasualGameLayout() {
@@ -153,6 +150,7 @@ function CasualGameLayout() {
     null,
   );
   const [stats, setStats] = useState<CasualStats>(() => readStats());
+  const [roundStats, setRoundStats] = useState<RoundStats | null>(null);
   const [hasRecordedSolve, setHasRecordedSolve] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -185,6 +183,7 @@ function CasualGameLayout() {
     setHint(null);
     setShareStatus(null);
     setSolutionCache(null);
+    setRoundStats(null);
     setHasRecordedSolve(false);
     if (hintTimeoutRef.current) {
       window.clearTimeout(hintTimeoutRef.current);
@@ -267,35 +266,31 @@ function CasualGameLayout() {
     if (!solved || !puzzleId || !startedAt) return;
     if (hasRecordedSolve) return;
     const elapsed = Date.now() - startedAt;
+    setRoundStats({ moves: moveCount, elapsedMs: elapsed });
+
+    if (!puzzleDifficulty) {
+      setHasRecordedSolve(true);
+      return;
+    }
+
     setStats((prev) => {
       const next = {
         ...prev,
-        lastTimesMs: { ...prev.lastTimesMs },
-        bestTimesMs: { ...prev.bestTimesMs },
-        lastMoves: { ...prev.lastMoves },
-        bestMoves: { ...prev.bestMoves },
+        winsByDifficulty: { ...prev.winsByDifficulty },
       };
-      next.lastTimesMs[puzzleId] = elapsed;
-      const best = next.bestTimesMs[puzzleId];
-      next.bestTimesMs[puzzleId] = best ? Math.min(best, elapsed) : elapsed;
-      next.lastMoves[puzzleId] = moveCount;
-      const bestMoves = next.bestMoves[puzzleId];
-      next.bestMoves[puzzleId] =
-        bestMoves !== undefined ? Math.min(bestMoves, moveCount) : moveCount;
+      next.winsByDifficulty[puzzleDifficulty] += 1;
       writeStats(next);
       return next;
     });
     setHasRecordedSolve(true);
-  }, [solved, puzzleId, startedAt, hasRecordedSolve, moveCount]);
-
-  const currentStats = useMemo<CurrentStats | null>(() => {
-    if (!puzzleId) return null;
-    return {
-      moves: moveCount,
-      bestMoves: stats.bestMoves[puzzleId],
-      lastMoves: stats.lastMoves[puzzleId],
-    };
-  }, [puzzleId, stats, moveCount]);
+  }, [
+    solved,
+    puzzleId,
+    startedAt,
+    hasRecordedSolve,
+    moveCount,
+    puzzleDifficulty,
+  ]);
 
   const loadPuzzleFromInput = () => {
     loadPuzzleFromId(puzzleInput);
@@ -349,7 +344,7 @@ function CasualGameLayout() {
     const baseUrl = `${window.location.origin}/casual`;
     const text = buildShareText(puzzleId, board.placements, baseUrl, {
       messageText: solved
-        ? `I just solved a ${puzzleDifficulty ?? "mystery"} puzzle in ${currentStats?.moves ?? 0} moves Blocker Rush! Can you solve it?`
+        ? `I just solved a ${puzzleDifficulty ?? "mystery"} puzzle in ${moveCount} moves Blocker Rush! Can you solve it?`
         : "Check out this puzzle I found in Blocker Rush!",
     });
     try {
@@ -408,9 +403,10 @@ function CasualGameLayout() {
       </div>
       <div className="settings-row">
         {puzzleDifficulty && <span className="badge">{puzzleDifficulty}</span>}
-        {currentStats && (
+        {solved && roundStats && (
           <span>
-            Moves: {currentStats.moves} · Best: {currentStats.bestMoves ?? "--"}
+            Moves: {roundStats.moves} · Time:{" "}
+            {formatElapsedTime(roundStats.elapsedMs)}
           </span>
         )}
       </div>
@@ -431,10 +427,26 @@ function CasualGameLayout() {
     </div>
   );
 
+  const statsContent = useMemo(
+    () => (
+      <div className="stats-grid">
+        {difficultyOptions.map((tier) => (
+          <div className="stat-card" key={tier}>
+            <span className="stat-label">{tier}</span>
+            <span className="stat-value">{stats.winsByDifficulty[tier]}</span>
+          </div>
+        ))}
+      </div>
+    ),
+    [stats],
+  );
+
   return (
     <main className="page game-page no-scroll-mobile">
       <GameHeader
         mode="casual"
+        statsTitle="Casual Wins"
+        statsPanel={statsContent}
         settingsTitle="Casual Settings"
         settingsPanel={isDesktop ? undefined : settingsContent}
       />
@@ -451,7 +463,8 @@ function CasualGameLayout() {
           {solved && (
             <>
               <div className="notice">
-                Completed in {currentStats?.moves ?? 0} moves.
+                Completed in {roundStats?.moves ?? moveCount} moves in{" "}
+                {formatElapsedTime(roundStats?.elapsedMs ?? 0)}.
               </div>
               <div className="settings-actions">
                 <button className="button" type="button" onClick={handleShare}>
