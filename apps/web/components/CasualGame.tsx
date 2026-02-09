@@ -347,7 +347,11 @@ function CasualGameLayout() {
   const handleShare = async () => {
     if (!puzzleId) return;
     const baseUrl = `${window.location.origin}/casual`;
-    const text = buildShareText(puzzleId, board.placements, baseUrl);
+    const text = buildShareText(puzzleId, board.placements, baseUrl, {
+      messageText: solved
+        ? `I just solved a ${puzzleDifficulty ?? "mystery"} puzzle in ${currentStats?.moves ?? 0} moves Blocker Rush! Can you solve it?`
+        : "Check out this puzzle I found in Blocker Rush!",
+    });
     try {
       if (navigator.share) {
         await navigator.share({ text });
@@ -444,6 +448,25 @@ function CasualGameLayout() {
         <div className="game-center">
           <GameBoard />
           <PiecesTray />
+          {solved && (
+            <>
+              <div className="notice">
+                Completed in {currentStats?.moves ?? 0} moves.
+              </div>
+              <div className="settings-actions">
+                <button className="button" type="button" onClick={handleShare}>
+                  Share
+                </button>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => router.push("/casual")}
+                >
+                  Play Again
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </section>
     </main>

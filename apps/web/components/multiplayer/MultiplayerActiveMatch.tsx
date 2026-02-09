@@ -39,6 +39,8 @@ export default function MultiplayerActiveMatch() {
     state.status === "countdown" && state.match
       ? Math.max(0, state.match.startTime - adjustedNow)
       : 0;
+  const countdownLabel =
+    countdownMs > 2000 ? "3" : countdownMs > 1000 ? "2" : countdownMs > 0 ? "1" : "Go!";
   const roundElapsedMs =
     state.status === "in_game" && selfPlayer?.round?.startedAt
       ? Math.max(0, adjustedNow - selfPlayer.round.startedAt)
@@ -72,15 +74,23 @@ export default function MultiplayerActiveMatch() {
       </aside>
 
       <div className="game-center multiplayer-main-board">
-        {state.status === "countdown" && (
-          <div className="notice">Round starts in {formatMs(countdownMs)}</div>
-        )}
-
         {state.error && <div className="notice">{state.error}</div>}
 
         <MultiplayerBoardPanel
           selfPlayer={selfPlayer}
           active={state.status === "in_game"}
+          boardOverlay={
+            state.status === "countdown" ? (
+              <div className="countdown-overlay" aria-live="polite">
+                <span
+                  key={countdownLabel}
+                  className="countdown-overlay-value countdown-overlay-value-animated"
+                >
+                  {countdownLabel}
+                </span>
+              </div>
+            ) : undefined
+          }
           onPlace={sendPlace}
           onRemove={sendRemove}
           onSubmitFinish={submitFinish}

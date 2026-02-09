@@ -221,12 +221,20 @@ function DailyGameLayout({ date }: { date: Date }) {
       startedAt,
       moveCount,
     });
-  }, [board, pieceStates, startedAt, moveCount, puzzleId, dailyPuzzle.id, dateKey]);
+  }, [
+    board,
+    pieceStates,
+    startedAt,
+    moveCount,
+    puzzleId,
+    dailyPuzzle.id,
+    dateKey,
+  ]);
 
   const solvedMoveCount = solved
     ? moveCount > 0
       ? moveCount
-      : progress?.moveCount ?? 0
+      : (progress?.moveCount ?? 0)
     : 0;
 
   const statusLabel =
@@ -297,10 +305,19 @@ function DailyGameLayout({ date }: { date: Date }) {
           <PiecesTray />
           {solved && (
             <>
-              <div className="notice">Completed in {solvedMoveCount} moves.</div>
+              <div className="notice">
+                Completed in {solvedMoveCount} moves.
+              </div>
               <div className="settings-actions">
                 <button className="button" type="button" onClick={handleShare}>
                   Share
+                </button>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => router.push("/casual")}
+                >
+                  Play Casual
                 </button>
                 <button
                   className="button secondary"

@@ -1,3 +1,4 @@
+import "./multiplayer.css";
 import { Suspense } from "react";
 import MultiplayerGame from "../../components/multiplayer/MultiplayerGame";
 import { buildPageMetadata } from "../../lib/seo";

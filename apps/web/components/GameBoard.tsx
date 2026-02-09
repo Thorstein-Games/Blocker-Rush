@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { PieceId } from "@blocker-rush/shared";
 import { PIECE_COLORS } from "./pieceColors";
 import WinnerFireworks from "./multiplayer/WinnerFireworks";
@@ -17,12 +17,22 @@ const WINNER_MESSAGES = [
   "Precision win. Nicely done.",
   "That was a sharp close.",
   "Solved with style.",
+  "Yo! Champ in the making!",
   "Another puzzle in the books.",
 ] as const;
 
+const getRandomWinnerMessage = () => {
+  const index = Math.floor(Math.random() * WINNER_MESSAGES.length);
+  return WINNER_MESSAGES[index];
+};
+
 let winnerMessageCursor = 0;
 
-export default function GameBoard() {
+type GameBoardProps = {
+  overlay?: ReactNode;
+};
+
+export default function GameBoard({ overlay }: GameBoardProps) {
   const {
     board,
     ghost,
@@ -78,22 +88,6 @@ export default function GameBoard() {
     dragPreview?.isDropping && dragPreview.dropTarget
       ? dragPreview.dropTarget
       : dragPreview?.position;
-  const [winnerMessage, setWinnerMessage] = useState<string>(
-    WINNER_MESSAGES[0] ?? "Puzzle solved.",
-  );
-  const wasSolvedRef = useRef(solved);
-
-  useEffect(() => {
-    if (solved && !wasSolvedRef.current) {
-      const nextMessage =
-        WINNER_MESSAGES[winnerMessageCursor % WINNER_MESSAGES.length] ??
-        "Puzzle solved.";
-      winnerMessageCursor += 1;
-      setWinnerMessage(nextMessage);
-    }
-
-    wasSolvedRef.current = solved;
-  }, [solved]);
 
   return (
     <div className="board-area">
@@ -181,12 +175,13 @@ export default function GameBoard() {
             </div>
           </div>
         )}
+        {overlay ? <div className="board-overlay">{overlay}</div> : null}
         {solved && (
           <div className="celebration">
             <WinnerFireworks className="celebration-fireworks" />
             <div className="celebration-card">
               <strong>Puzzle Complete</strong>
-              <span>{winnerMessage}</span>
+              <span>{getRandomWinnerMessage()}</span>
             </div>
           </div>
         )}

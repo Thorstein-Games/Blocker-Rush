@@ -27,9 +27,9 @@ const filterPlacements = (
     PieceId,
     { origin: { x: number; y: number }; transformId: string } | undefined
   >,
-  revealPieceCount?: number,
+  revealPieceCount: number = 3,
 ) => {
-  if (!revealPieceCount || revealPieceCount <= 0) {
+  if (revealPieceCount <= 0) {
     return placements;
   }
 

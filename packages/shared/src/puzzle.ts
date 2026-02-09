@@ -21,12 +21,16 @@ const hashSeed = (value: string): number => {
   return hash >>> 0;
 };
 
-export const generatePuzzle = (rng: () => number): { id: PuzzleId; blockers: Coordinate[] } => {
+export const generatePuzzle = (
+  rng: () => number,
+): { id: PuzzleId; blockers: Coordinate[] } => {
   const record = pickRandomPuzzle(rng);
   return { id: record.id, blockers: record.blockers };
 };
 
-export const puzzleFromId = (id: PuzzleId): { id: PuzzleId; blockers: Coordinate[] } => ({
+export const puzzleFromId = (
+  id: PuzzleId,
+): { id: PuzzleId; blockers: Coordinate[] } => ({
   id,
   blockers: parsePuzzleId(id),
 });
@@ -34,7 +38,7 @@ export const puzzleFromId = (id: PuzzleId): { id: PuzzleId; blockers: Coordinate
 export const findPuzzleByDifficulty = (
   target: Difficulty,
   seed: string,
-  _maxAttempts = 200
+  _maxAttempts = 200,
 ) => {
   const rng = mulberry32(hashSeed(seed));
   const record = pickPuzzleByDifficulty(target, rng);
@@ -48,9 +52,10 @@ export const findPuzzleByDifficulty = (
 
 export const getDailyDifficulty = (date: Date): Difficulty => {
   const day = getWeekday(date);
-  if (day === 1 || day === 2) return "easy";
-  if (day === 3 || day === 4) return "medium";
-  return "hard";
+  if (day === 0 || day === 1) return "easy";
+  if (day === 2 || day === 3) return "medium";
+  if (day === 4 || day === 5) return "hard";
+  return "insane";
 };
 
 export const getDailyPuzzle = (date: Date = new Date()): DailyPuzzle => {

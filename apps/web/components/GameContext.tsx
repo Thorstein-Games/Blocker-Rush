@@ -226,6 +226,15 @@ export function GameProvider({
     pieceStatesRef.current = pieceStates;
   }, [pieceStates]);
 
+  useEffect(() => {
+    if (!draggingPieceId) return;
+    const previousCursor = document.body.style.cursor;
+    document.body.style.cursor = "grabbing";
+    return () => {
+      document.body.style.cursor = previousCursor;
+    };
+  }, [draggingPieceId]);
+
   const updateGhostState = (next: DragGhost | null) => {
     ghostRef.current = next;
     setGhost(next);

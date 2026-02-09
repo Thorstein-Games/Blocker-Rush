@@ -1,3 +1,4 @@
+import "./casual.css";
 import { Suspense } from "react";
 import CasualGame from "../../components/CasualGame";
 import { buildPageMetadata } from "../../lib/seo";

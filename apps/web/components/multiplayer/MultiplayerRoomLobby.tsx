@@ -70,6 +70,19 @@ export default function MultiplayerRoomLobby() {
     }
   };
 
+  const handleCopyRoomCode = async () => {
+    if (!state.roomCode) return;
+    try {
+      if (!navigator.clipboard) {
+        throw new Error("Clipboard unavailable");
+      }
+      await navigator.clipboard.writeText(state.roomCode);
+      setShareStatus("Room code copied.");
+    } catch {
+      setShareStatus("Unable to copy room code.");
+    }
+  };
+
   const applyHostSettings = (
     nextRounds: number,
     nextDifficulties: Difficulty[],
@@ -85,7 +98,18 @@ export default function MultiplayerRoomLobby() {
 
   return (
     <section className="multiplayer-room-stage panel stack">
-      <h3>Room {state.roomCode}</h3>
+      <h3>
+        Room{" "}
+        <button
+          className="room-code-button"
+          type="button"
+          onClick={handleCopyRoomCode}
+          disabled={!state.roomCode}
+          title="Copy room code"
+        >
+          {state.roomCode}
+        </button>
+      </h3>
       {isPublicWaitRoom && (
         <div className="notice">
           Matchmaking wait: {formatMs(publicWaitRemainingMs)} remaining.

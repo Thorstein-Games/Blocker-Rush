@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
+import type { ReactNode } from "react";
 import type { PieceId, Placement } from "@blocker-rush/shared";
 import { getPuzzleById, parsePuzzleId } from "@blocker-rush/shared";
 import type { PiecePlacement } from "@blocker-rush/protocol";
@@ -49,6 +50,7 @@ const buildPieceStates = (
 type MultiplayerBoardInnerProps = {
   selfPlayer?: TrackedPlayer;
   active: boolean;
+  boardOverlay?: ReactNode;
   onPlace: (input: {
     roundIndex: number;
     pieceId: string;
@@ -67,6 +69,7 @@ type MultiplayerBoardInnerProps = {
 function MultiplayerBoardInner({
   selfPlayer,
   active,
+  boardOverlay,
   onPlace,
   onRemove,
   onSubmitFinish,
@@ -241,7 +244,7 @@ function MultiplayerBoardInner({
 
   return (
     <>
-      <GameBoard />
+      <GameBoard overlay={boardOverlay} />
       <PiecesTray />
     </>
   );
@@ -250,6 +253,7 @@ function MultiplayerBoardInner({
 type MultiplayerBoardPanelProps = {
   selfPlayer?: TrackedPlayer;
   active: boolean;
+  boardOverlay?: ReactNode;
   onPlace: MultiplayerBoardInnerProps["onPlace"];
   onRemove: MultiplayerBoardInnerProps["onRemove"];
   onSubmitFinish: MultiplayerBoardInnerProps["onSubmitFinish"];
