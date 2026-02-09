@@ -677,6 +677,42 @@ export const attachSocketHandlers = (io: Server) => {
         return;
       }
 
+      if (event.type === "setDisplayName") {
+        const seat = roomManager.getSeat(socket.id);
+        if (!seat) return;
+        const room = roomManager.getRoom(seat.roomCode);
+        if (!room) return;
+        if (room.status !== "lobby") {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "invalid_state",
+              message: "Display name can only be updated in the room lobby.",
+            },
+          });
+          return;
+        }
+
+        const updated = roomManager.updatePlayerName(
+          room.roomCode,
+          seat.playerId,
+          event.data.name,
+        );
+        if (!updated) {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "name_required",
+              message: "Display name cannot be empty.",
+            },
+          });
+          return;
+        }
+        emitRoomState(room);
+        emitLobbyState();
+        return;
+      }
+
       if (event.type === "kickPlayer") {
         const seat = roomManager.getSeat(socket.id);
         if (!seat) return;

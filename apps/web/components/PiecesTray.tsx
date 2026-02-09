@@ -14,6 +14,7 @@ export default function PiecesTray() {
     onPiecePointerDown,
     rotatePiece,
     flipPiece,
+    clearBoard,
     draggingPieceId,
     readOnly,
   } = useGame();
@@ -38,6 +39,9 @@ export default function PiecesTray() {
   const allPiecesPlaced = PIECES.every((piece) =>
     Boolean(board.placements[piece.id]),
   );
+  const hasPlacedPieces = PIECES.some((piece) =>
+    Boolean(board.placements[piece.id]),
+  );
 
   if (allPiecesPlaced) {
     return null;
@@ -47,35 +51,43 @@ export default function PiecesTray() {
     <div className="pieces-area">
       <div className="pieces-tray">
         <div className="pieces-header">
+          <button
+            className="button secondary pieces-clear"
+            type="button"
+            onClick={clearBoard}
+            disabled={readOnly || !hasPlacedPieces}
+          >
+            Clear
+          </button>
           <span className="status-row">Keys D or S rotate. F flips</span>
-          {/* Need this empty span to push the pieces-controls to the right on mobile */}
-          <span></span>
-          {activePiece ? (
-            <div className="pieces-controls">
-              {rotatePiece && (
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => rotatePiece(activePiece.id)}
-                  disabled={readOnly}
-                >
-                  Rotate
-                </button>
-              )}
-              {flipPiece && (
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => flipPiece(activePiece.id)}
-                  disabled={readOnly}
-                >
-                  Flip
-                </button>
-              )}
-            </div>
-          ) : (
-            <span className="pieces-hint">Tap or drag a piece</span>
-          )}
+          <div className="pieces-header-actions">
+            {activePiece ? (
+              <div className="pieces-controls">
+                {rotatePiece && (
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => rotatePiece(activePiece.id)}
+                    disabled={readOnly}
+                  >
+                    Rotate
+                  </button>
+                )}
+                {flipPiece && (
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={() => flipPiece(activePiece.id)}
+                    disabled={readOnly}
+                  >
+                    Flip
+                  </button>
+                )}
+              </div>
+            ) : (
+              <span className="pieces-hint">Tap or drag a piece</span>
+            )}
+          </div>
         </div>
         {PIECES.filter(
           (piece) =>

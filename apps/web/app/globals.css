@@ -11,6 +11,7 @@
   --text: #1b2422;
   --muted: #5a6b65;
   --accent: #f2c14e;
+  --accent-hover: #eecb7a;
   --accent-2: #2bbf8b;
   --accent-3: #e45a48;
   --grid: #d9e0db;
@@ -51,6 +52,7 @@
     --text: #f0f7f4;
     --muted: #9fb2ab;
     --accent: #f2c14e;
+    --accent-hover: #eecb7a;
     --accent-2: #47e5b3;
     --accent-3: #f26d5b;
     --grid: #2b3834;
@@ -89,6 +91,7 @@ html[data-theme="light"] {
   --text: #1b2422;
   --muted: #5a6b65;
   --accent: #f2c14e;
+  --accent-hover: #eecb7a;
   --accent-2: #2bbf8b;
   --accent-3: #e45a48;
   --grid: #d9e0db;
@@ -539,6 +542,9 @@ input {
   font-weight: 700;
   cursor: pointer;
 }
+.button:hover {
+  background: var(--accent-hover);
+}
 
 .button.secondary {
   background: transparent;
@@ -606,6 +612,10 @@ input {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.panel .stack h4 {
+  margin-top: 0px;
 }
 
 .board-area {
@@ -790,11 +800,22 @@ input {
 
 .pieces-header {
   width: 100%;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px;
+  gap: 8px;
+}
+
+.pieces-clear {
+  justify-self: start;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+}
+
+.pieces-header-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
 }
 
 .pieces-controls {

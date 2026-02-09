@@ -49,6 +49,45 @@
   background: var(--glass-2);
 }
 
+.room-row-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.room-name-edit-button {
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--muted);
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.room-name-edit-button:hover {
+  color: var(--accent);
+  border-color: rgba(242, 193, 78, 0.55);
+}
+
+.room-name-edit-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.room-name-edit-field {
+  flex: 1;
+}
+
+.room-name-edit-field input {
+  width: min(240px, 100%);
+}
+
 .room-row.multiplayer-lobby {
   flex-wrap: wrap;
 }

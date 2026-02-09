@@ -127,6 +127,13 @@ const readySchema = z
   })
   .strict();
 
+const setDisplayNameSchema = z
+  .object({
+    type: z.literal("setDisplayName"),
+    data: z.object({ name: z.string().trim().min(1).max(24) }).strict(),
+  })
+  .strict();
+
 const kickPlayerSchema = z
   .object({
     type: z.literal("kickPlayer"),
@@ -224,6 +231,7 @@ export const ClientEventSchema = z.discriminatedUnion("type", [
   joinRoomSchema,
   leaveRoomSchema,
   readySchema,
+  setDisplayNameSchema,
   kickPlayerSchema,
   updateSettingsSchema,
   startMatchSchema,

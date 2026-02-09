@@ -6,7 +6,14 @@ import { difficultyOptions } from "@blocker-rush/shared";
 import { useMultiplayerStore } from "./MultiplayerStore";
 
 export default function MultiplayerRoomLobby() {
-  const { state, setReady, startMatch, kickPlayer, updateSettings } =
+  const {
+    state,
+    setReady,
+    setDisplayName,
+    startMatch,
+    kickPlayer,
+    updateSettings,
+  } =
     useMultiplayerStore();
 
   const players = useMemo(() => Object.values(state.players), [state.players]);
@@ -16,6 +23,8 @@ export default function MultiplayerRoomLobby() {
   const selfIsHost = state.hostId === state.selfPlayerId;
 
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
   const [hostRounds, setHostRounds] = useState(state.settings.rounds);
   const [hostDifficulties, setHostDifficulties] = useState<Difficulty[]>(
     state.settings.difficulties,
@@ -25,6 +34,12 @@ export default function MultiplayerRoomLobby() {
     setHostRounds(state.settings.rounds);
     setHostDifficulties(state.settings.difficulties);
   }, [state.settings.difficulties, state.settings.rounds]);
+
+  useEffect(() => {
+    if (selfPlayer?.name) {
+      setNameDraft(selfPlayer.name);
+    }
+  }, [selfPlayer?.name]);
 
   const handleShareRoom = async () => {
     if (!state.roomCode) return;
@@ -67,6 +82,17 @@ export default function MultiplayerRoomLobby() {
     });
   };
 
+  const handleSubmitDisplayName = () => {
+    const nextName = nameDraft.trim();
+    if (!nextName || nextName === selfPlayer?.name) {
+      setNameDraft(selfPlayer?.name ?? "");
+      setIsEditingName(false);
+      return;
+    }
+    setDisplayName(nextName);
+    setIsEditingName(false);
+  };
+
   return (
     <section className="multiplayer-room-stage panel stack">
       <h3>
@@ -84,13 +110,79 @@ export default function MultiplayerRoomLobby() {
       <div className="multiplayer-room-list">
         {players.map((player) => (
           <div className="room-row" key={player.playerId}>
-            <div>
-              <strong>{player.name} · </strong>
-              <span className="pieces-hint">
-                {player.connected ? "Connected" : "Disconnected"} ·{" "}
-                {player.ready ? "Ready" : "Not ready"}
-              </span>
+            <div className="room-row-main">
+              {player.playerId === state.selfPlayerId && (
+                <button
+                  className="room-name-edit-button"
+                  type="button"
+                  onClick={() => {
+                    setNameDraft(player.name);
+                    setIsEditingName((prev) => !prev);
+                  }}
+                  title="Edit display name"
+                  aria-label="Edit display name"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path
+                      d="M3 17.25V21h3.75L18.81 8.94l-3.75-3.75L3 17.25zm17.71-10.04a1.003 1.003 0 0 0 0-1.42L18.2 3.28a1.003 1.003 0 0 0-1.42 0L14.71 5.35l3.75 3.75 2.25-2.25z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </button>
+              )}
+              {player.playerId === state.selfPlayerId && isEditingName ? (
+                <div className="room-name-edit-field">
+                  <input
+                    value={nameDraft}
+                    onChange={(event) => setNameDraft(event.target.value)}
+                    maxLength={24}
+                    autoFocus
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        handleSubmitDisplayName();
+                      }
+                      if (event.key === "Escape") {
+                        event.preventDefault();
+                        setNameDraft(selfPlayer?.name ?? "");
+                        setIsEditingName(false);
+                      }
+                    }}
+                    aria-label="Display name"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <strong>{player.name} · </strong>
+                  <span className="pieces-hint">
+                    {player.connected ? "Connected" : "Disconnected"} ·{" "}
+                    {player.ready ? "Ready" : "Not ready"}
+                  </span>
+                </div>
+              )}
             </div>
+            {player.playerId === state.selfPlayerId && isEditingName && (
+              <div className="settings-actions">
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => {
+                    setNameDraft(selfPlayer?.name ?? "");
+                    setIsEditingName(false);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={handleSubmitDisplayName}
+                  disabled={!nameDraft.trim()}
+                >
+                  Save
+                </button>
+              </div>
+            )}
             {selfIsHost && player.playerId !== state.selfPlayerId && (
               <button
                 className="button secondary"

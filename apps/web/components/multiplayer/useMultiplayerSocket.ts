@@ -275,6 +275,13 @@ export function useMultiplayerSocket() {
     [emit],
   );
 
+  const setDisplayName = useCallback(
+    (name: string) => {
+      emit({ type: "setDisplayName", data: { name } });
+    },
+    [emit],
+  );
+
   const startMatch = useCallback(() => {
     emit({ type: "startMatch", data: {} });
   }, [emit]);
@@ -401,6 +408,7 @@ export function useMultiplayerSocket() {
       createPrivate,
       leaveRoom,
       setReady,
+      setDisplayName,
       startMatch,
       updateSettings,
       requestSync,
@@ -418,6 +426,7 @@ export function useMultiplayerSocket() {
       createPrivate,
       leaveRoom,
       setReady,
+      setDisplayName,
       startMatch,
       updateSettings,
       requestSync,

@@ -172,6 +172,7 @@ type GameContextValue = {
   ) => void;
   rotatePiece: (pieceId: PieceId) => void;
   flipPiece: (pieceId: PieceId) => void;
+  clearBoard: () => void;
   restoreState: (snapshot: {
     placements: Placement[];
     pieceStates: Record<PieceId, PieceState>;
@@ -297,11 +298,11 @@ export function GameProvider({
   };
 
   const rotatePiece = (pieceId: PieceId) => {
-    rotatePieceBy(pieceId, 1);
+    rotatePieceBy(pieceId, -1);
   };
 
   const rotatePieceBackward = (pieceId: PieceId) => {
-    rotatePieceBy(pieceId, -1);
+    rotatePieceBy(pieceId, 1);
   };
 
   const flipPiece = (pieceId: PieceId) => {
@@ -313,6 +314,22 @@ export function GameProvider({
         flipped: !prev[pieceId].flipped,
       },
     }));
+  };
+
+  const clearBoard = () => {
+    if (readOnly) return;
+    const currentBoard = boardStateRef.current;
+    const hasPlacedPieces = PIECES.some((piece) =>
+      Boolean(currentBoard.placements[piece.id]),
+    );
+    if (!hasPlacedPieces) return;
+    const nextBoard = withBlockers(blockers);
+    setHistory((prev) => [...prev, currentBoard]);
+    boardStateRef.current = nextBoard;
+    setBoard(nextBoard);
+    updateGhostState(null);
+    setDraggingPieceId(null);
+    setDragPreview(null);
   };
 
   const setPieceState = (pieceId: PieceId, next: PieceState) => {
@@ -950,6 +967,7 @@ export function GameProvider({
     onPiecePointerDown: handlePiecePointerDown,
     rotatePiece,
     flipPiece,
+    clearBoard,
     restoreState,
     boardRef,
   };

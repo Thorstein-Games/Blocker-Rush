@@ -258,6 +258,16 @@ export class RoomManager {
     return true;
   }
 
+  updatePlayerName(roomCode: string, playerId: string, name: string): boolean {
+    const room = this.rooms.get(roomCode);
+    const player = room?.players[playerId];
+    const trimmedName = name.trim().slice(0, 24);
+    if (!room || !player || !trimmedName) return false;
+    player.name = trimmedName;
+    room.updatedAt = now();
+    return true;
+  }
+
   updateRoomSettings(
     roomCode: string,
     hostPlayerId: string,
