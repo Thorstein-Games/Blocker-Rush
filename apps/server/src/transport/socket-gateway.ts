@@ -754,6 +754,43 @@ export const attachSocketHandlers = (io: Server) => {
         return;
       }
 
+      if (event.type === "updateSettings") {
+        const seat = roomManager.getSeat(socket.id);
+        if (!seat) return;
+        const room = roomManager.getRoom(seat.roomCode);
+        if (!room) return;
+        if (room.hostId !== seat.playerId) {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "not_host",
+              message: "Only host can update room settings.",
+            },
+          });
+          return;
+        }
+        if (room.status !== "lobby") {
+          emitEvent(socket, {
+            type: "error",
+            data: {
+              code: "invalid_state",
+              message: "Room settings can only be updated in the room lobby.",
+            },
+          });
+          return;
+        }
+
+        const updatedRoom = roomManager.updateRoomSettings(
+          room.roomCode,
+          seat.playerId,
+          event.data.settings,
+        );
+        if (!updatedRoom) return;
+        emitRoomState(updatedRoom);
+        emitLobbyState();
+        return;
+      }
+
       if (event.type === "startMatch") {
         const seat = roomManager.getSeat(socket.id);
         if (!seat) return;

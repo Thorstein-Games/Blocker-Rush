@@ -398,7 +398,7 @@ function CasualGameLayout() {
             type="button"
             onClick={() => loadRandomPuzzle(difficulty)}
           >
-            New Random
+            Random Puzzle
           </button>
         </div>
       </div>

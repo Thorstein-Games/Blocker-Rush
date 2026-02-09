@@ -253,6 +253,13 @@ export function useMultiplayerSocket() {
     emit({ type: "startMatch", data: {} });
   }, [emit]);
 
+  const updateSettings = useCallback(
+    (settings: MatchSettings) => {
+      emit({ type: "updateSettings", data: { settings } });
+    },
+    [emit],
+  );
+
   const requestSync = useCallback(() => {
     const matchId = state.match?.matchId;
     if (!matchId) return;
@@ -369,6 +376,7 @@ export function useMultiplayerSocket() {
       leaveRoom,
       setReady,
       startMatch,
+      updateSettings,
       requestSync,
       sendPlace,
       sendRemove,
@@ -385,6 +393,7 @@ export function useMultiplayerSocket() {
       leaveRoom,
       setReady,
       startMatch,
+      updateSettings,
       requestSync,
       sendPlace,
       sendRemove,

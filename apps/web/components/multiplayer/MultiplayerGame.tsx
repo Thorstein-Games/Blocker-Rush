@@ -20,18 +20,10 @@ function MultiplayerGameContent() {
     const currentParams = new URLSearchParams(searchParams.toString());
     const currentRoom = currentParams.get("room")?.toUpperCase() ?? "";
 
-    if (state.roomCode) {
-      if (currentRoom === state.roomCode) return;
-      currentParams.set("room", state.roomCode);
-      const query = currentParams.toString();
-      router.push(`/multiplayer${query ? `?${query}` : ""}`);
-      return;
-    }
-
-    if (!currentRoom) return;
-    currentParams.delete("room");
+    if (!state.roomCode || currentRoom === state.roomCode) return;
+    currentParams.set("room", state.roomCode);
     const query = currentParams.toString();
-    router.replace(`/multiplayer${query ? `?${query}` : ""}`);
+    router.push(`/multiplayer${query ? `?${query}` : ""}`);
   }, [router, searchParams, state.roomCode]);
 
   if (!state.roomCode) {

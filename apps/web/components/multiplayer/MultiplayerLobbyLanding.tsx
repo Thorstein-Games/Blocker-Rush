@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { REJOIN_GRACE_MS, type MatchSettings } from "@blocker-rush/protocol";
 import type { Difficulty } from "@blocker-rush/shared";
 import { difficultyOptions } from "@blocker-rush/shared";
@@ -45,6 +45,7 @@ export default function MultiplayerLobbyLanding({
   const [createDifficulties, setCreateDifficulties] =
     useState<Difficulty[]>(difficultyOptions);
   const [renderNow, setRenderNow] = useState(() => Date.now());
+  const autoJoinAttemptedRoomRef = useRef("");
 
   useEffect(() => {
     requestLobby();
@@ -54,6 +55,14 @@ export default function MultiplayerLobbyLanding({
     if (!roomCodeFromUrl) return;
     setRoomCodeInput(roomCodeFromUrl);
   }, [roomCodeFromUrl]);
+
+  useEffect(() => {
+    if (!roomCodeFromUrl) return;
+    if (!state.connected || state.roomCode) return;
+    if (autoJoinAttemptedRoomRef.current === roomCodeFromUrl) return;
+    autoJoinAttemptedRoomRef.current = roomCodeFromUrl;
+    joinByCode(name, roomCodeFromUrl);
+  }, [joinByCode, name, roomCodeFromUrl, state.connected, state.roomCode]);
 
   useEffect(() => {
     if (!state.lastConnectionLostAt || !reconnectRoomCode) return;

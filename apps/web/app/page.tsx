@@ -2,9 +2,9 @@ import DailyGame from "../components/DailyGame";
 import { buildPageMetadata } from "../lib/seo";
 
 export const metadata = buildPageMetadata({
-  title: "Daily Challenge",
+  title: "Daily Challenge | Blocker Rush",
   description:
-    "Solve today’s Blocker Rush puzzle, track your streak, and share your result.",
+    "Solve today's Blocker Rush puzzle, track your streak, and share your result.",
   path: "/",
 });
 

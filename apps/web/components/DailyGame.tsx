@@ -30,6 +30,7 @@ type DailyProgress = {
   placements: Placement[];
   pieceStates: Record<PieceId, PieceState>;
   startedAt: number | null;
+  moveCount: number;
 };
 
 const readDailyStats = (): DailyStats => {
@@ -69,7 +70,10 @@ const readDailyProgress = (
     if (!Array.isArray(parsed.placements) || !parsed.pieceStates) {
       return null;
     }
-    return parsed;
+    return {
+      ...parsed,
+      moveCount: typeof parsed.moveCount === "number" ? parsed.moveCount : 0,
+    };
   } catch {
     return null;
   }
@@ -117,6 +121,7 @@ function DailyGameLayout({ date }: { date: Date }) {
     applyPuzzle,
     board,
     pieceStates,
+    moveCount,
     startedAt,
     restoreState,
   } = useGame();
@@ -214,8 +219,15 @@ function DailyGameLayout({ date }: { date: Date }) {
       placements,
       pieceStates,
       startedAt,
+      moveCount,
     });
-  }, [board, pieceStates, startedAt, puzzleId, dailyPuzzle.id, dateKey]);
+  }, [board, pieceStates, startedAt, moveCount, puzzleId, dailyPuzzle.id, dateKey]);
+
+  const solvedMoveCount = solved
+    ? moveCount > 0
+      ? moveCount
+      : progress?.moveCount ?? 0
+    : 0;
 
   const statusLabel =
     stats.lastCompletedDateKey === dateKey ? "Completed" : "Not yet cleared";
@@ -247,11 +259,13 @@ function DailyGameLayout({ date }: { date: Date }) {
       messageText: "Play today's Blocker Rush challenge",
       revealPieceCount: 3,
     });
+    const textWithMoves =
+      solvedMoveCount > 0 ? `${text}\nMoves: ${solvedMoveCount}` : text;
     try {
       if (navigator.share) {
-        await navigator.share({ text });
+        await navigator.share({ text: textWithMoves });
       } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(textWithMoves);
       }
       setShareStatus("Copied share text.");
     } catch {
@@ -282,18 +296,21 @@ function DailyGameLayout({ date }: { date: Date }) {
           <GameBoard />
           <PiecesTray />
           {solved && (
-            <div className="settings-actions">
-              <button className="button" type="button" onClick={handleShare}>
-                Share
-              </button>
-              <button
-                className="button secondary"
-                type="button"
-                onClick={() => router.push("/multiplayer")}
-              >
-                Play Multiplayer
-              </button>
-            </div>
+            <>
+              <div className="notice">Completed in {solvedMoveCount} moves.</div>
+              <div className="settings-actions">
+                <button className="button" type="button" onClick={handleShare}>
+                  Share
+                </button>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => router.push("/multiplayer")}
+                >
+                  Play Multiplayer
+                </button>
+              </div>
+            </>
           )}
           {shareStatus && <div className="notice">{shareStatus}</div>}
         </div>

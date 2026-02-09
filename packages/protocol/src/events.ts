@@ -134,6 +134,13 @@ const kickPlayerSchema = z
   })
   .strict();
 
+const updateSettingsSchema = z
+  .object({
+    type: z.literal("updateSettings"),
+    data: z.object({ settings: matchSettingsSchema }).strict(),
+  })
+  .strict();
+
 const startMatchSchema = z
   .object({
     type: z.literal("startMatch"),
@@ -218,6 +225,7 @@ export const ClientEventSchema = z.discriminatedUnion("type", [
   leaveRoomSchema,
   readySchema,
   kickPlayerSchema,
+  updateSettingsSchema,
   startMatchSchema,
   placePieceSchema,
   removePieceSchema,

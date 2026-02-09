@@ -258,6 +258,27 @@ export class RoomManager {
     return true;
   }
 
+  updateRoomSettings(
+    roomCode: string,
+    hostPlayerId: string,
+    settings: MatchSettings,
+  ): InternalRoom | null {
+    const room = this.rooms.get(roomCode);
+    if (!room) return null;
+    if (room.hostId !== hostPlayerId) return null;
+    if (room.status !== "lobby") return null;
+
+    const nextSettings = normalizeSettings(settings);
+    room.settings = nextSettings;
+    for (const player of Object.values(room.players)) {
+      player.ready = false;
+      player.splitsMs = Array.from({ length: nextSettings.rounds }, () => null);
+    }
+    room.updatedAt = now();
+
+    return room;
+  }
+
   leaveBySocket(socketId: string): InternalRoom | null {
     const seat = this.socketSeats.get(socketId);
     if (!seat) return null;

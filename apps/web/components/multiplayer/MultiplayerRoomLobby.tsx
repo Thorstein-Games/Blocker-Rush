@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { Difficulty } from "@blocker-rush/shared";
+import { difficultyOptions } from "@blocker-rush/shared";
 import { useMultiplayerStore } from "./MultiplayerStore";
 import { formatMs } from "./multiplayerViewUtils";
 
 export default function MultiplayerRoomLobby() {
-  const { state, setReady, startMatch, kickPlayer } = useMultiplayerStore();
+  const { state, setReady, startMatch, kickPlayer, updateSettings } =
+    useMultiplayerStore();
 
   const players = useMemo(() => Object.values(state.players), [state.players]);
   const selfPlayer = state.selfPlayerId
@@ -21,6 +24,10 @@ export default function MultiplayerRoomLobby() {
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [publicWaitStartedAt, setPublicWaitStartedAt] = useState<number | null>(
     null,
+  );
+  const [hostRounds, setHostRounds] = useState(state.settings.rounds);
+  const [hostDifficulties, setHostDifficulties] = useState<Difficulty[]>(
+    state.settings.difficulties,
   );
 
   useEffect(() => {
@@ -39,6 +46,11 @@ export default function MultiplayerRoomLobby() {
     return () => window.clearInterval(timer);
   }, [isPublicWaitRoom]);
 
+  useEffect(() => {
+    setHostRounds(state.settings.rounds);
+    setHostDifficulties(state.settings.difficulties);
+  }, [state.settings.difficulties, state.settings.rounds]);
+
   const publicWaitRemainingMs = publicWaitStartedAt
     ? Math.max(0, 30_000 - (renderNow - publicWaitStartedAt))
     : 0;
@@ -56,6 +68,19 @@ export default function MultiplayerRoomLobby() {
     } catch {
       setShareStatus("Unable to share right now.");
     }
+  };
+
+  const applyHostSettings = (
+    nextRounds: number,
+    nextDifficulties: Difficulty[],
+  ) => {
+    const difficulties = nextDifficulties.slice(0, nextRounds);
+    updateSettings({
+      rounds: nextRounds,
+      difficulties,
+      advanceMode: state.settings.advanceMode,
+      lockInMs: state.settings.lockInMs,
+    });
   };
 
   return (
@@ -90,6 +115,48 @@ export default function MultiplayerRoomLobby() {
           </div>
         ))}
       </div>
+      {selfIsHost && state.status === "lobby" && (
+        <div className="panel stack">
+          <h4>Room Settings</h4>
+          <label htmlFor="host-rounds">Rounds</label>
+          <select
+            id="host-rounds"
+            value={hostRounds}
+            onChange={(event) => {
+              const nextRounds = Number(event.target.value);
+              setHostRounds(nextRounds);
+              applyHostSettings(nextRounds, hostDifficulties);
+            }}
+          >
+            <option value={1}>1</option>
+            <option value={2}>2</option>
+            <option value={3}>3</option>
+          </select>
+          {Array.from({ length: hostRounds }, (_, index) => (
+            <div className="stack" key={`host-difficulty-${index}`}>
+              <label htmlFor={`host-difficulty-${index}`}>
+                Round {index + 1} difficulty
+              </label>
+              <select
+                id={`host-difficulty-${index}`}
+                value={hostDifficulties[index] ?? difficultyOptions[index] ?? "easy"}
+                onChange={(event) => {
+                  const nextDifficulties = [...hostDifficulties];
+                  nextDifficulties[index] = event.target.value as Difficulty;
+                  setHostDifficulties(nextDifficulties);
+                  applyHostSettings(hostRounds, nextDifficulties);
+                }}
+              >
+                {difficultyOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="settings-actions">
         <button
           className="button secondary"
