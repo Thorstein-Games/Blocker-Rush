@@ -69,7 +69,7 @@ export default function MultiplayerRoomLobby() {
     }
   };
 
-  const applyHostSettings = (
+const applyHostSettings = (
     nextRounds: number,
     nextDifficulties: Difficulty[],
   ) => {
@@ -88,6 +88,9 @@ export default function MultiplayerRoomLobby() {
       setNameDraft(selfPlayer?.name ?? "");
       setIsEditingName(false);
       return;
+    }
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("multiplayer-player-name", nextName);
     }
     setDisplayName(nextName);
     setIsEditingName(false);
