@@ -268,8 +268,12 @@ export const attachSocketHandlers = (io: Server) => {
   };
 
   const buildRounds = (room: InternalRoom, matchId: string): RoundPuzzle[] =>
-    room.settings.difficulties.map(
-      (difficulty: RoundPuzzle["difficulty"], roundIndex: number) => {
+    Array.from({ length: room.settings.rounds }, (_, roundIndex: number) => {
+      const difficulty =
+        room.settings.difficulties[roundIndex] ??
+        room.settings.difficulties[room.settings.difficulties.length - 1] ??
+        "easy";
+
         const seed = hashSeed(
           `${room.roomCode}:${matchId}:${roundIndex}:${difficulty}`,
         );
@@ -280,8 +284,7 @@ export const attachSocketHandlers = (io: Server) => {
           difficulty,
           puzzleId: puzzle.id,
         };
-      },
-    );
+      });
 
   const startMatch = (room: InternalRoom) => {
     const matchId = createId("m");
