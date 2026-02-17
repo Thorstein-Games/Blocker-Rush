@@ -195,48 +195,65 @@ export default function MultiplayerRoomLobby() {
           </div>
         ))}
       </div>
-      {selfIsHost && state.status === "lobby" && (
+      {state.status === "lobby" && (
         <div className="panel stack">
           <h4>Room Settings</h4>
-          <label htmlFor="host-rounds">Rounds</label>
-          <select
-            id="host-rounds"
-            value={hostRounds}
-            onChange={(event) => {
-              const nextRounds = Number(event.target.value);
-              setHostRounds(nextRounds);
-              applyHostSettings(nextRounds, hostDifficulties);
-            }}
-          >
-            <option value={1}>1</option>
-            <option value={2}>2</option>
-            <option value={3}>3</option>
-          </select>
-          {Array.from({ length: hostRounds }, (_, index) => (
-            <div className="stack" key={`host-difficulty-${index}`}>
-              <label htmlFor={`host-difficulty-${index}`}>
-                Round {index + 1} difficulty
-              </label>
+          {selfIsHost ? (
+            <>
+              <label htmlFor="host-rounds">Rounds</label>
               <select
-                id={`host-difficulty-${index}`}
-                value={
-                  hostDifficulties[index] ?? difficultyOptions[index] ?? "easy"
-                }
+                id="host-rounds"
+                value={hostRounds}
                 onChange={(event) => {
-                  const nextDifficulties = [...hostDifficulties];
-                  nextDifficulties[index] = event.target.value as Difficulty;
-                  setHostDifficulties(nextDifficulties);
-                  applyHostSettings(hostRounds, nextDifficulties);
+                  const nextRounds = Number(event.target.value);
+                  setHostRounds(nextRounds);
+                  applyHostSettings(nextRounds, hostDifficulties);
                 }}
               >
-                {difficultyOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+                <option value={3}>3</option>
               </select>
-            </div>
-          ))}
+              {Array.from({ length: hostRounds }, (_, index) => (
+                <div className="stack" key={`host-difficulty-${index}`}>
+                  <label htmlFor={`host-difficulty-${index}`}>
+                    Round {index + 1} difficulty
+                  </label>
+                  <select
+                    id={`host-difficulty-${index}`}
+                    value={
+                      hostDifficulties[index] ??
+                      difficultyOptions[index] ??
+                      "easy"
+                    }
+                    onChange={(event) => {
+                      const nextDifficulties = [...hostDifficulties];
+                      nextDifficulties[index] = event.target.value as Difficulty;
+                      setHostDifficulties(nextDifficulties);
+                      applyHostSettings(hostRounds, nextDifficulties);
+                    }}
+                  >
+                    {difficultyOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </>
+          ) : (
+            <>
+              <div>
+                <strong>Rounds:</strong> {state.settings.rounds}
+              </div>
+              {state.settings.difficulties.map((difficulty, index) => (
+                <div key={`guest-difficulty-${index}`}>
+                  <strong>Round {index + 1} difficulty:</strong> {difficulty}
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
       <div className="settings-actions">
