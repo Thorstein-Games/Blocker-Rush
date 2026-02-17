@@ -176,6 +176,13 @@ body {
   letter-spacing: -0.01em;
 }
 
+html.touch-scroll-locked,
+body.touch-scroll-locked {
+  overflow: hidden;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
 .app-background {
   position: fixed;
   inset: 0;
@@ -228,6 +235,27 @@ input {
 .page.game-page {
   gap: 18px;
   padding-top: 20px;
+}
+
+.page.game-page,
+.page.game-page * {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.page.game-page,
+.page.game-page *:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.page.game-page input,
+.page.game-page textarea,
+.page.game-page select,
+.page.game-page [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 .game-header {
@@ -1120,9 +1148,18 @@ input {
 }
 
 @media (max-width: 980px) {
+  body {
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
+  }
+
+  body::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
   .page.game-page.no-scroll-mobile {
-    height: 100dvh;
-    overflow: hidden;
+    min-height: 100dvh;
   }
 }
 

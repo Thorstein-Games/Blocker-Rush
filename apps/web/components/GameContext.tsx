@@ -42,6 +42,7 @@ type InteractionState = {
   pieceId: PieceId;
   pointerId: number;
   pointerType: PointerEvent["pointerType"];
+  touchScrollLocked: boolean;
   captureTarget?: HTMLElement | null;
   startX: number;
   startY: number;
@@ -215,6 +216,36 @@ export function GameProvider({
   const ghostRef = useRef<DragGhost | null>(null);
   const lastTapRef = useRef<{ time: number; cellIndex: number } | null>(null);
   const metricsRef = useRef<InteractionState["metrics"] | null>(null);
+  const touchScrollLockCountRef = useRef(0);
+
+  const setTouchScrollLock = (locked: boolean) => {
+    const html = document.documentElement;
+    const body = document.body;
+    if (locked) {
+      touchScrollLockCountRef.current += 1;
+      if (touchScrollLockCountRef.current === 1) {
+        html.classList.add("touch-scroll-locked");
+        body.classList.add("touch-scroll-locked");
+      }
+      return;
+    }
+    touchScrollLockCountRef.current = Math.max(
+      0,
+      touchScrollLockCountRef.current - 1,
+    );
+    if (touchScrollLockCountRef.current === 0) {
+      html.classList.remove("touch-scroll-locked");
+      body.classList.remove("touch-scroll-locked");
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      touchScrollLockCountRef.current = 0;
+      document.documentElement.classList.remove("touch-scroll-locked");
+      document.body.classList.remove("touch-scroll-locked");
+    };
+  }, []);
 
   const solved = useMemo(() => isSolved(board), [board]);
   const readOnly = lockOnSolve && solved;
@@ -233,11 +264,9 @@ export function GameProvider({
     const previousUserSelect = document.body.style.userSelect;
     document.body.style.cursor = "grabbing";
     document.body.style.userSelect = "none";
-    document.body.style.touchAction = "none";
     return () => {
       document.body.style.cursor = previousCursor;
       document.body.style.userSelect = previousUserSelect;
-      document.body.style.touchAction = "auto";
     };
   }, [draggingPieceId]);
 
@@ -499,6 +528,10 @@ export function GameProvider({
     if (!metrics) return;
     const pointerId = event.pointerId;
     const captureTarget = event.currentTarget as HTMLElement;
+    const touchScrollLocked = event.pointerType === "touch";
+    if (touchScrollLocked) {
+      setTouchScrollLock(true);
+    }
     const state = pieceStatesRef.current[pieceId];
     const transform = getTransformFor(pieceId, state.rotation, state.flipped);
     const centerLocal = getPieceVisualCenterLocal(transform.cells);
@@ -564,6 +597,7 @@ export function GameProvider({
       pieceId,
       pointerId,
       pointerType: event.pointerType,
+      touchScrollLocked,
       captureTarget,
       startX: event.clientX,
       startY: event.clientY,
@@ -621,6 +655,9 @@ export function GameProvider({
       }
       if (interaction.captureTarget?.hasPointerCapture(interaction.pointerId)) {
         interaction.captureTarget.releasePointerCapture(interaction.pointerId);
+      }
+      if (interaction.touchScrollLocked) {
+        setTouchScrollLock(false);
       }
       interactionRef.current = null;
       setDraggingPieceId(null);
