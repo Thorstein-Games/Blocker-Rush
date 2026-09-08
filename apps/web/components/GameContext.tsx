@@ -174,6 +174,11 @@ type GameContextValue = {
   rotatePiece: (pieceId: PieceId) => void;
   flipPiece: (pieceId: PieceId) => void;
   clearBoard: () => void;
+  undo: () => void;
+  canUndo: boolean;
+  feedback: { text: string; error: boolean; sequence: number } | null;
+  selectPiece: (pieceId: PieceId) => void;
+  activateCell: (cellIndex: number, remove?: boolean) => void;
   restoreState: (snapshot: {
     placements: Placement[];
     pieceStates: Record<PieceId, PieceState>;
@@ -188,11 +193,13 @@ const GameContext = createContext<GameContextValue | null>(null);
 type GameProviderProps = {
   children: ReactNode;
   lockOnSolve?: boolean;
+  disabled?: boolean;
 };
 
 export function GameProvider({
   children,
   lockOnSolve = false,
+  disabled = false,
 }: GameProviderProps) {
   const [board, setBoard] = useState<BoardState>(() => createBoard());
   const [pieceStates, setPieceStates] =
@@ -202,6 +209,7 @@ export function GameProvider({
   const [puzzleDifficulty, setPuzzleDifficulty] = useState<Difficulty | null>(
     null,
   );
+  const [feedback, setFeedback] = useState<GameContextValue["feedback"]>(null);
   const [history, setHistory] = useState<BoardState[]>([]);
   const [activePieceId, setActivePieceId] = useState<PieceId | null>(null);
   const [ghost, setGhost] = useState<DragGhost | null>(null);
@@ -248,7 +256,7 @@ export function GameProvider({
   }, []);
 
   const solved = useMemo(() => isSolved(board), [board]);
-  const readOnly = lockOnSolve && solved;
+  const readOnly = disabled || (lockOnSolve && solved);
 
   useEffect(() => {
     boardStateRef.current = board;
@@ -270,12 +278,31 @@ export function GameProvider({
     };
   }, [draggingPieceId]);
 
+  const announce = (text: string, error = false) => {
+    setFeedback((previous) => ({
+      text,
+      error,
+      sequence: (previous?.sequence ?? 0) + 1,
+    }));
+  };
+  const pieceName = (id: PieceId) =>
+    PIECES.find((piece) => piece.id === id)?.name ?? id;
+
+  const selectPiece = (pieceId: PieceId) => {
+    if (readOnly || interactionRef.current) return;
+    setActivePieceId(pieceId);
+    announce(
+      `${pieceName(pieceId)} selected. Arrows choose a square; Enter places. D / S rotates; F flips.`,
+    );
+  };
+
   const updateGhostState = (next: DragGhost | null) => {
     ghostRef.current = next;
     setGhost(next);
   };
 
   const applyPuzzle = (puzzle: PuzzleSpec) => {
+    setFeedback(null);
     setPuzzleId(puzzle.id);
     setBlockers(puzzle.blockers);
     setPuzzleDifficulty(puzzle.difficulty);
@@ -293,22 +320,38 @@ export function GameProvider({
 
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
-      if (readOnly) return;
-      if (!activePieceId) return;
+      const target = event.target;
+      if (
+        readOnly ||
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.altKey ||
+        event.metaKey ||
+        event.ctrlKey ||
+        !(target instanceof HTMLElement) ||
+        target.isContentEditable ||
+        target.closest(
+          'input, textarea, select, [contenteditable], dialog, [role="dialog"]',
+        ) ||
+        document.querySelector('dialog[open], [aria-modal="true"]')
+      )
+        return;
+      const surface = boardRef.current?.closest(
+        ".game-center, .multiplayer-main-board",
+      );
+      if (!surface?.contains(target) && !interactionRef.current) return;
       const key = event.key.toLowerCase();
-      if (key === "d" || key === "arrowright") {
-        event.preventDefault();
-        rotatePiece(activePieceId);
+      if (key === "escape") {
+        setActivePieceId(null);
+        announce("Selection cancelled. Choose a piece from the tray.");
         return;
       }
-      if (key === "s" || key === "arrowleft") {
-        event.preventDefault();
-        rotatePieceBackward(activePieceId);
+      if (!activePieceId || boardStateRef.current.placements[activePieceId])
         return;
-      }
-      if (key === "f" || key === "arrowup" || key === "arrowdown") {
+      if (key === "d" || key === "s" || key === "f") {
         event.preventDefault();
-        flipPiece(activePieceId);
+        if (key === "f") flipPiece(activePieceId);
+        else rotatePieceBy(activePieceId, key === "d" ? -1 : 1);
       }
     };
     window.addEventListener("keydown", handleKey);
@@ -316,7 +359,8 @@ export function GameProvider({
   }, [activePieceId, readOnly]);
 
   const rotatePieceBy = (pieceId: PieceId, delta: number) => {
-    if (readOnly) return;
+    if (readOnly || boardStateRef.current.placements[pieceId]) return;
+    announce(`${pieceName(pieceId)} rotated.`);
     setPieceStates((prev) => ({
       ...prev,
       [pieceId]: {
@@ -330,12 +374,9 @@ export function GameProvider({
     rotatePieceBy(pieceId, -1);
   };
 
-  const rotatePieceBackward = (pieceId: PieceId) => {
-    rotatePieceBy(pieceId, 1);
-  };
-
   const flipPiece = (pieceId: PieceId) => {
-    if (readOnly) return;
+    if (readOnly || boardStateRef.current.placements[pieceId]) return;
+    announce(`${pieceName(pieceId)} flipped.`);
     setPieceStates((prev) => ({
       ...prev,
       [pieceId]: {
@@ -346,12 +387,14 @@ export function GameProvider({
   };
 
   const clearBoard = () => {
-    if (readOnly) return;
+    if (readOnly || interactionRef.current) return;
     const currentBoard = boardStateRef.current;
     const hasPlacedPieces = PIECES.some((piece) =>
       Boolean(currentBoard.placements[piece.id]),
     );
     if (!hasPlacedPieces) return;
+    announce("Board emptied. Undo restores your pieces.");
+    setActivePieceId(null);
     const nextBoard = withBlockers(blockers);
     setHistory((prev) => [...prev, currentBoard]);
     boardStateRef.current = nextBoard;
@@ -359,6 +402,49 @@ export function GameProvider({
     updateGhostState(null);
     setDraggingPieceId(null);
     setDragPreview(null);
+  };
+
+  const undo = () => {
+    if (readOnly || interactionRef.current) return;
+    const previous = history[history.length - 1];
+    if (!previous) return;
+    setHistory(history.slice(0, -1));
+    boardStateRef.current = previous;
+    setBoard(previous);
+    setPieceStates((current) => {
+      const next = { ...current };
+      for (const placement of Object.values(previous.placements)) {
+        if (placement)
+          next[placement.pieceId] = findOrientationForTransform(
+            placement.pieceId,
+            placement.transformId,
+          );
+      }
+      return next;
+    });
+    setActivePieceId(null);
+    updateGhostState(null);
+    setDragPreview(null);
+    announce("Last move undone.");
+  };
+
+  const placementError = (
+    current: BoardState,
+    transform: PieceTransform,
+    origin: Vec2,
+  ) => {
+    for (const cell of transform.cells) {
+      const x = origin.x + cell.x,
+        y = origin.y + cell.y;
+      if (x < 0 || y < 0 || x >= current.size.cols || y >= current.size.rows)
+        return "Piece crosses the edge. Move it inward or rotate it.";
+      const occupied = current.cells[y * current.size.cols + x];
+      if (occupied === "blocker")
+        return "A blocker is in the way. Choose another square or rotate the piece.";
+      if (occupied)
+        return "Pieces cannot overlap. Choose a free area or remove a placed piece.";
+    }
+    return "Choose a square inside the board.";
   };
 
   const setPieceState = (pieceId: PieceId, next: PieceState) => {
@@ -512,6 +598,7 @@ export function GameProvider({
     setHistory((prev) => [...prev, previousBoard]);
     boardStateRef.current = nextBoard;
     setBoard(nextBoard);
+    announce(`${pieceName(pieceId)} removed. Undo restores it.`);
   };
 
   const startInteraction = (
@@ -519,8 +606,15 @@ export function GameProvider({
     pieceId: PieceId,
     origin?: Vec2,
   ) => {
-    if (readOnly) return;
+    if (readOnly || event.button !== 0 || interactionRef.current) return;
     event.preventDefault();
+    const focusTarget =
+      event.target instanceof HTMLElement &&
+      event.target.closest('[role="gridcell"]');
+    (focusTarget instanceof HTMLElement
+      ? focusTarget
+      : event.currentTarget
+    ).focus({ preventScroll: true });
     const wasActive = activePieceId === pieceId;
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
     updateMetrics();
@@ -610,6 +704,7 @@ export function GameProvider({
     };
 
     setActivePieceId(pieceId);
+    announce(`${pieceName(pieceId)} selected.`);
 
     const handleMove = (moveEvent: PointerEvent) => {
       const interaction = interactionRef.current;
@@ -809,6 +904,10 @@ export function GameProvider({
       setHistory((prev) => [...prev, previousBoard]);
       boardStateRef.current = nextBoard;
       setBoard(nextBoard);
+      setActivePieceId(null);
+      announce(
+        `${pieceName(pieceId)} placed. ${Object.values(nextBoard.placements).filter(Boolean).length} of 9 pieces placed.`,
+      );
       const snapCenter = interaction.latestSnapCenter;
       if (snapCenter) {
         setDragPreview((prev) =>
@@ -841,6 +940,17 @@ export function GameProvider({
       setDragPreview(null);
       return;
     }
+    const state = pieceStatesRef.current[pieceId];
+    announce(
+      latestGhost
+        ? placementError(
+            currentBoard,
+            getTransformFor(pieceId, state.rotation, state.flipped),
+            latestGhost.origin,
+          )
+        : "Drop inside the board to place this piece.",
+      true,
+    );
     boardStateRef.current = previousBoard;
     setBoard(previousBoard);
     setDragPreview(null);
@@ -892,19 +1002,29 @@ export function GameProvider({
     startInteraction(event, cell as PieceId, placement.origin);
   };
 
-  const handleBoardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    if (readOnly) return;
-    const cellIndex = getCellIndexFromTarget(event.target);
-    if (cellIndex === null) return;
+  const activateCell = (cellIndex: number, remove = false) => {
+    if (readOnly || interactionRef.current) return;
     const currentBoard = boardStateRef.current;
     const cell = currentBoard.cells[cellIndex];
-    if (cell) return;
-    if (!activePieceId) return;
+    if (remove || (!activePieceId && cell && cell !== "blocker")) {
+      if (cell && cell !== "blocker") {
+        commitRemoval(cell, currentBoard);
+        setActivePieceId(cell);
+      } else announce("No piece here to remove.");
+      return;
+    }
+    if (!activePieceId) {
+      announce(
+        cell === "blocker"
+          ? "Blocked square. Choose a piece from the tray."
+          : "Choose a piece from the tray first.",
+      );
+      return;
+    }
     if (currentBoard.placements[activePieceId]) return;
-    const size = currentBoard.size;
     const origin = {
-      x: cellIndex % size.cols,
-      y: Math.floor(cellIndex / size.cols),
+      x: cellIndex % currentBoard.size.cols,
+      y: Math.floor(cellIndex / currentBoard.size.cols),
     };
     const state = pieceStatesRef.current[activePieceId];
     const transform = getTransformFor(
@@ -912,7 +1032,10 @@ export function GameProvider({
       state.rotation,
       state.flipped,
     );
-    if (!canPlace(currentBoard, transform, origin)) return;
+    if (!canPlace(currentBoard, transform, origin)) {
+      announce(placementError(currentBoard, transform, origin), true);
+      return;
+    }
     const nextBoard = placePiece(
       currentBoard,
       activePieceId,
@@ -922,11 +1045,34 @@ export function GameProvider({
     setHistory((prev) => [...prev, currentBoard]);
     boardStateRef.current = nextBoard;
     setBoard(nextBoard);
+    setActivePieceId(null);
+    announce(
+      `${pieceName(activePieceId)} placed. ${Object.values(nextBoard.placements).filter(Boolean).length} of 9 pieces placed.`,
+    );
+  };
+
+  const handleBoardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const cellIndex = getCellIndexFromTarget(event.target);
+    if (cellIndex !== null && !boardStateRef.current.cells[cellIndex])
+      activateCell(cellIndex);
+    else if (
+      cellIndex !== null &&
+      boardStateRef.current.cells[cellIndex] === "blocker"
+    )
+      activateCell(cellIndex);
   };
 
   const handleBoardDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (readOnly) return;
-    const cellIndex = getCellIndexFromTarget(event.target);
+    // Pointer capture can retarget a double-click to the board itself.
+    const metrics = metricsRef.current;
+    const cellIndex =
+      getCellIndexFromTarget(event.target) ??
+      (metrics
+        ? Math.floor((event.clientY - metrics.rect.top) / metrics.step) *
+            boardStateRef.current.size.cols +
+          Math.floor((event.clientX - metrics.rect.left) / metrics.step)
+        : null);
     if (cellIndex === null) return;
     const currentBoard = boardStateRef.current;
     const cell = currentBoard.cells[cellIndex];
@@ -1005,6 +1151,11 @@ export function GameProvider({
     rotatePiece,
     flipPiece,
     clearBoard,
+    undo,
+    canUndo: history.length > 0 && !readOnly && !draggingPieceId,
+    feedback,
+    selectPiece,
+    activateCell,
     restoreState,
     boardRef,
   };

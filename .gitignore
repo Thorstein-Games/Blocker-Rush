@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Logs
 *.log*
+
+# Browser automation session state
+/.playwright-cli/

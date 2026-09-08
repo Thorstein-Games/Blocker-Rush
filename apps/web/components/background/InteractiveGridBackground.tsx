@@ -73,6 +73,9 @@ export default function InteractiveGridBackground() {
       "(prefers-reduced-motion: reduce)",
     ).matches;
     let profile = getThemeProfile();
+    const gridCanvas = document.createElement("canvas");
+    const gridContext = gridCanvas.getContext("2d");
+    if (!gridContext) return;
 
     const activeCells = new Map<string, ActiveCell>();
     const pointer = {
@@ -93,6 +96,11 @@ export default function InteractiveGridBackground() {
 
       context.setTransform(dpr, 0, 0, dpr, 0, 0);
       context.imageSmoothingEnabled = false;
+      gridCanvas.width = canvas.width;
+      gridCanvas.height = canvas.height;
+      gridContext.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cacheGrid();
+      scheduleRender();
     };
 
     const clampHue = (value: number) => {
@@ -167,43 +175,44 @@ export default function InteractiveGridBackground() {
       }
     };
 
-    const drawGrid = () => {
-      context.beginPath();
-      context.strokeStyle = profile.gridLine;
-      context.lineWidth = 1;
+    const cacheGrid = () => {
+      gridContext.clearRect(0, 0, width, height);
+      gridContext.beginPath();
+      gridContext.strokeStyle = profile.gridLine;
+      gridContext.lineWidth = 1;
 
       for (let x = 0; x <= width; x += CELL_SIZE) {
         const line = Math.round(x) + 0.5;
-        context.moveTo(line, 0);
-        context.lineTo(line, height);
+        gridContext.moveTo(line, 0);
+        gridContext.lineTo(line, height);
       }
 
       for (let y = 0; y <= height; y += CELL_SIZE) {
         const line = Math.round(y) + 0.5;
-        context.moveTo(0, line);
-        context.lineTo(width, line);
+        gridContext.moveTo(0, line);
+        gridContext.lineTo(width, line);
       }
 
-      context.stroke();
+      gridContext.stroke();
 
-      context.beginPath();
-      context.strokeStyle = profile.gridMajor;
-      context.lineWidth = 1;
+      gridContext.beginPath();
+      gridContext.strokeStyle = profile.gridMajor;
+      gridContext.lineWidth = 1;
       const majorStep = CELL_SIZE * MAJOR_GRID_EVERY;
 
       for (let x = 0; x <= width; x += majorStep) {
         const line = Math.round(x) + 0.5;
-        context.moveTo(line, 0);
-        context.lineTo(line, height);
+        gridContext.moveTo(line, 0);
+        gridContext.lineTo(line, height);
       }
 
       for (let y = 0; y <= height; y += majorStep) {
         const line = Math.round(y) + 0.5;
-        context.moveTo(0, line);
-        context.lineTo(width, line);
+        gridContext.moveTo(0, line);
+        gridContext.lineTo(width, line);
       }
 
-      context.stroke();
+      gridContext.stroke();
     };
 
     const drawPointerGlow = () => {
@@ -236,7 +245,7 @@ export default function InteractiveGridBackground() {
     };
 
     const drawActiveCells = (deltaSeconds: number) => {
-      const decay = reducedMotion ? 2.9 : 1.7;
+      const decay = 1.7;
 
       for (const [key, cell] of activeCells) {
         cell.energy -= decay * deltaSeconds;
@@ -277,18 +286,28 @@ export default function InteractiveGridBackground() {
     };
 
     const render = (timestamp: number) => {
+      animationFrame = 0;
       const deltaSeconds = Math.min((timestamp - lastFrameTime) / 1000, 0.1);
       lastFrameTime = timestamp;
 
       context.clearRect(0, 0, width, height);
-      drawGrid();
+      context.drawImage(gridCanvas, 0, 0, width, height);
       drawPointerGlow();
       drawActiveCells(deltaSeconds);
 
-      animationFrame = window.requestAnimationFrame(render);
+      if (!reducedMotion && activeCells.size > 0)
+        animationFrame = window.requestAnimationFrame(render);
     };
 
+    function scheduleRender() {
+      if (animationFrame || document.hidden) return;
+      lastFrameTime = performance.now();
+      animationFrame = window.requestAnimationFrame(render);
+    }
+
     const handlePointerMove = (event: PointerEvent) => {
+      if (reducedMotion) return;
+      scheduleRender();
       const { clientX, clientY } = event;
 
       if (!pointer.seen) {
@@ -305,6 +324,8 @@ export default function InteractiveGridBackground() {
     };
 
     const handlePointerDown = (event: PointerEvent) => {
+      if (reducedMotion) return;
+      scheduleRender();
       const { clientX, clientY } = event;
       pointer.seen = true;
       pointer.x = clientX;
@@ -322,6 +343,9 @@ export default function InteractiveGridBackground() {
 
     const handleReducedMotion = (event: MediaQueryListEvent) => {
       reducedMotion = event.matches;
+      activeCells.clear();
+      pointer.seen = false;
+      scheduleRender();
     };
 
     const reducedMotionMedia = window.matchMedia(
@@ -332,17 +356,31 @@ export default function InteractiveGridBackground() {
     const colorSchemeMedia = window.matchMedia("(prefers-color-scheme: dark)");
     const handleColorSchemeChange = () => {
       profile = getThemeProfile();
+      cacheGrid();
+      scheduleRender();
     };
     colorSchemeMedia.addEventListener("change", handleColorSchemeChange);
 
-    const themeObserver = new MutationObserver(() => {
-      profile = getThemeProfile();
-    });
+    const themeObserver = new MutationObserver(handleColorSchemeChange);
     themeObserver.observe(document.documentElement, {
       attributes: true,
       attributeFilter: ["data-theme"],
     });
 
+    const resetPointer = () => {
+      pointer.seen = false;
+      scheduleRender();
+    };
+    const handleVisibility = () => {
+      window.cancelAnimationFrame(animationFrame);
+      animationFrame = 0;
+      activeCells.clear();
+      pointer.seen = false;
+      scheduleRender();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    document.addEventListener("pointerleave", resetPointer);
+    window.addEventListener("blur", resetPointer);
     window.addEventListener("resize", resizeCanvas);
     window.addEventListener("pointermove", handlePointerMove, {
       passive: true,
@@ -352,10 +390,12 @@ export default function InteractiveGridBackground() {
     });
 
     resizeCanvas();
-    animationFrame = window.requestAnimationFrame(render);
 
     return () => {
       window.cancelAnimationFrame(animationFrame);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      document.removeEventListener("pointerleave", resetPointer);
+      window.removeEventListener("blur", resetPointer);
       window.removeEventListener("resize", resizeCanvas);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerdown", handlePointerDown);

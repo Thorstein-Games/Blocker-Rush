@@ -1,11 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
   Coordinate,
   Difficulty,
   PieceId,
+  Placement,
   Vec2,
 } from "@blocker-rush/shared";
 import {
@@ -134,8 +142,9 @@ function CasualGameLayout() {
     moveCount,
     startedAt,
     applyPuzzle,
-    setActivePieceId,
+    selectPiece,
     setPieceState,
+    boardRef,
   } = useGame();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -145,6 +154,7 @@ function CasualGameLayout() {
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [puzzleInput, setPuzzleInput] = useState<string>("");
   const [hint, setHint] = useState<string | null>(null);
+  const [hintPlacement, setHintPlacement] = useState<Placement | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const [solutionCache, setSolutionCache] = useState<SolutionCache | null>(
     null,
@@ -164,7 +174,7 @@ function CasualGameLayout() {
   }, [difficulty]);
 
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 981px)");
+    const media = window.matchMedia("(min-width: 1200px)");
     const sync = () => setIsDesktop(media.matches);
     sync();
     media.addEventListener("change", sync);
@@ -182,6 +192,7 @@ function CasualGameLayout() {
   useEffect(() => {
     setHint(null);
     setShareStatus(null);
+    setHintPlacement(null);
     setSolutionCache(null);
     setRoundStats(null);
     setHasRecordedSolve(false);
@@ -296,7 +307,7 @@ function CasualGameLayout() {
     loadPuzzleFromId(puzzleInput);
   };
 
-  const handleHint = () => {
+  const handleHint = (event: MouseEvent<HTMLButtonElement>) => {
     if (!puzzleId) return;
     let solution = solutionCache;
     if (!solution) {
@@ -324,13 +335,22 @@ function CasualGameLayout() {
       target.id,
       placement.transformId,
     );
+    setHintPlacement({ ...placement, pieceId: target.id });
     setPieceState(target.id, orientation);
-    setActivePieceId(target.id);
+    selectPiece(target.id);
     setHint(
       `Try placing ${target.name} so its top-left is at ${formatCoordinate(
         coord,
       )}.`,
     );
+    event.currentTarget.closest("dialog")?.close();
+    window.requestAnimationFrame(() => {
+      boardRef.current
+        ?.querySelector<HTMLElement>(
+          `[data-index="${placement.origin.y * board.size.cols + placement.origin.x}"]`,
+        )
+        ?.focus();
+    });
     if (hintTimeoutRef.current) {
       window.clearTimeout(hintTimeoutRef.current);
     }
@@ -422,8 +442,16 @@ function CasualGameLayout() {
           Share
         </button>
       </div>
-      {hint && <div className="notice">{hint}</div>}
-      {shareStatus && <div className="notice">{shareStatus}</div>}
+      {hint && (
+        <div className="notice" role="status">
+          {hint}
+        </div>
+      )}
+      {shareStatus && (
+        <div className="notice" role="status">
+          {shareStatus}
+        </div>
+      )}
     </div>
   );
 
@@ -457,12 +485,18 @@ function CasualGameLayout() {
             {settingsContent}
           </aside>
         )}
-        <div className="game-center">
-          <GameBoard />
+        <div className="game-center puzzle-workspace">
+          <div className="game-context-strip">
+            <strong>Casual</strong>
+            <span className="context-difficulty">
+              {puzzleDifficulty ?? "Custom puzzle"}
+            </span>
+          </div>
+          <GameBoard hintPlacement={hintPlacement} />
           <PiecesTray />
           {solved && (
             <>
-              <div className="notice">
+              <div className="notice" role="status">
                 Completed in {roundStats?.moves ?? moveCount} moves in{" "}
                 {formatElapsedTime(roundStats?.elapsedMs ?? 0)}.
               </div>

@@ -126,7 +126,10 @@ export default function MultiplayerLobbyLanding({
       <section className="multiplayer-lobby">
         <div className="panel stack">
           <h3>Quick Join</h3>
+          <label htmlFor="display-name">Display name</label>
           <input
+            id="display-name"
+            autoComplete="nickname"
             value={name}
             onChange={(event) => setStoredName(event.target.value)}
             placeholder="Display name"
@@ -251,16 +254,23 @@ export default function MultiplayerLobbyLanding({
                   <div className="settings-actions code">
                     {room.visibility === "private" &&
                       room.status === "lobby" && (
-                        <input
-                          value={roomCodeByPrivateRoom[room.roomCode] ?? ""}
-                          onChange={(event) =>
-                            setRoomCodeByPrivateRoom((prev) => ({
-                              ...prev,
-                              [room.roomCode]: event.target.value.toUpperCase(),
-                            }))
-                          }
-                          placeholder="Code"
-                        />
+                        <div className="stack private-room-code">
+                          <label htmlFor={`private-code-${room.roomCode}`}>
+                            Code for {room.hostName}’s room
+                          </label>
+                          <input
+                            id={`private-code-${room.roomCode}`}
+                            value={roomCodeByPrivateRoom[room.roomCode] ?? ""}
+                            onChange={(event) =>
+                              setRoomCodeByPrivateRoom((prev) => ({
+                                ...prev,
+                                [room.roomCode]:
+                                  event.target.value.toUpperCase(),
+                              }))
+                            }
+                            placeholder="AB12CD"
+                          />
+                        </div>
                       )}
                     <button
                       className="button secondary"

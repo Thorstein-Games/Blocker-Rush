@@ -133,17 +133,8 @@ function DailyGameLayout({ date }: { date: Date }) {
   );
   const [hasRecorded, setHasRecorded] = useState(false);
   const [progress, setProgress] = useState<DailyProgress | null>(null);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   const hasRestoredRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 981px)");
-    const sync = () => setIsDesktop(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
 
   useEffect(() => {
     if (dailyPuzzle.id === puzzleId) return;
@@ -238,7 +229,7 @@ function DailyGameLayout({ date }: { date: Date }) {
     : 0;
 
   const statusLabel =
-    stats.lastCompletedDateKey === dateKey ? "Completed" : "Not yet cleared";
+    stats.lastCompletedDateKey === dateKey ? "Completed" : "Not yet solved";
   const statsPanel = (
     <div className="stats-grid">
       <div className="stat-card">
@@ -288,7 +279,7 @@ function DailyGameLayout({ date }: { date: Date }) {
       <GameHeader
         mode="daily"
         statsTitle="Daily Challenge"
-        statsPanel={isDesktop ? undefined : statsPanel}
+        statsPanel={statsPanel}
         settingsPanel={
           <div className="settings-stack">
             <ThemeSelect />
@@ -296,18 +287,26 @@ function DailyGameLayout({ date }: { date: Date }) {
         }
       />
       <section className="game-layout">
-        {isDesktop && (
-          <aside className="panel side-panel">
-            <h3>Daily Challenge</h3>
-            {statsPanel}
-          </aside>
-        )}
-        <div className="game-center">
+        <div className="game-center puzzle-workspace">
+          <div
+            className="game-context-strip"
+            aria-label="Daily challenge details"
+          >
+            <strong>Daily</strong>
+            <time dateTime={dateKey}>
+              {date.toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })}
+            </time>
+            <span className="context-difficulty">{dailyPuzzle.difficulty}</span>
+            <span>{stats.streak}-day streak</span>
+          </div>
           <GameBoard />
           <PiecesTray />
           {solved && (
             <>
-              <div className="notice">
+              <div className="notice" role="status">
                 Completed in {solvedMoveCount} moves.
               </div>
               <div className="settings-actions">
@@ -331,7 +330,11 @@ function DailyGameLayout({ date }: { date: Date }) {
               </div>
             </>
           )}
-          {shareStatus && <div className="notice">{shareStatus}</div>}
+          {shareStatus && (
+            <div className="notice" role="status">
+              {shareStatus}
+            </div>
+          )}
         </div>
       </section>
     </main>

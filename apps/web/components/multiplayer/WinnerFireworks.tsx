@@ -33,6 +33,8 @@ export default function WinnerFireworks({ className }: WinnerFireworksProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (motion.matches) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -48,7 +50,7 @@ export default function WinnerFireworks({ className }: WinnerFireworksProps) {
     const resize = () => {
       const parent = canvas.parentElement;
       if (!parent) return;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const width = parent.clientWidth;
       const height = parent.clientHeight;
       canvas.width = Math.floor(width * dpr);
@@ -126,6 +128,13 @@ export default function WinnerFireworks({ className }: WinnerFireworksProps) {
       raf = window.requestAnimationFrame(animate);
     };
 
+    const stopForReducedMotion = () => {
+      if (!motion.matches) return;
+      window.cancelAnimationFrame(raf);
+      particles.length = 0;
+      ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
+    };
+    motion.addEventListener("change", stopForReducedMotion);
     resize();
     spawnBurst(canvas.clientWidth * 0.33, canvas.clientHeight * 0.3, 36);
     spawnBurst(canvas.clientWidth * 0.67, canvas.clientHeight * 0.24, 32);
@@ -134,6 +143,7 @@ export default function WinnerFireworks({ className }: WinnerFireworksProps) {
 
     return () => {
       window.cancelAnimationFrame(raf);
+      motion.removeEventListener("change", stopForReducedMotion);
       window.removeEventListener("resize", resize);
     };
   }, []);

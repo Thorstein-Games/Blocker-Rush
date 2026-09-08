@@ -1,6 +1,8 @@
 # Blocker Rush design audit and critique
 
-Reviewed September 7, 2026. The square-block refinement is implemented. The remaining findings below are recommendations from the audit, not additional product changes.
+**Update, September 7, 2026:** all 3 P1 and 7 P2 findings below, plus the independent critique’s smaller follow-ups, are now implemented. See [the resolution report](fixes.md) for the Impeccable flow, verification results, screenshots, and the intentional decision to keep the optional P3 font choice.
+
+The original audit follows as historical evidence of the problems and the initial square-block refinement.
 
 **Verdict:** the colorful pieces, crossed blockers, and dark arcade board give the game a clear identity. Preserve them. The largest opportunities are making the first successful placement obvious, supporting keyboard play, and giving players useful feedback and recovery controls.
 

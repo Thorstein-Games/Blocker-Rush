@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type Mode = "daily" | "casual" | "multiplayer";
@@ -69,45 +69,42 @@ const HelpIcon = () => (
 );
 
 const howToPlayPanel = (
-  <div className="stack">
-    <div className="stack">
-      <strong>Rules</strong>
-      <span>
-        Each puzzle gives you 7 blockers on a 6x6 grid. Your goal is to place
-        all 9 pieces so every remaining square is filled. Pieces can be rotated
-        and flipped, but they cannot overlap or cover blockers.
-      </span>
-    </div>
-    <div className="stack">
-      <strong>Interactions</strong>
-      <ul>
-        <li>Click or tap a piece to make it active.</li>
-        <li>Click an active piece again to rotate it.</li>
-        <li>Drag a piece onto the board to place it.</li>
-        <li>Click an empty board cell to place the active piece there.</li>
-        <li>
-          Drag a placed piece to move it, or drag it off the board to remove it.
-        </li>
-        <li>Double-click a placed piece to remove it.</li>
-        <li>
-          Use the Rotate/Flip buttons, or press D/Right to rotate forward,
-          S/Left to rotate backward, and F to flip.
-        </li>
-      </ul>
-    </div>
-    <div className="stack">
-      <strong>Modes</strong>
-      <ul>
-        <li>
-          Daily gives everyone the same puzzle each day and tracks streaks.
-        </li>
-        <li>
-          Casual lets you pick difficulty, generate random puzzles, or load a
-          specific puzzle ID
-        </li>
-        <li>Multiplayer is a live race with synchronized rounds.</li>
-      </ul>
-    </div>
+  <div className="stack help-content">
+    <p>
+      Fill every empty square with all 9 pieces. The 7 crossed squares are
+      blockers: pieces cannot cover them or overlap each other.
+    </p>
+    <ol>
+      <li>
+        Choose a piece, then tap a square to place it. You can also drag it onto
+        the board.
+      </li>
+      <li>
+        Use Rotate and Flip to change its shape. Tapping a selected tray piece
+        also rotates it.
+      </li>
+      <li>
+        Double-click or double-tap a placed piece to remove it. Undo reverses
+        your last placement, removal, or Clear.
+      </li>
+    </ol>
+    <details>
+      <summary>Play with a keyboard</summary>
+      <p>
+        Tab to a piece and press Enter or Space to select it and focus the
+        board. Arrow keys choose a square; Enter or Space places it. D or S
+        rotates, F flips, and Escape cancels selection. Delete or Backspace
+        removes the piece at the current square.
+      </p>
+    </details>
+    <details>
+      <summary>Game modes</summary>
+      <p>
+        Daily gives everyone the same puzzle each day. Casual lets you choose a
+        difficulty or load a Puzzle ID. Multiplayer lets you race other players
+        through the same puzzles.
+      </p>
+    </details>
   </div>
 );
 const howToPlayTitle = "How to Play";
@@ -122,6 +119,22 @@ export default function GameHeader({
 }: GameHeaderProps) {
   const [openPanel, setOpenPanel] = useState<PanelKey>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!openPanel || !dialog) return;
+    dialog.showModal();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
+      triggerRef.current?.focus();
+    };
+  }, [openPanel]);
 
   useEffect(() => {
     if (!openPanel && !isMenuOpen) return;
@@ -129,6 +142,7 @@ export default function GameHeader({
       if (event.key === "Escape") {
         setOpenPanel(null);
         setIsMenuOpen(false);
+        if (isMenuOpen) menuRef.current?.focus();
       }
     };
     window.addEventListener("keydown", handleKey);
@@ -136,6 +150,7 @@ export default function GameHeader({
   }, [openPanel, isMenuOpen]);
 
   const togglePanel = (panel: Exclude<PanelKey, null>) => {
+    triggerRef.current = document.activeElement as HTMLElement;
     setOpenPanel((current) => (current === panel ? null : panel));
     setIsMenuOpen(false);
   };
@@ -181,7 +196,9 @@ export default function GameHeader({
               .join(" ")}
             type="button"
             onClick={handleMenuToggle}
-            aria-label="Open menu"
+            ref={menuRef}
+            aria-label="Choose game mode"
+            aria-controls="game-menu"
             aria-expanded={isMenuOpen}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -199,10 +216,15 @@ export default function GameHeader({
             height={28}
             style={{ display: "block", borderRadius: "6px" }}
           />
-          <h1 className="game-title">{title}</h1>
+          <h1 className="game-title" aria-label={title}>
+            <span className="brand-full">{title}</span>
+            <span className="brand-short" aria-hidden="true">
+              BR
+            </span>
+          </h1>
         </div>
         <div className="header-center">
-          <div className="mode-switch" role="tablist" aria-label="Game mode">
+          <nav className="mode-switch" aria-label="Game mode">
             {modeLinks.map((item) =>
               item.href ? (
                 <Link
@@ -214,8 +236,7 @@ export default function GameHeader({
                     .filter(Boolean)
                     .join(" ")}
                   href={item.href}
-                  role="tab"
-                  aria-selected={mode === item.key}
+                  aria-current={mode === item.key ? "page" : undefined}
                 >
                   {item.label}
                 </Link>
@@ -236,7 +257,7 @@ export default function GameHeader({
                 </button>
               ),
             )}
-          </div>
+          </nav>
         </div>
         <div className="header-actions">
           {howToPlayPanel && (
@@ -289,8 +310,11 @@ export default function GameHeader({
           )}
         </div>
       </header>
+      <div className="mobile-mode-context">
+        {modeLinks.find((item) => item.key === mode)?.label}
+      </div>
       {isMenuOpen && (
-        <div className="header-menu" role="menu" aria-label="Game menu">
+        <nav id="game-menu" className="header-menu" aria-label="Game mode">
           <div className="header-menu-card">
             <div className="header-menu-section">
               {modeLinks.map((item) =>
@@ -304,7 +328,7 @@ export default function GameHeader({
                       .filter(Boolean)
                       .join(" ")}
                     href={item.href}
-                    role="menuitem"
+                    aria-current={mode === item.key ? "page" : undefined}
                     onClick={handleMenuLinkClick}
                   >
                     {item.label}
@@ -323,40 +347,63 @@ export default function GameHeader({
               )}
             </div>
           </div>
-        </div>
+        </nav>
       )}
       {openPanel && activePanel && (
-        <div
-          className="header-modal-backdrop"
-          role="presentation"
-          onClick={() => setOpenPanel(null)}
+        <dialog
+          ref={dialogRef}
+          className="header-modal"
+          aria-label={activeTitle}
+          onCancel={() => setOpenPanel(null)}
+          onClose={() => setOpenPanel(null)}
+          onKeyDown={(event) => {
+            if (event.key !== "Tab") return;
+            const items = Array.from(
+              event.currentTarget.querySelectorAll<HTMLElement>(
+                'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), summary, [tabindex="0"]',
+              ),
+            ).filter((element) => element.getClientRects().length > 0);
+            const first = items[0],
+              last = items[items.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last?.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first?.focus();
+            }
+          }}
+          onClick={(event) => {
+            if (event.target !== event.currentTarget) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            if (
+              event.clientX < rect.left ||
+              event.clientX > rect.right ||
+              event.clientY < rect.top ||
+              event.clientY > rect.bottom
+            )
+              setOpenPanel(null);
+          }}
         >
-          <div
-            className="header-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-label={activeTitle}
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="header-modal-header">
-              <h3 className="modal-title">{activeTitle}</h3>
-              <button
-                className="icon-button modal-close"
-                type="button"
-                onClick={() => setOpenPanel(null)}
-                aria-label="Close panel"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path
-                    fill="currentColor"
-                    d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3 10.59 10.6l6.3-6.3z"
-                  />
-                </svg>
-              </button>
-            </div>
-            <div className="header-modal-body">{activePanel}</div>
+          <div className="header-modal-header">
+            <h3 className="modal-title">{activeTitle}</h3>
+            <button
+              className="icon-button modal-close"
+              type="button"
+              onClick={() => setOpenPanel(null)}
+              aria-label="Close panel"
+              autoFocus
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path
+                  fill="currentColor"
+                  d="M18.3 5.71 12 12l6.3 6.29-1.41 1.42L10.59 13.4 4.29 19.7 2.88 18.29 9.17 12 2.88 5.71 4.29 4.3 10.59 10.6l6.3-6.3z"
+                />
+              </svg>
+            </button>
           </div>
-        </div>
+          <div className="header-modal-body">{activePanel}</div>
+        </dialog>
       )}
     </>
   );

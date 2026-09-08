@@ -5,7 +5,12 @@
   align-items: start;
 }
 
-@media (max-width: 980px) {
+.casual-layout > .side-panel {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 1199px) {
   .casual-layout {
     grid-template-columns: 1fr;
   }

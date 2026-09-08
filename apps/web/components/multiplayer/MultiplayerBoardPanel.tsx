@@ -87,13 +87,7 @@ function MultiplayerBoardInner({
   onSubmitFinish,
   authoritativeReject,
 }: MultiplayerBoardInnerProps) {
-  const {
-    board,
-    applyPuzzle,
-    restoreState,
-    solved,
-    readOnly,
-  } = useGame();
+  const { board, applyPuzzle, restoreState, solved, readOnly } = useGame();
 
   const round = selfPlayer?.round;
   const roundIndex = selfPlayer?.currentRoundIndex ?? 0;
@@ -173,6 +167,19 @@ function MultiplayerBoardInner({
     if (!roundStateKey) return;
     if (restoredRoundStateKeyRef.current === roundStateKey) return;
 
+    // Acknowledging the same local placement must not erase Undo history.
+    const localKey = Object.values(prevPlacementsRef.current)
+      .filter((piece): piece is Placement => Boolean(piece))
+      .map(
+        (piece) =>
+          `${piece.pieceId}:${piece.transformId}:${piece.origin.x}:${piece.origin.y}`,
+      )
+      .sort()
+      .join("|");
+    if (syncedRef.current && localKey === placedPiecesKey) {
+      restoredRoundStateKeyRef.current = roundStateKey;
+      return;
+    }
     restoreStateRef.current({
       placements: roundPlacedPieces.map(toPlacement),
       pieceStates: buildPieceStates(roundPlacedPieces),
@@ -182,13 +189,22 @@ function MultiplayerBoardInner({
     restoredRoundStateKeyRef.current = roundStateKey;
     suppressDiffRef.current = true;
     syncedRef.current = true;
-  }, [blockers, roundPlacedPieces, roundStartedAt, roundStateKey]);
+  }, [
+    blockers,
+    placedPiecesKey,
+    roundPlacedPieces,
+    roundStartedAt,
+    roundStateKey,
+  ]);
 
   useEffect(() => {
     if (!authoritativeReject) return;
     if (authoritativeReject.roundIndex !== roundIndex) return;
     const rejectKey = `${authoritativeReject.roundIndex}:${authoritativeReject.placedPieces
-      .map((piece) => `${piece.pieceId}:${piece.transformId}:${piece.x}:${piece.y}`)
+      .map(
+        (piece) =>
+          `${piece.pieceId}:${piece.transformId}:${piece.x}:${piece.y}`,
+      )
       .sort()
       .join("|")}`;
     if (restoredRejectKeyRef.current === rejectKey) return;
@@ -246,7 +262,15 @@ function MultiplayerBoardInner({
     }
 
     prevPlacementsRef.current = current;
-  }, [active, board.placements, onPlace, onRemove, readOnly, roundIndex, selfPlayer]);
+  }, [
+    active,
+    board.placements,
+    onPlace,
+    onRemove,
+    readOnly,
+    roundIndex,
+    selfPlayer,
+  ]);
 
   useEffect(() => {
     if (!selfPlayer || !active || !round) return;
@@ -274,9 +298,11 @@ type MultiplayerBoardPanelProps = {
   authoritativeReject?: MultiplayerBoardInnerProps["authoritativeReject"];
 };
 
-export default function MultiplayerBoardPanel(props: MultiplayerBoardPanelProps) {
+export default function MultiplayerBoardPanel(
+  props: MultiplayerBoardPanelProps,
+) {
   return (
-    <GameProvider>
+    <GameProvider disabled={!props.active}>
       <MultiplayerBoardInner {...props} />
     </GameProvider>
   );

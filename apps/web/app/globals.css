@@ -243,7 +243,8 @@ input {
 }
 
 .page.game-page,
-.page.game-page *:not(input):not(textarea):not(select):not([contenteditable="true"]) {
+.page.game-page
+  *:not(input):not(textarea):not(select):not([contenteditable="true"]) {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -405,8 +406,8 @@ input {
 }
 
 .icon-button:hover {
-  border-color: rgba(242, 193, 78, 0.55);
-  color: var(--accent);
+  border-color: var(--text);
+  color: var(--text);
   transform: translateY(-1px);
 }
 
@@ -426,7 +427,7 @@ input {
 
 .icon-button.header-menu-toggle:hover {
   border-color: transparent;
-  color: var(--accent);
+  color: var(--text);
   transform: none;
 }
 
@@ -438,18 +439,6 @@ input {
 .icon-button.modal-close {
   width: 32px;
   height: 32px;
-}
-
-.header-modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: var(--overlay);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  overflow-y: auto;
-  padding: max(16px, env(safe-area-inset-top)) 16px 16px;
-  z-index: 60;
 }
 
 .header-modal {
@@ -1163,4 +1152,397 @@ input {
   .header-menu {
     display: none;
   }
+}
+
+/* Game workspace: context, board, then the pieces needed for the next move. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
+}
+
+.board-cell:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: -4px;
+  z-index: 2;
+}
+
+.board-row {
+  display: contents;
+}
+.ghost {
+  overflow: hidden;
+}
+.ghost.invalid .ghost-cell {
+  outline: 2px dashed var(--text);
+  outline-offset: -3px;
+}
+.celebration {
+  pointer-events: none;
+  animation-iteration-count: 3;
+}
+
+.game-context-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 12px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.game-context-strip strong {
+  color: var(--text);
+}
+.context-difficulty {
+  text-transform: capitalize;
+}
+.game-objective {
+  margin: 0;
+  font-size: 1rem;
+  text-align: center;
+}
+.board-area {
+  gap: 12px;
+  max-width: 100%;
+}
+.board-guidance {
+  width: 100%;
+  max-width: 470px;
+  padding-inline: 4px;
+}
+.board-feedback {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+.board-feedback {
+  min-height: 2.8em;
+  margin-top: 0;
+  color: var(--text);
+}
+.board-feedback.error {
+  font-weight: 600;
+}
+
+.pieces-tray {
+  display: block;
+  padding: 12px;
+}
+.pieces-header {
+  grid-template-columns: auto 1fr;
+  margin-bottom: 12px;
+}
+.pieces-recovery {
+  display: flex;
+  gap: 6px;
+}
+.pieces-header .button {
+  padding: 8px 12px;
+  min-height: 40px;
+}
+.pieces-header-actions {
+  min-width: 0;
+}
+.pieces-hint {
+  font-size: 0.875rem;
+}
+.pieces-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-around;
+  gap: 8px;
+}
+.pieces-area {
+  --tray-cell: 22px;
+}
+.piece-slot {
+  min-width: 44px;
+  min-height: 44px;
+  display: grid;
+  place-items: center;
+}
+
+.header-modal {
+  margin: max(16px, env(safe-area-inset-top)) auto auto;
+  color: var(--text);
+}
+.header-modal:not([open]) {
+  display: none;
+}
+.header-modal::backdrop {
+  background: var(--overlay);
+}
+.help-content {
+  line-height: 1.5;
+}
+.help-content p,
+.help-content ol {
+  margin: 0;
+}
+.help-content ol {
+  padding-inline-start: 24px;
+}
+.help-content li + li {
+  margin-top: 8px;
+}
+.help-content details {
+  margin-top: 8px;
+}
+.help-content summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: 8px;
+}
+.help-content details p {
+  margin-block: 4px 8px;
+}
+.header-modal input,
+.header-modal select,
+.panel input,
+.panel select {
+  font-size: 1rem;
+  min-width: 0;
+}
+.icon-button,
+.icon-button.modal-close {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+.brand-short,
+.mobile-mode-context {
+  display: none;
+}
+.private-room-code {
+  flex: 1;
+  min-width: 0;
+}
+.private-room-code label {
+  overflow-wrap: anywhere;
+}
+
+.page.game-page {
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+.puzzle-workspace {
+  width: min(960px, 100%);
+}
+
+@media (min-width: 981px) {
+  .puzzle-workspace {
+    display: grid;
+    grid-template-columns: auto minmax(300px, 350px);
+    justify-content: center;
+    align-items: start;
+    gap: 12px 24px;
+  }
+  .puzzle-workspace > .game-context-strip {
+    grid-column: 1 / -1;
+  }
+  .puzzle-workspace > .board-area {
+    grid-column: 1;
+  }
+  .puzzle-workspace > .pieces-area {
+    grid-column: 2;
+    padding-top: 32px;
+  }
+  .puzzle-workspace .pieces-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 4px;
+  }
+  .puzzle-workspace .pieces-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .puzzle-workspace .pieces-header-actions {
+    margin-left: auto;
+  }
+  .puzzle-workspace > .notice,
+  .puzzle-workspace > .settings-actions {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 980px) {
+  .pieces-area {
+    max-width: 600px;
+  }
+  .game-center {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 720px) {
+  .game-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+  .header-left {
+    width: auto;
+    min-width: 0;
+    gap: 6px;
+    justify-self: start;
+  }
+  .header-left > img {
+    display: none !important;
+  }
+  .header-actions {
+    position: static;
+    gap: 2px;
+  }
+  .game-title {
+    margin: 0;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+  }
+  .icon-button.header-menu-toggle {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+  .mobile-mode-context {
+    display: block;
+    color: var(--muted);
+    font-size: 0.875rem;
+    text-align: center;
+  }
+  .page:has(.game-context-strip) > .mobile-mode-context {
+    display: none;
+  }
+  .game-context-strip {
+    gap: 4px 8px;
+    font-size: 0.875rem;
+  }
+  .board-area {
+    gap: 8px;
+  }
+  .pieces-area {
+    --tray-cell: 20px;
+  }
+  .pieces-tray {
+    padding: 8px;
+  }
+  .pieces-header {
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+  .pieces-header .button {
+    min-height: 44px;
+    padding: 8px;
+  }
+  .pieces-controls,
+  .pieces-recovery {
+    gap: 4px;
+  }
+  .pieces-grid {
+    gap: 8px 4px;
+    min-height: 156px;
+    align-content: space-around;
+  }
+  .pieces-hint {
+    font-size: 0.875rem;
+    text-align: end;
+  }
+}
+
+@media (max-width: 359px) {
+  .pieces-area {
+    --tray-cell: 16px;
+  }
+  .pieces-grid {
+    gap: 8px 3px;
+  }
+  .brand-full {
+    display: none;
+  }
+  .brand-short {
+    display: inline;
+  }
+  .game-title {
+    font-size: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .celebration {
+    opacity: 1;
+  }
+  .celebration-fireworks {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .board-cell {
+    border: 1px solid CanvasText;
+  }
+  .board-cell.piece,
+  .block-cell {
+    forced-color-adjust: none;
+  }
+  .board-cell.blocker::after {
+    content: "×";
+    background: Canvas;
+    color: CanvasText;
+    font-size: 2rem;
+    display: grid;
+    place-items: center;
+  }
+  .board-cell:focus-visible {
+    outline-color: Highlight;
+  }
+}
+
+.piece-slot {
+  position: relative;
+}
+.piece-slot.placed {
+  cursor: default;
+  opacity: 1;
+}
+.piece-slot.placed .piece-grid {
+  opacity: 0.35;
+}
+.piece-slot.placed:hover {
+  transform: none;
+}
+.piece-placed-label {
+  position: absolute;
+  inset: auto 0 0;
+  font-size: 0.625rem;
+  line-height: 1.2;
+  color: var(--text);
+  background: var(--panel);
+  border-radius: 4px;
+  padding: 2px;
+}
+
+.ghost-cell {
+  outline: 2px solid var(--text);
+  outline-offset: -3px;
 }

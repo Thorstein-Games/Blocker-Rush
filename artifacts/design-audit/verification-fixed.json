@@ -1,0 +1,689 @@
+{
+  "verify": {
+    "checks": [
+      {
+        "name": "Enter selects tray piece and focuses board",
+        "passed": true
+      },
+      {
+        "name": "Blocker rejection explains recovery",
+        "passed": true
+      },
+      {
+        "name": "Arrow navigation and Space placement",
+        "passed": true
+      },
+      {
+        "name": "Keyboard removal",
+        "passed": true
+      },
+      {
+        "name": "Undo removal",
+        "passed": true
+      },
+      {
+        "name": "Undo Clear",
+        "passed": true
+      },
+      {
+        "name": "Overlap rejection",
+        "passed": true
+      },
+      {
+        "name": "Edge rejection",
+        "passed": true
+      },
+      {
+        "name": "Escape cancels selection",
+        "passed": true
+      },
+      {
+        "name": "Open settings focus, containment, restoration",
+        "passed": false,
+        "detail": {
+          "initial": true,
+          "contained": false
+        }
+      },
+      {
+        "name": "Open how to play focus, containment, restoration",
+        "passed": false,
+        "detail": {
+          "initial": true,
+          "contained": false
+        }
+      },
+      {
+        "name": "Open stats focus, containment, restoration",
+        "passed": false,
+        "detail": {
+          "initial": true,
+          "contained": false
+        }
+      },
+      {
+        "name": "Idle background stops drawing",
+        "passed": true
+      },
+      {
+        "name": "Reduced-motion pointer has no decorative draws",
+        "passed": true
+      },
+      {
+        "name": "Layout 1280: no overflow, title overlap, all nine pieces",
+        "passed": true,
+        "detail": {
+          "width": 1280,
+          "height": 900,
+          "documentWidth": 1280,
+          "board": {
+            "x": 219,
+            "y": 167,
+            "right": 687,
+            "bottom": 635
+          },
+          "tray": {
+            "x": 711,
+            "y": 166,
+            "right": 1061,
+            "bottom": 450
+          },
+          "title": {
+            "x": 87,
+            "y": 46,
+            "right": 193.359375,
+            "bottom": 60
+          },
+          "actions": {
+            "x": 788.734375,
+            "y": 31,
+            "right": 1231,
+            "bottom": 75
+          },
+          "pieces": 9
+        }
+      },
+      {
+        "name": "Layout 1366: no overflow, title overlap, all nine pieces",
+        "passed": true,
+        "detail": {
+          "width": 1366,
+          "height": 768,
+          "documentWidth": 1366,
+          "board": {
+            "x": 262,
+            "y": 167,
+            "right": 730,
+            "bottom": 635
+          },
+          "tray": {
+            "x": 754,
+            "y": 166,
+            "right": 1104,
+            "bottom": 450
+          },
+          "title": {
+            "x": 87,
+            "y": 46,
+            "right": 193.359375,
+            "bottom": 60
+          },
+          "actions": {
+            "x": 831.734375,
+            "y": 31,
+            "right": 1317,
+            "bottom": 75
+          },
+          "pieces": 9
+        }
+      },
+      {
+        "name": "Layout 768: no overflow, title overlap, all nine pieces",
+        "passed": true,
+        "detail": {
+          "width": 768,
+          "height": 1024,
+          "documentWidth": 768,
+          "board": {
+            "x": 150,
+            "y": 173,
+            "right": 618,
+            "bottom": 641
+          },
+          "tray": {
+            "x": 84,
+            "y": 710.1875,
+            "right": 684,
+            "bottom": 916.1875
+          },
+          "title": {
+            "x": 87,
+            "y": 46,
+            "right": 193.359375,
+            "bottom": 60
+          },
+          "actions": {
+            "x": 532.734375,
+            "y": 31,
+            "right": 719,
+            "bottom": 75
+          },
+          "pieces": 9
+        }
+      },
+      {
+        "name": "Layout 552: no overflow, title overlap, all nine pieces",
+        "passed": true,
+        "detail": {
+          "width": 552,
+          "height": 804,
+          "documentWidth": 552,
+          "board": {
+            "x": 72,
+            "y": 111,
+            "right": 480,
+            "bottom": 519
+          },
+          "tray": {
+            "x": 27.59375,
+            "y": 574.1875,
+            "right": 524.40625,
+            "bottom": 800.1875
+          },
+          "title": {
+            "x": 77.59375,
+            "y": 22.5,
+            "right": 174.28125,
+            "bottom": 37.5
+          },
+          "actions": {
+            "x": 388.40625,
+            "y": 8,
+            "right": 524.40625,
+            "bottom": 52
+          },
+          "pieces": 9
+        }
+      },
+      {
+        "name": "Layout 375: no overflow, title overlap, all nine pieces",
+        "passed": true,
+        "detail": {
+          "width": 375,
+          "height": 812,
+          "documentWidth": 375,
+          "board": {
+            "x": 17.25,
+            "y": 111,
+            "right": 357.75,
+            "bottom": 451.5
+          },
+          "tray": {
+            "x": 20,
+            "y": 506.6875,
+            "right": 355,
+            "bottom": 732.6875
+          },
+          "title": {
+            "x": 70,
+            "y": 22.5,
+            "right": 166.6875,
+            "bottom": 37.5
+          },
+          "actions": {
+            "x": 219,
+            "y": 8,
+            "right": 355,
+            "bottom": 52
+          },
+          "pieces": 9
+        }
+      },
+      {
+        "name": "Layout 320: no overflow, title overlap, all nine pieces",
+        "passed": true,
+        "detail": {
+          "width": 320,
+          "height": 740,
+          "documentWidth": 320,
+          "board": {
+            "x": 11.21875,
+            "y": 132,
+            "right": 308.78125,
+            "bottom": 429.5625
+          },
+          "tray": {
+            "x": 20,
+            "y": 484.75,
+            "right": 300,
+            "bottom": 710.75
+          },
+          "title": {
+            "x": 70,
+            "y": 20,
+            "right": 92.71875,
+            "bottom": 40
+          },
+          "actions": {
+            "x": 164,
+            "y": 8,
+            "right": 300,
+            "bottom": 52
+          },
+          "pieces": 9
+        }
+      },
+      {
+        "name": "Puzzle ID accepts D/F and native caret movement",
+        "passed": true
+      },
+      {
+        "name": "Persistent display-name label",
+        "passed": true
+      }
+    ],
+    "layouts": [
+      {
+        "width": 1280,
+        "height": 900,
+        "documentWidth": 1280,
+        "board": {
+          "x": 219,
+          "y": 167,
+          "right": 687,
+          "bottom": 635
+        },
+        "tray": {
+          "x": 711,
+          "y": 166,
+          "right": 1061,
+          "bottom": 450
+        },
+        "title": {
+          "x": 87,
+          "y": 46,
+          "right": 193.359375,
+          "bottom": 60
+        },
+        "actions": {
+          "x": 788.734375,
+          "y": 31,
+          "right": 1231,
+          "bottom": 75
+        },
+        "pieces": 9
+      },
+      {
+        "width": 1366,
+        "height": 768,
+        "documentWidth": 1366,
+        "board": {
+          "x": 262,
+          "y": 167,
+          "right": 730,
+          "bottom": 635
+        },
+        "tray": {
+          "x": 754,
+          "y": 166,
+          "right": 1104,
+          "bottom": 450
+        },
+        "title": {
+          "x": 87,
+          "y": 46,
+          "right": 193.359375,
+          "bottom": 60
+        },
+        "actions": {
+          "x": 831.734375,
+          "y": 31,
+          "right": 1317,
+          "bottom": 75
+        },
+        "pieces": 9
+      },
+      {
+        "width": 768,
+        "height": 1024,
+        "documentWidth": 768,
+        "board": {
+          "x": 150,
+          "y": 173,
+          "right": 618,
+          "bottom": 641
+        },
+        "tray": {
+          "x": 84,
+          "y": 710.1875,
+          "right": 684,
+          "bottom": 916.1875
+        },
+        "title": {
+          "x": 87,
+          "y": 46,
+          "right": 193.359375,
+          "bottom": 60
+        },
+        "actions": {
+          "x": 532.734375,
+          "y": 31,
+          "right": 719,
+          "bottom": 75
+        },
+        "pieces": 9
+      },
+      {
+        "width": 552,
+        "height": 804,
+        "documentWidth": 552,
+        "board": {
+          "x": 72,
+          "y": 111,
+          "right": 480,
+          "bottom": 519
+        },
+        "tray": {
+          "x": 27.59375,
+          "y": 574.1875,
+          "right": 524.40625,
+          "bottom": 800.1875
+        },
+        "title": {
+          "x": 77.59375,
+          "y": 22.5,
+          "right": 174.28125,
+          "bottom": 37.5
+        },
+        "actions": {
+          "x": 388.40625,
+          "y": 8,
+          "right": 524.40625,
+          "bottom": 52
+        },
+        "pieces": 9
+      },
+      {
+        "width": 375,
+        "height": 812,
+        "documentWidth": 375,
+        "board": {
+          "x": 17.25,
+          "y": 111,
+          "right": 357.75,
+          "bottom": 451.5
+        },
+        "tray": {
+          "x": 20,
+          "y": 506.6875,
+          "right": 355,
+          "bottom": 732.6875
+        },
+        "title": {
+          "x": 70,
+          "y": 22.5,
+          "right": 166.6875,
+          "bottom": 37.5
+        },
+        "actions": {
+          "x": 219,
+          "y": 8,
+          "right": 355,
+          "bottom": 52
+        },
+        "pieces": 9
+      },
+      {
+        "width": 320,
+        "height": 740,
+        "documentWidth": 320,
+        "board": {
+          "x": 11.21875,
+          "y": 132,
+          "right": 308.78125,
+          "bottom": 429.5625
+        },
+        "tray": {
+          "x": 20,
+          "y": 484.75,
+          "right": 300,
+          "bottom": 710.75
+        },
+        "title": {
+          "x": 70,
+          "y": 20,
+          "right": 92.71875,
+          "bottom": 40
+        },
+        "actions": {
+          "x": 164,
+          "y": 8,
+          "right": 300,
+          "bottom": 52
+        },
+        "pieces": 9
+      }
+    ],
+    "idleCanvasClears": 0
+  },
+  "solve": {
+    "report": [
+      {
+        "piece": "Select Dot",
+        "placed": 1,
+        "status": "Dot placed. 1 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Spire",
+        "placed": 5,
+        "status": "Spire placed. 2 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Kite",
+        "placed": 8,
+        "status": "Kite placed. 3 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Twin",
+        "placed": 10,
+        "status": "Twin placed. 4 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Shift",
+        "placed": 14,
+        "status": "Shift placed. 5 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Long Line",
+        "placed": 18,
+        "status": "Long Line placed. 6 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Line",
+        "placed": 21,
+        "status": "Line placed. 7 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Square",
+        "placed": 25,
+        "status": "Square placed. 8 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Fork",
+        "placed": 29,
+        "status": "Every square filled. Puzzle complete!"
+      }
+    ],
+    "completed": true,
+    "staticCelebration": true,
+    "fireworksUntouched": true,
+    "dialogs": [
+      {
+        "name": "Open settings",
+        "contained": true,
+        "restored": true
+      },
+      {
+        "name": "Open how to play",
+        "contained": true,
+        "restored": true
+      },
+      {
+        "name": "Open stats",
+        "contained": true,
+        "restored": true
+      }
+    ]
+  },
+  "pointer": {
+    "pointerSelectionShortcut": true,
+    "flipButton": true,
+    "dragGhost": true,
+    "dragPlaced": true,
+    "undoDrag": true,
+    "pointerPlace": true,
+    "pointerRemove": false,
+    "lightUtilities": [
+      {
+        "color": "rgb(27, 36, 34)",
+        "background": "rgb(255, 255, 255)"
+      },
+      {
+        "color": "rgb(27, 36, 34)",
+        "background": "rgb(255, 255, 255)"
+      },
+      {
+        "color": "rgb(27, 36, 34)",
+        "background": "rgb(255, 255, 255)"
+      }
+    ],
+    "casualLaptop": {
+      "documentWidth": 1366,
+      "viewport": 1366,
+      "trayBottom": 450,
+      "boardBottom": 635
+    },
+    "zoomReflow": {
+      "documentWidth": 683,
+      "viewport": 683
+    },
+    "multiplayerPhone": {
+      "documentWidth": 375,
+      "viewport": 375
+    }
+  },
+  "multiplayer": {
+    "labelVisible": true,
+    "undoSurvivesAck": true,
+    "removed": true
+  },
+  "removal": {
+    "placed": true,
+    "removed": true,
+    "undoRemoval": true
+  },
+  "notes": [
+    "Initial dialog containment failures were fixed; passing forward/backward checks are in solve.dialogs.",
+    "Initial pointer double-click failure was fixed; passing removal and Undo checks are in removal.",
+    "Idle baseline: 72 full canvas clears in 1200 ms. After: 0.",
+    "Browser contexts used for completion, pointer and multiplayer checks were disposable and closed in finally blocks.",
+    "Tray stability uses layout offsets after fonts are ready, excluding temporary hover transforms."
+  ],
+  "finalLayout": {
+    "casual": {
+      "width": 1366,
+      "documentWidth": 1366,
+      "trayBottom": 450,
+      "settingsBottom": 570
+    },
+    "enlarged": {
+      "width": 375,
+      "documentWidth": 375,
+      "titleRight": 211,
+      "actionsLeft": 219
+    }
+  },
+  "casualBreakpoint": {
+    "sidebarRight": 303.1875,
+    "boardLeft": 320.59375,
+    "documentWidth": 1200,
+    "viewport": 1200
+  },
+  "smallerFollowups": {
+    "stableAfterPlace": true,
+    "placedLabel": true,
+    "hintVisible": true,
+    "hintStatus": "Hint: place Dot on the outlined squares.",
+    "boardFocused": true,
+    "hintedPiecePlaced": true
+  },
+  "finalKeyboard": {
+    "report": [
+      {
+        "piece": "Select Dot",
+        "placed": 1,
+        "status": "Dot placed. 1 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Spire",
+        "placed": 5,
+        "status": "Spire placed. 2 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Kite",
+        "placed": 8,
+        "status": "Kite placed. 3 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Twin",
+        "placed": 10,
+        "status": "Twin placed. 4 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Shift",
+        "placed": 14,
+        "status": "Shift placed. 5 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Long Line",
+        "placed": 18,
+        "status": "Long Line placed. 6 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Line",
+        "placed": 21,
+        "status": "Line placed. 7 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Square",
+        "placed": 25,
+        "status": "Square placed. 8 of 9 pieces placed."
+      },
+      {
+        "piece": "Select Fork",
+        "placed": 29,
+        "status": "Every square filled. Puzzle complete!"
+      }
+    ],
+    "completed": true,
+    "staticCelebration": true,
+    "fireworksUntouched": true,
+    "dialogs": [
+      {
+        "name": "Open settings",
+        "contained": true,
+        "restored": true
+      },
+      {
+        "name": "Open how to play",
+        "contained": true,
+        "restored": true
+      },
+      {
+        "name": "Open stats",
+        "contained": true,
+        "restored": true
+      }
+    ]
+  }
+}
