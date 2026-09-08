@@ -227,12 +227,8 @@
 
 .multiplayer-finished-board {
   --cell: clamp(18px, 2.5vw, 22px);
-  --board-gap: 3px;
+  --board-gap: 1px;
   margin-inline: auto;
-}
-
-.multiplayer-finished-board .board-cell {
-  border-radius: calc(var(--block-radius) - 8px);
 }
 
 .multiplayer-finished-board-stats {
@@ -322,9 +318,5 @@
 @media (max-width: 720px) {
   .multiplayer-finished-board {
     --cell: 18px;
-    --board-gap: 2px;
-  }
-  .multiplayer-finished-board .board-cell {
-    border-radius: calc(var(--block-radius) - 10px);
   }
 }
