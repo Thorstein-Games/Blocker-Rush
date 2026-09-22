@@ -15,7 +15,6 @@
     "lint": "tsc -p tsconfig.build.json --noEmit"
   },
   "dependencies": {
-    "@blocker-rush/shared": "*",
-    "zod": "3.23.8"
+    "@blocker-rush/shared": "*"
   }
 }
