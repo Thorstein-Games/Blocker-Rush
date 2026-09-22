@@ -2,7 +2,9 @@ import type { Difficulty, PieceId } from "@blocker-rush/shared";
 
 export const MAX_PLAYERS = 8;
 export const MATCH_COUNTDOWN_MS = 3000;
-export const REJOIN_GRACE_MS = 30_000;
+// Must match Megingjord's BaseGameRoom.disconnectedTimeout (15 min) now that
+// reconnection is server-driven rather than client resumeToken-based.
+export const REJOIN_GRACE_MS = 15 * 60_000;
 export const DEFAULT_LOCK_IN_MS = 20_000;
 
 export type RoomStatus =
