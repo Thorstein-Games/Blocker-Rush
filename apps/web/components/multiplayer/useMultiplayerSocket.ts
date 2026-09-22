@@ -78,6 +78,14 @@ export type MultiplayerState = {
   connected: boolean;
   lastConnectionLostAt?: number;
   reconnectRoomCode?: string;
+  // The roomCode we just intentionally left or were kicked from. Guards
+  // MultiplayerLobbyLanding's ?room=<code> auto-join effect: on leave/kick,
+  // state.roomCode clears but the URL query param doesn't (that param is
+  // only ever pushed forward, never stripped), so a freshly-mounted landing
+  // page would otherwise immediately rejoin the same room by code — for a
+  // kick, this defeats the kick outright since the room is usually still
+  // populated. See useMultiplayerSocket's leaveRoom/player_removed handlers.
+  leftRoomCode?: string;
   roomCode?: string;
   roomVisibility?: "public" | "private";
   status?: "lobby" | "countdown" | "in_game" | "finished";
@@ -282,6 +290,7 @@ export function useMultiplayerSocket() {
         },
         selfPlayerId: room.sessionId,
         lastConnectionLostAt: undefined,
+        leftRoomCode: undefined,
         error: undefined,
       }));
     };
@@ -296,7 +305,21 @@ export function useMultiplayerSocket() {
         $(player).listen("playerName", () => syncPlayersFromSchema());
         syncPlayersFromSchema();
       });
-      $(room.state!).players!.onRemove(() => syncPlayersFromSchema());
+      // Rebuilding the full map from `room.state.players.forEach(...)` here
+      // (like syncPlayersFromSchema does elsewhere) is unsafe: colyseus.js's
+      // MapSchema onRemove callback fires while `.size`/`.forEach()` are
+      // still stale for that synchronous tick (`.has(sessionId)` already
+      // correctly reports false, but a forEach snapshot re-adds the
+      // just-removed player). Apply the removal directly against the
+      // previous React state instead of re-deriving it from the collection.
+      $(room.state!).players!.onRemove((_player: any, sessionId: string) => {
+        setState((prev) => {
+          if (!(sessionId in prev.players)) return prev;
+          const nextPlayers = { ...prev.players };
+          delete nextPlayers[sessionId];
+          return { ...prev, players: nextPlayers };
+        });
+      });
     });
     // `.listen(field, cb)` only fires on *future* mutations — roomCode/status/etc
     // are already set by the time this room resolves, so a per-field listen
@@ -499,6 +522,10 @@ export function useMultiplayerSocket() {
           players: {},
           match: undefined,
           result: undefined,
+          // Unlike a dropped connection (see onLeave below), this is
+          // intentional/final - don't let the ?room=<code> auto-join effect
+          // walk us right back into a room we were just kicked from.
+          leftRoomCode: prev.roomCode ?? prev.leftRoomCode,
           error: data.reason === "kicked" ? "You were removed from the room." : prev.error,
         }));
       }
@@ -578,6 +605,7 @@ export function useMultiplayerSocket() {
       connected: prev.connected,
       lastConnectionLostAt: prev.lastConnectionLostAt,
       reconnectRoomCode: prev.reconnectRoomCode,
+      leftRoomCode: prev.roomCode ?? prev.leftRoomCode,
       lobbyRooms: prev.lobbyRooms,
       clockOffsetMs: prev.clockOffsetMs,
       settings: prev.settings,

@@ -31,6 +31,7 @@ function MultiplayerGameContent() {
       <MultiplayerLobbyLanding
         roomCodeFromUrl={roomFromUrl}
         reconnectRoomCode={state.reconnectRoomCode}
+        leftRoomCode={state.leftRoomCode}
       />
     );
   }

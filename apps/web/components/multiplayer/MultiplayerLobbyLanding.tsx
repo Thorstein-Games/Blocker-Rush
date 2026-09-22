@@ -25,11 +25,13 @@ const randomPlayerSuffix = (length = 5): string => {
 type MultiplayerLobbyLandingProps = {
   roomCodeFromUrl?: string;
   reconnectRoomCode?: string;
+  leftRoomCode?: string;
 };
 
 export default function MultiplayerLobbyLanding({
   roomCodeFromUrl = "",
   reconnectRoomCode = "",
+  leftRoomCode = "",
 }: MultiplayerLobbyLandingProps) {
   const { state, requestLobby, joinPublic, joinByCode, createPrivate } =
     useMultiplayerStore();
@@ -64,10 +66,15 @@ export default function MultiplayerLobbyLanding({
   useEffect(() => {
     if (!roomCodeFromUrl) return;
     if (!state.connected || state.roomCode) return;
+    // Don't walk back into a room we just intentionally left or were kicked
+    // from - the ?room=<code> URL param isn't cleared on leave/kick (it's
+    // only ever pushed forward), so this landing page can mount with a
+    // stale param pointing right back at a room that may still be live.
+    if (roomCodeFromUrl === leftRoomCode) return;
     if (autoJoinAttemptedRoomRef.current === roomCodeFromUrl) return;
     autoJoinAttemptedRoomRef.current = roomCodeFromUrl;
     joinByCode(name, roomCodeFromUrl);
-  }, [joinByCode, name, roomCodeFromUrl, state.connected, state.roomCode]);
+  }, [joinByCode, leftRoomCode, name, roomCodeFromUrl, state.connected, state.roomCode]);
 
   useEffect(() => {
     if (!state.lastConnectionLostAt || !reconnectRoomCode) return;

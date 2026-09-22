@@ -4,10 +4,11 @@ import { test, expect, type Page } from "@playwright/test";
 // (useMultiplayerSocket.ts). This exercises the real Colyseus wiring —
 // lobby connection, public joinOrCreate matching, private room creation +
 // roomCode resolution + joinById, the client_ready handshake, ready/start,
-// and the countdown -> in_game transition — against a live Megingjord
-// server (see playwright.config.ts webServer entries). It intentionally
-// does not test piece placement (drag-and-drop board interaction), which
-// is unchanged shared game UI, not part of this transport migration.
+// the countdown -> in_game transition, host-initiated kick, and
+// name-based reconnection on reload — against a live Megingjord server
+// (see playwright.config.ts webServer entries). It intentionally does not
+// test piece placement (drag-and-drop board interaction), which is
+// unchanged shared game UI, not part of this transport migration.
 
 const roomCodeOf = (page: Page) => page.locator(".room-code-button");
 const statusValue = (page: Page) =>
@@ -72,6 +73,81 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     // 3s server-side countdown + network/render slack
     await expect(statusValue(hostPage)).toHaveText("in_game", { timeout: 10_000 });
     await expect(statusValue(guestPage)).toHaveText("in_game", { timeout: 10_000 });
+
+    await hostContext.close();
+    await guestContext.close();
+  });
+
+  test("host kicking a player removes them and returns them to the lobby landing view", async ({
+    browser,
+  }) => {
+    const hostContext = await browser.newContext();
+    const guestContext = await browser.newContext();
+    const hostPage = await hostContext.newPage();
+    const guestPage = await guestContext.newPage();
+
+    await hostPage.goto("/multiplayer");
+    await hostPage.getByRole("button", { name: "Create Private Room" }).click();
+    await expect(roomCodeOf(hostPage)).not.toHaveText("", { timeout: 10_000 });
+    const roomCode = await roomCodeOf(hostPage).innerText();
+
+    await guestPage.goto("/multiplayer");
+    await guestPage.locator("#room-code").fill(roomCode);
+    await guestPage.getByRole("button", { name: "Join by Code" }).click();
+    await expect(roomCodeOf(guestPage)).toHaveText(roomCode, { timeout: 10_000 });
+    await expect(hostPage.locator(".multiplayer-room-list .room-row")).toHaveCount(2, {
+      timeout: 10_000,
+    });
+
+    await hostPage.getByRole("button", { name: "Kick", exact: true }).click();
+
+    await expect(guestPage.getByRole("button", { name: "Join Public Matchmaking" })).toBeVisible({
+      timeout: 10_000,
+    });
+    await expect(hostPage.locator(".multiplayer-room-list .room-row")).toHaveCount(1, {
+      timeout: 10_000,
+    });
+
+    await hostContext.close();
+    await guestContext.close();
+  });
+
+  test("reloading with the room URL rejoins the same room via name-based reconnection", async ({
+    browser,
+  }) => {
+    // Exercises Megingjord's server-driven reconnection (match by player name),
+    // which this migration relies on instead of Blocker-Rush's old
+    // resumeToken/localStorage scheme. A same-context reload keeps the
+    // persisted "multiplayer-player-name", so the client's roomCodeFromUrl
+    // auto-join (MultiplayerLobbyLanding) should rejoin as the same player
+    // rather than seat a third participant.
+    const hostContext = await browser.newContext();
+    const guestContext = await browser.newContext();
+    const hostPage = await hostContext.newPage();
+    const guestPage = await guestContext.newPage();
+
+    await hostPage.goto("/multiplayer");
+    await hostPage.getByRole("button", { name: "Create Private Room" }).click();
+    await expect(roomCodeOf(hostPage)).not.toHaveText("", { timeout: 10_000 });
+    const roomCode = await roomCodeOf(hostPage).innerText();
+
+    await guestPage.goto("/multiplayer");
+    await guestPage.locator("#room-code").fill(roomCode);
+    await guestPage.getByRole("button", { name: "Join by Code" }).click();
+    await expect(roomCodeOf(guestPage)).toHaveText(roomCode, { timeout: 10_000 });
+    await expect(hostPage.locator(".multiplayer-room-list .room-row")).toHaveCount(2, {
+      timeout: 10_000,
+    });
+
+    await guestPage.reload();
+
+    await expect(roomCodeOf(guestPage)).toHaveText(roomCode, { timeout: 10_000 });
+    await expect(hostPage.locator(".multiplayer-room-list .room-row")).toHaveCount(2, {
+      timeout: 10_000,
+    });
+    await expect(guestPage.locator(".multiplayer-room-list .room-row")).toHaveCount(2, {
+      timeout: 10_000,
+    });
 
     await hostContext.close();
     await guestContext.close();
