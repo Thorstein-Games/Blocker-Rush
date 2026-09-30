@@ -307,8 +307,16 @@ export function useMultiplayerSocket() {
     };
 
     // Same getStateCallbacks + deferred-wiring requirement as the lobby
-    // connection above — see the comment there.
-    room.onStateChange.once(() => {
+    // connection above — see the comment there. Deliberately NOT
+    // `onStateChange.once`: colyseus.js@0.16's signal removes a `once`
+    // handler mid-forEach by swapping the last handler into its slot, so the
+    // handler registered right after it (syncRoomMeta below) is skipped on
+    // the initial full-state dispatch — the room joins but roomCode never
+    // reaches React state until some later patch happens to arrive.
+    let schemaCallbacksWired = false;
+    room.onStateChange(() => {
+      if (schemaCallbacksWired) return;
+      schemaCallbacksWired = true;
       const $ = Colyseus.getStateCallbacks(room);
       $(room.state!).players!.onAdd((player: any, sessionId: string) => {
         $(player).listen("isConnected", () => syncPlayersFromSchema());
@@ -560,6 +568,24 @@ export function useMultiplayerSocket() {
       gameRoomRef.current = null;
     });
 
+    // BaseGameRoom protocol messages we don't consume — players/host/status are
+    // derived from schema state instead. Registered as no-ops so colyseus.js
+    // doesn't log "onMessage() not registered" for each one.
+    for (const type of [
+      "welcome",
+      "player_list",
+      "player_joined",
+      "player_reconnected",
+      "player_disconnected",
+      "host_changed",
+      "spectator_joined",
+      "spectator_left",
+      "chat",
+      "pong",
+    ]) {
+      room.onMessage(type, () => {});
+    }
+
     room.send("client_ready");
   }, []);
 
@@ -573,8 +599,15 @@ export function useMultiplayerSocket() {
     async (name: string) => {
       const client = clientRef.current;
       if (!client) return;
-      const room = await client.joinOrCreate("blocker_rush", { playerName: name });
-      attachGameRoom(room);
+      try {
+        const room = await client.joinOrCreate("blocker_rush", { playerName: name });
+        attachGameRoom(room);
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : "Failed to join room",
+        }));
+      }
     },
     [attachGameRoom],
   );
@@ -601,8 +634,15 @@ export function useMultiplayerSocket() {
     async (name: string, settings: MatchSettings) => {
       const client = clientRef.current;
       if (!client) return;
-      const room = await client.create("blocker_rush", { playerName: name, settings, private: true });
-      attachGameRoom(room);
+      try {
+        const room = await client.create("blocker_rush", { playerName: name, settings, private: true });
+        attachGameRoom(room);
+      } catch (error) {
+        setState((prev) => ({
+          ...prev,
+          error: error instanceof Error ? error.message : "Failed to create room",
+        }));
+      }
     },
     [attachGameRoom],
   );
