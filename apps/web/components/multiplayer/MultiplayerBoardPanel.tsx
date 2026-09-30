@@ -65,12 +65,12 @@ type MultiplayerBoardInnerProps = {
   boardOverlay?: ReactNode;
   onPlace: (input: {
     roundIndex: number;
-    pieceId: string;
+    pieceId: PieceId;
     transformId: string;
     x: number;
     y: number;
   }) => void;
-  onRemove: (input: { roundIndex: number; pieceId: string }) => void;
+  onRemove: (input: { roundIndex: number; pieceId: PieceId }) => void;
   onSubmitFinish: (roundIndex: number) => void;
   authoritativeReject?: {
     roundIndex: number;

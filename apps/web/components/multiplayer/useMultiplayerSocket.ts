@@ -2,156 +2,33 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Colyseus from "colyseus.js";
-import type {
-  ActionRejectedReason,
-  MatchPlacement,
-  MatchSettings,
-  PiecePlacement,
-  RoundDef,
-} from "@blocker-rush/protocol";
+import type { MatchSettings, ServerMessages } from "@blocker-rush/protocol";
+import type { PieceId } from "@blocker-rush/shared";
+import {
+  getGameServerUrl,
+  patchSeatReservationShim,
+  sendGame,
+  type GameRoom,
+} from "./colyseusClient";
+import {
+  applyActionRejected,
+  applyError,
+  applyMatchResult,
+  applyMatchStart,
+  applyPlayerFinished,
+  applyPlayerState,
+  applyRoomLeft,
+  applyRoundStart,
+  applySelfRemoved,
+  applyStateSync,
+} from "./multiplayerReducers";
+import {
+  createInitialState,
+  type MultiplayerState,
+  type TrackedPlayer,
+} from "./multiplayerTypes";
 
-// Mirrors sheeple-game's getGameServerUrl() (lib/config/gameConfig.ts).
-function getGameServerUrl(): string {
-  const isDev =
-    typeof window !== "undefined"
-      ? window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      : process.env.NODE_ENV !== "production";
-
-  if (isDev) {
-    return "ws://localhost:2567";
-  }
-
-  return process.env.NEXT_PUBLIC_GAME_SERVER_URL || "wss://megingjord.onrender.com";
-}
-
-const DEFAULT_SETTINGS: MatchSettings = {
-  rounds: 1,
-  difficulties: ["easy"],
-  advanceMode: "solo",
-  lockInMs: 20_000,
-};
-
-// @colyseus/core@0.17's matchmake HTTP endpoint returns a flat seat
-// reservation ({name, sessionId, roomId, processId}), but colyseus.js@0.16
-// (the newest published client) expects it nested under `room`. This is a
-// known, already-worked-around incompatibility — the sheeple-game client
-// (Megingjord's other consumer) carries the same shim in ColyseusProvider.tsx.
-function patchSeatReservationShim(client: Colyseus.Client) {
-  const original = (
-    client as unknown as {
-      consumeSeatReservation: (...args: unknown[]) => unknown;
-    }
-  ).consumeSeatReservation.bind(client);
-
-  (
-    client as unknown as {
-      consumeSeatReservation: (...args: unknown[]) => unknown;
-    }
-  ).consumeSeatReservation = (...args: unknown[]) => {
-    const response = args[0] as { room?: unknown; name?: string; roomId?: string; processId?: string; publicAddress?: string };
-    if (!response.room && response.name) {
-      response.room = {
-        name: response.name,
-        roomId: response.roomId,
-        clients: 0,
-        maxClients: 0,
-        processId: response.processId,
-        publicAddress: response.publicAddress,
-      };
-    }
-    return original(...args);
-  };
-}
-
-type RoundSnapshot = {
-  roundIndex: number;
-  puzzleId: string;
-  startedAt: number;
-  finishedAt?: number;
-  splitMs?: number;
-  placedPieces: PiecePlacement[];
-  remainingPieceIds: string[];
-  boardFilledCount: number;
-};
-
-export type TrackedPlayer = {
-  playerId: string;
-  name: string;
-  connected: boolean;
-  ready: boolean;
-  currentRoundIndex: number;
-  splitsMs: Array<number | null>;
-  lastAppliedSeq: number;
-  round?: RoundSnapshot;
-};
-
-export type MultiplayerState = {
-  connected: boolean;
-  lastConnectionLostAt?: number;
-  reconnectRoomCode?: string;
-  // The roomCode we just intentionally left or were kicked from. Guards
-  // MultiplayerLobbyLanding's ?room=<code> auto-join effect: on leave/kick,
-  // state.roomCode clears but the URL query param doesn't (that param is
-  // only ever pushed forward, never stripped), so a freshly-mounted landing
-  // page would otherwise immediately rejoin the same room by code — for a
-  // kick, this defeats the kick outright since the room is usually still
-  // populated. See useMultiplayerSocket's leaveRoom/player_removed handlers.
-  leftRoomCode?: string;
-  roomCode?: string;
-  roomVisibility?: "public" | "private";
-  status?: "lobby" | "countdown" | "in_game" | "finished";
-  hostId?: string;
-  selfPlayerId?: string;
-  settings: MatchSettings;
-  lobbyRooms: Array<{
-    roomCode: string;
-    hostName: string;
-    playerCount: number;
-    maxPlayers: number;
-    status: "lobby" | "in_progress";
-    visibility: "public" | "private";
-  }>;
-  players: Record<string, TrackedPlayer>;
-  match?: {
-    matchId: string;
-    startTime: number;
-    countdownMs: number;
-    rounds: RoundDef[];
-  };
-  result?: {
-    state: "finished";
-    winnerId: string;
-    placements: MatchPlacement[];
-    splitsByPlayer: Record<string, Array<number | null>>;
-    winnerBoards: Array<{
-      roundIndex: number;
-      puzzleId: string;
-      placedPieces: PiecePlacement[];
-    }>;
-  };
-  clockOffsetMs: number;
-  lastRejected?: {
-    clientSeq: number;
-    reason: ActionRejectedReason;
-    authoritativeState?: {
-      roundIndex: number;
-      placedPieces: PiecePlacement[];
-      remainingPieceIds: string[];
-      lastAppliedSeq: number;
-    };
-  };
-  error?: string;
-};
-
-const createInitialState = (): MultiplayerState => ({
-  connected: false,
-  settings: DEFAULT_SETTINGS,
-  lobbyRooms: [],
-  players: {},
-  clockOffsetMs: 0,
-});
-
-type GameRoom = Colyseus.Room<any>;
+export type { MultiplayerState, TrackedPlayer } from "./multiplayerTypes";
 
 export function useMultiplayerSocket() {
   const [state, setState] = useState<MultiplayerState>(createInitialState);
@@ -347,224 +224,57 @@ export function useMultiplayerSocket() {
     // snapshot too; re-deriving all of syncRoomMeta's fields each time is cheap.
     room.onStateChange(syncRoomMeta);
 
-    room.onMessage("match_start", (data: any) => {
+    room.onMessage("match_start", (data: ServerMessages["match_start"]) => {
       clientSeqRef.current = 0;
-      setState((prev) => ({
-        ...prev,
-        match: {
-          matchId: data.matchId,
-          startTime: data.startTime,
-          countdownMs: data.countdownMs,
-          rounds: data.rounds,
-        },
-        result: undefined,
-      }));
+      setState((prev) => applyMatchStart(prev, data));
     });
 
-    room.onMessage("round_start", (data: any) => {
-      setState((prev) => {
-        const player = prev.players[data.playerId];
-        const nextRound: RoundSnapshot = {
-          roundIndex: data.roundIndex,
-          puzzleId: data.puzzleId,
-          startedAt: data.startTime,
-          placedPieces: [],
-          remainingPieceIds: [],
-          boardFilledCount: 0,
-        };
-        return {
-          ...prev,
-          players: {
-            ...prev.players,
-            [data.playerId]: player
-              ? { ...player, currentRoundIndex: data.roundIndex, round: nextRound }
-              : {
-                  playerId: data.playerId,
-                  name: data.playerId,
-                  connected: true,
-                  ready: false,
-                  currentRoundIndex: data.roundIndex,
-                  splitsMs: [],
-                  lastAppliedSeq: 0,
-                  round: nextRound,
-                },
-          },
-        };
-      });
+    room.onMessage("round_start", (data: ServerMessages["round_start"]) => {
+      setState((prev) => applyRoundStart(prev, data));
     });
 
-    room.onMessage("player_state", (data: any) => {
-      setState((prev) => {
-        const player = prev.players[data.playerId];
-        const roundIndex = data.roundIndex;
-        const roundDef = prev.match?.rounds.find((r) => r.roundIndex === roundIndex);
-        const sameRound = player?.round?.roundIndex === roundIndex;
-        return {
-          ...prev,
-          players: {
-            ...prev.players,
-            [data.playerId]: {
-              playerId: data.playerId,
-              name: player?.name ?? data.playerId,
-              connected: player?.connected ?? true,
-              ready: player?.ready ?? false,
-              currentRoundIndex: roundIndex,
-              splitsMs: player?.splitsMs ?? [],
-              lastAppliedSeq: data.lastAppliedSeq,
-              round: {
-                roundIndex,
-                puzzleId: sameRound && player?.round ? player.round.puzzleId : (roundDef?.puzzleId ?? ""),
-                startedAt: sameRound && player?.round ? player.round.startedAt : (player?.round?.startedAt ?? 0),
-                finishedAt: data.finishedAt,
-                splitMs: data.splitMs,
-                placedPieces: data.placedPieces,
-                remainingPieceIds: data.remainingPieceIds,
-                boardFilledCount: data.boardFilledCount,
-              },
-            },
-          },
-        };
-      });
+    room.onMessage("player_state", (data: ServerMessages["player_state"]) => {
+      setState((prev) => applyPlayerState(prev, data));
       if (data.playerId === room.sessionId) {
         clientSeqRef.current = data.lastAppliedSeq;
       }
     });
 
-    room.onMessage("action_rejected", (data: any) => {
-      setState((prev) => ({
-        ...prev,
-        lastRejected: {
-          clientSeq: data.clientSeq,
-          reason: data.reason,
-          authoritativeState: data.authoritativeState,
-        },
-      }));
+    room.onMessage("action_rejected", (data: ServerMessages["action_rejected"]) => {
+      setState((prev) => applyActionRejected(prev, data));
       if (typeof data.authoritativeState?.lastAppliedSeq === "number") {
         clientSeqRef.current = data.authoritativeState.lastAppliedSeq;
       }
     });
 
-    room.onMessage("player_finished", (data: any) => {
-      setState((prev) => {
-        const player = prev.players[data.playerId];
-        if (!player) return prev;
-        const splits = [...player.splitsMs];
-        splits[data.roundIndex] = data.splitMs;
-        return {
-          ...prev,
-          players: {
-            ...prev.players,
-            [data.playerId]: {
-              ...player,
-              splitsMs: splits,
-              round: player.round
-                ? { ...player.round, finishedAt: data.finishedAt, splitMs: data.splitMs }
-                : player.round,
-            },
-          },
-        };
-      });
+    room.onMessage("player_finished", (data: ServerMessages["player_finished"]) => {
+      setState((prev) => applyPlayerFinished(prev, data));
     });
 
-    room.onMessage("match_result", (data: any) => {
-      setState((prev) => ({
-        ...prev,
-        result: {
-          state: "finished",
-          winnerId: data.winnerId,
-          placements: data.placements,
-          splitsByPlayer: data.splitsByPlayer,
-          winnerBoards: data.winnerBoards,
-        },
-      }));
+    room.onMessage("match_result", (data: ServerMessages["match_result"]) => {
+      setState((prev) => applyMatchResult(prev, data));
     });
 
-    room.onMessage("state_sync", (data: any) => {
-      setState((prev) => {
-        const players: Record<string, TrackedPlayer> = { ...prev.players };
-        for (const p of data.players) {
-          const previous = players[p.playerId];
-          players[p.playerId] = {
-            playerId: p.playerId,
-            name: p.name,
-            connected: previous?.connected ?? true,
-            ready: previous?.ready ?? false,
-            currentRoundIndex: p.currentRoundIndex,
-            splitsMs: p.splitsMs,
-            lastAppliedSeq: p.lastAppliedSeq,
-            round: p.round
-              ? {
-                  roundIndex: p.round.roundIndex,
-                  puzzleId: p.round.puzzleId,
-                  startedAt: p.round.startedAt,
-                  finishedAt: p.round.finishedAt,
-                  placedPieces: p.round.placedPieces,
-                  remainingPieceIds: p.round.remainingPieceIds,
-                  boardFilledCount: p.round.boardFilledCount,
-                }
-              : undefined,
-          };
-          if (p.playerId === room.sessionId) {
-            clientSeqRef.current = p.lastAppliedSeq;
-          }
-        }
-        return {
-          ...prev,
-          players,
-          match:
-            data.matchId
-              ? {
-                  matchId: data.matchId,
-                  startTime: data.matchStartedAt ?? prev.match?.startTime ?? 0,
-                  countdownMs: 0,
-                  rounds: data.rounds ?? prev.match?.rounds ?? [],
-                }
-              : prev.match,
-          clockOffsetMs: data.now - Date.now(),
-        };
-      });
+    room.onMessage("state_sync", (data: ServerMessages["state_sync"]) => {
+      setState((prev) => applyStateSync(prev, data));
+      const self = data.players.find((p) => p.playerId === room.sessionId);
+      if (self) {
+        clientSeqRef.current = self.lastAppliedSeq;
+      }
     });
 
-    room.onMessage("error", (data: any) => {
-      setState((prev) => ({ ...prev, error: data.message }));
+    room.onMessage("error", (data: ServerMessages["error"]) => {
+      setState((prev) => applyError(prev, data));
     });
 
-    room.onMessage("player_removed", (data: any) => {
+    room.onMessage("player_removed", (data: ServerMessages["player_removed"]) => {
       if (data.sessionId === room.sessionId) {
-        setState((prev) => ({
-          ...prev,
-          roomCode: undefined,
-          roomVisibility: undefined,
-          status: undefined,
-          hostId: undefined,
-          selfPlayerId: undefined,
-          players: {},
-          match: undefined,
-          result: undefined,
-          // Unlike a dropped connection (see onLeave below), this is
-          // intentional/final - don't let the ?room=<code> auto-join effect
-          // walk us right back into a room we were just kicked from.
-          leftRoomCode: prev.roomCode ?? prev.leftRoomCode,
-          error: data.reason === "kicked" ? "You were removed from the room." : prev.error,
-        }));
+        setState((prev) => applySelfRemoved(prev, data));
       }
     });
 
     room.onLeave(() => {
-      setState((prev) => ({
-        ...prev,
-        connected: prev.connected, // lobby connection is independent
-        lastConnectionLostAt: Date.now(),
-        reconnectRoomCode: prev.roomCode ?? prev.reconnectRoomCode,
-        roomCode: undefined,
-        roomVisibility: undefined,
-        status: undefined,
-        hostId: undefined,
-        selfPlayerId: undefined,
-        players: {},
-        match: undefined,
-        result: undefined,
-      }));
+      setState((prev) => applyRoomLeft(prev));
       gameRoomRef.current = null;
     });
 
@@ -675,27 +385,27 @@ export function useMultiplayerSocket() {
   }, []);
 
   const startMatch = useCallback(() => {
-    gameRoomRef.current?.send("start_match");
+    gameRoomRef.current && sendGame(gameRoomRef.current, "start_match", undefined);
   }, []);
 
   const updateSettings = useCallback((settings: MatchSettings) => {
-    gameRoomRef.current?.send("update_settings", { settings });
+    gameRoomRef.current && sendGame(gameRoomRef.current, "update_settings", { settings });
   }, []);
 
   const requestSync = useCallback(() => {
     const room = gameRoomRef.current;
     const matchId = state.match?.matchId;
     if (!room || !matchId) return;
-    room.send("request_sync", { matchId });
+    sendGame(room, "request_sync", { matchId });
   }, [state.match?.matchId]);
 
   const sendPlace = useCallback(
-    (input: { roundIndex: number; pieceId: string; transformId: string; x: number; y: number }) => {
+    (input: { roundIndex: number; pieceId: PieceId; transformId: string; x: number; y: number }) => {
       const room = gameRoomRef.current;
       const matchId = state.match?.matchId;
       if (!room || !matchId) return null;
       const clientSeq = nextSeq();
-      room.send("place_piece", {
+      sendGame(room, "place_piece", {
         matchId,
         roundIndex: input.roundIndex,
         pieceId: input.pieceId,
@@ -710,12 +420,12 @@ export function useMultiplayerSocket() {
   );
 
   const sendRemove = useCallback(
-    (input: { roundIndex: number; pieceId: string }) => {
+    (input: { roundIndex: number; pieceId: PieceId }) => {
       const room = gameRoomRef.current;
       const matchId = state.match?.matchId;
       if (!room || !matchId) return null;
       const clientSeq = nextSeq();
-      room.send("remove_piece", {
+      sendGame(room, "remove_piece", {
         matchId,
         roundIndex: input.roundIndex,
         pieceId: input.pieceId,
@@ -732,7 +442,7 @@ export function useMultiplayerSocket() {
       const matchId = state.match?.matchId;
       if (!room || !matchId) return null;
       const clientSeq = nextSeq();
-      room.send("undo", { matchId, roundIndex, clientSeq });
+      sendGame(room, "undo", { matchId, roundIndex, clientSeq });
       return clientSeq;
     },
     [nextSeq, state.match?.matchId],
@@ -744,7 +454,7 @@ export function useMultiplayerSocket() {
       const matchId = state.match?.matchId;
       if (!room || !matchId) return null;
       const clientSeq = nextSeq();
-      room.send("submit_finish", { matchId, roundIndex, clientSeq });
+      sendGame(room, "submit_finish", { matchId, roundIndex, clientSeq });
       return clientSeq;
     },
     [nextSeq, state.match?.matchId],

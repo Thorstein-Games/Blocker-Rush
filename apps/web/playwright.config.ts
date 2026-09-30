@@ -1,8 +1,14 @@
 import { defineConfig } from "@playwright/test";
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Multiplayer specs need a real megingjord server. Defaults to a sibling
+// checkout (../megingjord next to this repo); override with MEGINGJORD_DIR.
+// Both servers are started automatically, or reused if already running.
+const megingjordDir =
+  process.env.MEGINGJORD_DIR ?? resolve(__dirname, "../../../megingjord");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -18,7 +24,7 @@ export default defineConfig({
   webServer: [
     {
       command: "pnpm dev",
-      cwd: "/Users/ryan/Github/megingjord",
+      cwd: megingjordDir,
       url: "http://localhost:2567/health",
       timeout: 60_000,
       reuseExistingServer: true,

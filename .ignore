@@ -1,0 +1,5 @@
+# Hidden from ripgrep (and Claude Code's Grep/Glob) but still tracked by git.
+# Search these explicitly when you need them, e.g. `rg --no-ignore-dot PATTERN artifacts/`.
+artifacts/
+packages/shared/src/data/
+package-lock.json

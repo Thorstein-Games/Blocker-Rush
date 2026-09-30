@@ -3,6 +3,10 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "emitDeclarationOnly": false
-  }
+    "emitDeclarationOnly": false,
+    "rootDir": "src"
+  },
+  "include": [
+    "src"
+  ]
 }

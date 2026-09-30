@@ -8,15 +8,16 @@
   ],
   "scripts": {
     "dev": "npm run dev -w apps/web",
-    "build": "npm run build:client",
-    "build:client": "npm run build -w apps/web",
-    "start": "npm run start:client",
-    "start:client": "npm run start -w apps/web",
-    "lint": "npm run lint -w apps/web && npm run lint -w packages/shared && npm run lint -w packages/protocol",
-    "typecheck": "npm run typecheck -w apps/web && npm run build -w packages/shared && npm run build -w packages/protocol",
-    "test:shared": "npm run lint -w packages/shared",
+    "build": "npm run build -w apps/web",
+    "start": "npm run start -w apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint -w apps/web",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "npm run test:e2e -w apps/web",
+    "verify": "bash ./verify.sh",
     "gen-puzzles": "node packages/shared/scripts/generate-puzzles.js",
     "refresh-samples": "node packages/shared/scripts/sample-puzzles.js",
-    "verify": "bash ./verify.sh"
+    "sync:megingjord": "node scripts/sync-megingjord.mjs",
+    "check:megingjord": "node scripts/sync-megingjord.mjs --check"
   }
 }

@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules/
 /apps/server/node_modules
 /.pnp
 .pnp.js
@@ -49,3 +49,10 @@ next-env.d.ts
 
 # Browser automation session state
 /.playwright-cli/
+
+# Playwright screenshots / scratch output
+/output/
+
+# Playwright
+test-results/
+playwright-report/

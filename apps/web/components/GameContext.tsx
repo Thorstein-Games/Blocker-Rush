@@ -4,7 +4,6 @@ import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
-  RefObject,
 } from "react";
 import {
   createContext,
@@ -20,173 +19,43 @@ import type {
   Difficulty,
   Placement,
   PieceId,
-  PieceTransform,
   Vec2,
 } from "@blocker-rush/shared";
 import {
   PIECES,
   PIECE_TRANSFORMS,
   canPlace,
-  cellsToKey,
   createBoard,
   placePiece,
   removePiece,
   withBlockers,
   isSolved,
 } from "@blocker-rush/shared";
-import type { DragGhost, PieceState } from "./gameTypes";
+import type {
+  DragGhost,
+  DragPreview,
+  GameContextValue,
+  InteractionState,
+  PieceState,
+  PuzzleSpec,
+} from "./gameTypes";
 import { DRAG_GAIN, DRAG_VISUAL_OFFSET_Y } from "./dragConfig";
+import {
+  findOrientationForTransform,
+  getCellIndexFromTarget,
+  getPieceVisualCenterLocal,
+  getPieceVisualCenterPx,
+  getTransformFor,
+  initPieceStates,
+  isPointerOutsideBoard,
+  pieceName,
+  placementError,
+} from "./pieceGeometry";
+import { useTouchScrollLock } from "./useTouchScrollLock";
 
-type InteractionState = {
-  mode: "pending" | "dragging";
-  pieceId: PieceId;
-  pointerId: number;
-  pointerType: PointerEvent["pointerType"];
-  touchScrollLocked: boolean;
-  captureTarget?: HTMLElement | null;
-  startX: number;
-  startY: number;
-  startCenter: { x: number; y: number };
-  pieceCenterOffsetPx: { x: number; y: number };
-  previousBoard: BoardState;
-  previousPlacement?: { origin: Vec2; transformId: string };
-  metrics: {
-    rect: DOMRect;
-    gap: number;
-    step: number;
-    cell: number;
-  };
-  timeoutId: number;
-  lastPointer?: { x: number; y: number };
-  latestPointer?: { x: number; y: number };
-  smoothedCenter?: { x: number; y: number };
-  targetCenter?: { x: number; y: number };
-  latestSnapCenter?: { x: number; y: number };
-  lastSnapOrigin?: Vec2 | null;
-  rafId?: number;
-};
+// Re-exported for existing importers (e.g. MultiplayerBoardPanel).
+export { findOrientationForTransform };
 
-type DragPreview = {
-  pieceId: PieceId;
-  cell: number;
-  gap: number;
-  offset: { x: number; y: number };
-  scale: number;
-  position: { x: number; y: number };
-  dropTarget: { x: number; y: number } | null;
-  isDropping?: boolean;
-};
-
-const initPieceStates = (): Record<PieceId, PieceState> =>
-  PIECES.reduce(
-    (acc, piece) => {
-      acc[piece.id] = { rotation: 0, flipped: false };
-      return acc;
-    },
-    {} as Record<PieceId, PieceState>,
-  );
-
-const rotateCells = (cells: Vec2[]): Vec2[] =>
-  cells.map((cell) => ({ x: cell.y, y: -cell.x }));
-
-const reflectCells = (cells: Vec2[]): Vec2[] =>
-  cells.map((cell) => ({ x: -cell.x, y: cell.y }));
-
-const getTransformFor = (
-  pieceId: PieceId,
-  rotation: number,
-  flipped: boolean,
-): PieceTransform => {
-  const base = PIECES.find((piece) => piece.id === pieceId)?.cells ?? [];
-  let cells = base.map((cell) => ({ ...cell }));
-  if (flipped) {
-    cells = reflectCells(cells);
-  }
-  for (let i = 0; i < rotation; i += 1) {
-    cells = rotateCells(cells);
-  }
-  const key = cellsToKey(cells);
-  const transforms = PIECE_TRANSFORMS[pieceId];
-  if (!transforms || transforms.length === 0 || !transforms[0]) {
-    throw new Error(`Missing transforms for piece ${pieceId}`);
-  }
-  return transforms.find((item) => item.id === key) ?? transforms[0];
-};
-
-export const findOrientationForTransform = (
-  pieceId: PieceId,
-  transformId: string,
-) => {
-  for (let rotation = 0; rotation < 4; rotation += 1) {
-    for (const flipped of [false, true]) {
-      const base = PIECES.find((piece) => piece.id === pieceId)?.cells ?? [];
-      let cells = base.map((cell) => ({ ...cell }));
-      if (flipped) {
-        cells = reflectCells(cells);
-      }
-      for (let i = 0; i < rotation; i += 1) {
-        cells = rotateCells(cells);
-      }
-      const key = cellsToKey(cells);
-      if (key === transformId) {
-        return { rotation, flipped };
-      }
-    }
-  }
-  return { rotation: 0, flipped: false };
-};
-
-type PuzzleSpec = {
-  id: string;
-  blockers: Coordinate[];
-  difficulty: Difficulty | null;
-};
-
-type GameContextValue = {
-  puzzleId: string;
-  puzzleDifficulty: Difficulty | null;
-  solved: boolean;
-  readOnly: boolean;
-  moveCount: number;
-  startedAt: number | null;
-  board: BoardState;
-  blockers: Coordinate[];
-  pieceStates: Record<PieceId, PieceState>;
-  activePieceId: PieceId | null;
-  ghost: DragGhost | null;
-  draggingPieceId: PieceId | null;
-  dragPreview: DragPreview | null;
-  applyPuzzle: (puzzle: PuzzleSpec) => void;
-  setActivePieceId: (pieceId: PieceId | null) => void;
-  setPieceState: (pieceId: PieceId, next: PieceState) => void;
-  getTransformFor: (
-    pieceId: PieceId,
-    rotation: number,
-    flipped: boolean,
-  ) => PieceTransform;
-  onBoardPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onBoardClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
-  onBoardDoubleClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
-  onPiecePointerDown: (
-    event: ReactPointerEvent<HTMLElement>,
-    pieceId: PieceId,
-  ) => void;
-  rotatePiece: (pieceId: PieceId) => void;
-  flipPiece: (pieceId: PieceId) => void;
-  clearBoard: () => void;
-  undo: () => void;
-  canUndo: boolean;
-  feedback: { text: string; error: boolean; sequence: number } | null;
-  selectPiece: (pieceId: PieceId) => void;
-  activateCell: (cellIndex: number, remove?: boolean) => void;
-  restoreState: (snapshot: {
-    placements: Placement[];
-    pieceStates: Record<PieceId, PieceState>;
-    blockers?: Coordinate[];
-    startedAt?: number | null;
-  }) => void;
-  boardRef: RefObject<HTMLDivElement | null>;
-};
 
 const GameContext = createContext<GameContextValue | null>(null);
 
@@ -224,36 +93,8 @@ export function GameProvider({
   const ghostRef = useRef<DragGhost | null>(null);
   const lastTapRef = useRef<{ time: number; cellIndex: number } | null>(null);
   const metricsRef = useRef<InteractionState["metrics"] | null>(null);
-  const touchScrollLockCountRef = useRef(0);
 
-  const setTouchScrollLock = (locked: boolean) => {
-    const html = document.documentElement;
-    const body = document.body;
-    if (locked) {
-      touchScrollLockCountRef.current += 1;
-      if (touchScrollLockCountRef.current === 1) {
-        html.classList.add("touch-scroll-locked");
-        body.classList.add("touch-scroll-locked");
-      }
-      return;
-    }
-    touchScrollLockCountRef.current = Math.max(
-      0,
-      touchScrollLockCountRef.current - 1,
-    );
-    if (touchScrollLockCountRef.current === 0) {
-      html.classList.remove("touch-scroll-locked");
-      body.classList.remove("touch-scroll-locked");
-    }
-  };
-
-  useEffect(() => {
-    return () => {
-      touchScrollLockCountRef.current = 0;
-      document.documentElement.classList.remove("touch-scroll-locked");
-      document.body.classList.remove("touch-scroll-locked");
-    };
-  }, []);
+  const setTouchScrollLock = useTouchScrollLock();
 
   const solved = useMemo(() => isSolved(board), [board]);
   const readOnly = disabled || (lockOnSolve && solved);
@@ -285,8 +126,6 @@ export function GameProvider({
       sequence: (previous?.sequence ?? 0) + 1,
     }));
   };
-  const pieceName = (id: PieceId) =>
-    PIECES.find((piece) => piece.id === id)?.name ?? id;
 
   const selectPiece = (pieceId: PieceId) => {
     if (readOnly || interactionRef.current) return;
@@ -428,25 +267,6 @@ export function GameProvider({
     announce("Last move undone.");
   };
 
-  const placementError = (
-    current: BoardState,
-    transform: PieceTransform,
-    origin: Vec2,
-  ) => {
-    for (const cell of transform.cells) {
-      const x = origin.x + cell.x,
-        y = origin.y + cell.y;
-      if (x < 0 || y < 0 || x >= current.size.cols || y >= current.size.rows)
-        return "Piece crosses the edge. Move it inward or rotate it.";
-      const occupied = current.cells[y * current.size.cols + x];
-      if (occupied === "blocker")
-        return "A blocker is in the way. Choose another square or rotate the piece.";
-      if (occupied)
-        return "Pieces cannot overlap. Choose a free area or remove a placed piece.";
-    }
-    return "Choose a square inside the board.";
-  };
-
   const setPieceState = (pieceId: PieceId, next: PieceState) => {
     setPieceStates((prev) => ({
       ...prev,
@@ -483,30 +303,6 @@ export function GameProvider({
       window.removeEventListener("scroll", handleResize, true);
     };
   }, []);
-
-  const getPieceVisualCenterLocal = (cells: Vec2[]) => {
-    const xs = cells.map((cell) => cell.x);
-    const ys = cells.map((cell) => cell.y);
-    const minX = Math.min(...xs);
-    const maxX = Math.max(...xs);
-    const minY = Math.min(...ys);
-    const maxY = Math.max(...ys);
-    return {
-      // (C) Orientation math: use the center of the oriented bounding box so the
-      // piece stays centered under the pointer for any rotation/flip.
-      x: (minX + maxX + 1) / 2,
-      y: (minY + maxY + 1) / 2,
-    };
-  };
-
-  const getPieceVisualCenterPx = (
-    centerLocal: { x: number; y: number },
-    metrics: { step: number; gap: number },
-  ) => ({
-    // Convert from local cell space (cell centers) to pixels.
-    x: centerLocal.x * metrics.step - metrics.gap / 2,
-    y: centerLocal.y * metrics.step - metrics.gap / 2,
-  });
 
   const buildDragPreview = (
     pieceId: PieceId,
@@ -582,16 +378,6 @@ export function GameProvider({
       };
     });
   };
-
-  const isPointerOutsideBoard = (
-    clientX: number,
-    clientY: number,
-    rect: DOMRect,
-  ) =>
-    clientX < rect.left ||
-    clientX > rect.right ||
-    clientY < rect.top ||
-    clientY > rect.bottom;
 
   const commitRemoval = (pieceId: PieceId, previousBoard: BoardState) => {
     const nextBoard = removePiece(previousBoard, pieceId);
@@ -964,15 +750,6 @@ export function GameProvider({
         ),
       }));
     }
-  };
-
-  const getCellIndexFromTarget = (target: EventTarget | null) => {
-    if (!target) return null;
-    const index = (target as HTMLElement).dataset.index;
-    if (index === undefined) return null;
-    const cellIndex = Number.parseInt(index, 10);
-    if (Number.isNaN(cellIndex)) return null;
-    return cellIndex;
   };
 
   const handleBoardPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
