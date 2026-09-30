@@ -75,7 +75,7 @@ export const buildPageMetadata = ({
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: `${SITE_NAME} social preview`,
+        alt: `${SITE_NAME} logo`,
       },
     ],
   },

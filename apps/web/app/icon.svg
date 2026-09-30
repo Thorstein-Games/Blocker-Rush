@@ -34,7 +34,7 @@
   <rect x="10" y="10" width="236" height="236" rx="48" fill="none" stroke="#cde8d6" stroke-opacity="0.14" stroke-width="2" />
 
   <!-- Subtle grid -->
-  <g stroke="#d2ffe1" stroke-opacity="0.08" stroke-width="1">
+  <g stroke="#d2ffe1" opacity="0.08" stroke-width="1">
     <path d="M0 52H256" />
     <path d="M0 104H256" />
     <path d="M0 156H256" />
