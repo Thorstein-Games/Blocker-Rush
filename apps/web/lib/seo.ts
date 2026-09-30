@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BASE_PATH } from "./basePath";
 
 export const SITE_NAME = "Blocker Rush";
 
@@ -24,16 +25,16 @@ const normalizeSiteUrl = (value: string): string => {
   return withProtocol.replace(/\/+$/, "");
 };
 
-const envSiteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  process.env.SITE_URL ??
-  // Netlify sets URL at build time to the site's primary domain (the custom
-  // domain once one is attached, otherwise the .netlify.app address).
-  process.env.URL;
+// Origin only (no path) — the game is served under BASE_PATH on
+// thorsteingames.com via a proxy, so Netlify's own URL isn't canonical.
+const envSiteOrigin =
+  process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL;
 
-export const SITE_URL = normalizeSiteUrl(
-  envSiteUrl ?? "https://blocker-rush.netlify.app",
-);
+// Includes BASE_PATH. Next joins relative metadata URLs (canonical, OG
+// images) onto metadataBase's path, so those stay relative.
+export const SITE_URL = `${normalizeSiteUrl(
+  envSiteOrigin ?? "https://thorsteingames.com",
+)}${BASE_PATH}`;
 
 export const webSiteJsonLd = {
   "@context": "https://schema.org",

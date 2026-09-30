@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { withBasePath } from "../lib/basePath";
 
 type Mode = "daily" | "casual" | "multiplayer";
 
@@ -209,7 +210,7 @@ export default function GameHeader({
             </svg>
           </button>
           <img
-            src="/icon.svg"
+            src={withBasePath("/icon.svg")}
             alt=""
             aria-hidden="true"
             width={28}

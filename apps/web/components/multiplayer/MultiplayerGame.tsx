@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import { withBasePath } from "../../lib/basePath";
 import MultiplayerLobbyLanding from "./MultiplayerLobbyLanding";
 import MultiplayerRoomShell from "./MultiplayerRoomShell";
 import {
@@ -29,7 +30,7 @@ function MultiplayerGameContent() {
     if (!state.roomCode || currentRoom === state.roomCode) return;
     currentParams.set("room", state.roomCode);
     const query = currentParams.toString();
-    window.history.replaceState(null, "", `/multiplayer${query ? `?${query}` : ""}`);
+    window.history.replaceState(null, "", withBasePath(`/multiplayer${query ? `?${query}` : ""}`));
   }, [state.roomCode]);
 
   if (!state.roomCode) {

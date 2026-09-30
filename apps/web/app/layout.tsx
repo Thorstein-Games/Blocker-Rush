@@ -9,6 +9,7 @@ import {
   buildPageMetadata,
   webSiteJsonLd,
 } from "../lib/seo";
+import { withBasePath } from "../lib/basePath";
 
 const rootMetadata = buildPageMetadata({
   title: "Daily Puzzle Challenge",
@@ -45,27 +46,27 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
-        url: "/favicon.ico",
+        url: withBasePath("/favicon.ico"),
       },
       {
-        url: "/favicon-32x32.png",
+        url: withBasePath("/favicon-32x32.png"),
         sizes: "32x32",
         type: "image/png",
       },
       {
-        url: "/favicon.svg",
+        url: withBasePath("/favicon.svg"),
         type: "image/svg+xml",
       },
     ],
     apple: [
       {
-        url: "/apple-icon",
+        url: withBasePath("/apple-icon"),
         sizes: "180x180",
         type: "image/png",
       },
     ],
   },
-  manifest: "/manifest.webmanifest",
+  manifest: withBasePath("/manifest.webmanifest"),
 };
 
 export const viewport: Viewport = {

@@ -40,7 +40,7 @@ export default defineConfig({
     {
       command: "npx next dev -p 3000",
       cwd: __dirname,
-      url: "http://localhost:3000",
+      url: "http://localhost:3000/blocker-rush",
       timeout: 60_000,
       reuseExistingServer: true,
     },
