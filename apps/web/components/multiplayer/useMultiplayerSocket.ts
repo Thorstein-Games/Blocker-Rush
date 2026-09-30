@@ -10,8 +10,19 @@ import type {
   RoundDef,
 } from "@blocker-rush/protocol";
 
-const MEGINGJORD_WS_URL =
-  process.env.NEXT_PUBLIC_MEGINGJORD_WS_URL ?? "ws://localhost:2567";
+// Mirrors sheeple-game's getGameServerUrl() (lib/config/gameConfig.ts).
+function getGameServerUrl(): string {
+  const isDev =
+    typeof window !== "undefined"
+      ? window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      : process.env.NODE_ENV !== "production";
+
+  if (isDev) {
+    return "ws://localhost:2567";
+  }
+
+  return process.env.NEXT_PUBLIC_GAME_SERVER_URL || "wss://megingjord.onrender.com";
+}
 
 const DEFAULT_SETTINGS: MatchSettings = {
   rounds: 1,
@@ -157,7 +168,7 @@ export function useMultiplayerSocket() {
   // --- Lobby connection: room browsing + roomCode -> roomId resolution ---
 
   useEffect(() => {
-    const client = new Colyseus.Client(MEGINGJORD_WS_URL);
+    const client = new Colyseus.Client(getGameServerUrl());
     patchSeatReservationShim(client);
     clientRef.current = client;
 
