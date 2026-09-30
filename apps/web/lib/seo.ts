@@ -27,10 +27,12 @@ const normalizeSiteUrl = (value: string): string => {
 const envSiteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
   process.env.SITE_URL ??
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined);
+  // Netlify sets URL at build time to the site's primary domain (the custom
+  // domain once one is attached, otherwise the .netlify.app address).
+  process.env.URL;
 
 export const SITE_URL = normalizeSiteUrl(
-  envSiteUrl ?? "https://blocker-rush.com",
+  envSiteUrl ?? "https://blocker-rush.netlify.app",
 );
 
 export const webSiteJsonLd = {
