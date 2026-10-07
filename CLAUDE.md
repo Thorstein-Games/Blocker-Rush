@@ -40,7 +40,7 @@ To add or change a message: edit `packages/protocol/src/messages.ts`, sync, then
 
 ## Analytics
 
-Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.
+Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (not set up in production yet; see the TODO in `lib/analytics.ts`) (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.
 
 ## E2E gotchas
 
