@@ -121,7 +121,7 @@
 
 .opponents-column h3 {
   margin: 0;
-  font-family: "Oxanium", system-ui, sans-serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 0.8rem;
@@ -261,7 +261,7 @@
 }
 
 .countdown-overlay-value {
-  font-family: "Oxanium", system-ui, sans-serif;
+  font-family: var(--font-display), system-ui, sans-serif;
   font-size: clamp(4.2rem, 13vw, 7.8rem);
   font-weight: 800;
   letter-spacing: 0.04em;
