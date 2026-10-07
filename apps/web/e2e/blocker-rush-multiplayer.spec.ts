@@ -169,4 +169,53 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
 
     await context.close();
   });
+
+  test("lobby page loads without errors", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() === "error") errors.push(message.text());
+    });
+    await page.goto("/blocker-rush/multiplayer");
+    await expect(page.getByRole("button", { name: "Join Public Matchmaking" })).toBeEnabled({
+      timeout: 10_000,
+    });
+    expect(errors).toEqual([]);
+  });
+
+  test("Share Room Link copies a /blocker-rush invite that joins the room", async ({
+    browser,
+  }) => {
+    const hostContext = await browser.newContext({
+      permissions: ["clipboard-read", "clipboard-write"],
+    });
+    // Force the clipboard path instead of the native share sheet.
+    await hostContext.addInitScript(() => {
+      Object.defineProperty(navigator, "share", { value: undefined });
+    });
+    const guestContext = await browser.newContext();
+    const hostPage = await hostContext.newPage();
+    const guestPage = await guestContext.newPage();
+
+    await hostPage.goto("/blocker-rush/multiplayer");
+    await hostPage.getByRole("button", { name: "Create Private Room" }).click();
+    await expect(roomCodeOf(hostPage)).not.toHaveText("", { timeout: 10_000 });
+    const roomCode = await roomCodeOf(hostPage).innerText();
+
+    await hostPage.getByRole("button", { name: "Share Room Link" }).click();
+    await expect(hostPage.getByText("Room link copied.")).toBeVisible();
+    const invite = await hostPage.evaluate(() => navigator.clipboard.readText());
+    expect(new URL(invite).pathname).toBe("/blocker-rush/multiplayer");
+    expect(new URL(invite).searchParams.get("room")).toBe(roomCode);
+
+    // Opening the invite auto-joins the room.
+    await guestPage.goto(invite);
+    await expect(roomCodeOf(guestPage)).toHaveText(roomCode, { timeout: 10_000 });
+    await expect(hostPage.locator(".multiplayer-room-list .room-row")).toHaveCount(2, {
+      timeout: 10_000,
+    });
+
+    await hostContext.close();
+    await guestContext.close();
+  });
 });

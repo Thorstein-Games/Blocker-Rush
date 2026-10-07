@@ -9,9 +9,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // Both servers are started automatically, or reused if already running.
 const megingjordDir =
   process.env.MEGINGJORD_DIR ?? resolve(__dirname, "../../../megingjord");
+// E2E_NO_MEGINGJORD=1 runs only the single-player specs, without starting
+// megingjord (e.g. CI without access to that repo).
+const withMegingjord = !process.env.E2E_NO_MEGINGJORD;
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: withMegingjord ? undefined : ["**/*multiplayer*"],
   timeout: 30_000,
   fullyParallel: false,
   workers: 1,
@@ -22,21 +26,7 @@ export default defineConfig({
     trace: "retain-on-failure",
   },
   webServer: [
-    {
-      command: "pnpm dev",
-      cwd: megingjordDir,
-      url: "http://localhost:2567/health",
-      timeout: 60_000,
-      reuseExistingServer: true,
-      // Megingjord's per-IP matchmake rate limit (default 15 req/10s,
-      // src/config.ts) exists to stop scripted room-creation spam in
-      // production. Every simulated player here shares the same loopback
-      // IP, so a handful of tests blows through it — matchmake calls
-      // (create/join/joinById) then reject client-side with no visible
-      // error, which looks like a UI bug but is actually the guard doing
-      // its job. Loosen it only for this local test server.
-      env: { MATCHMAKE_RATE_MAX: "1000" },
-    },
+    ...(withMegingjord ? [megingjordServer()] : []),
     {
       command: "npx next dev -p 3000",
       cwd: __dirname,
@@ -46,3 +36,21 @@ export default defineConfig({
     },
   ],
 });
+
+function megingjordServer() {
+  return {
+    command: "pnpm dev",
+    cwd: megingjordDir,
+    url: "http://localhost:2567/health",
+    timeout: 60_000,
+    reuseExistingServer: true,
+    // Megingjord's per-IP matchmake rate limit (default 15 req/10s,
+    // src/config.ts) exists to stop scripted room-creation spam in
+    // production. Every simulated player here shares the same loopback
+    // IP, so a handful of tests blows through it — matchmake calls
+    // (create/join/joinById) then reject client-side with no visible
+    // error, which looks like a UI bug but is actually the guard doing
+    // its job. Loosen it only for this local test server.
+    env: { MATCHMAKE_RATE_MAX: "1000" },
+  };
+}
