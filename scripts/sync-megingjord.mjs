@@ -32,7 +32,7 @@ const mirrors = [
     target: "shared",
     // solver/puzzle/share are client-only (daily puzzle, sharing, generation).
     modules: ["types", "coords", "pieces", "board", "difficulty", "rules", "puzzle-dataset"],
-    data: ["data/puzzles.v1.sample.json"],
+    data: ["data/puzzles.v1.compact.json"],
     // megingjord compiles to CommonJS, which rejects import assertions.
     transform: (code) => code.replace(/ assert \{ type: "json" \}/g, ""),
   },

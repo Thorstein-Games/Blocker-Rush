@@ -2,12 +2,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { compactDataset } from "./compact-puzzles.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const INPUT_PATH = path.join(__dirname, "../src/data/fullpuzzles.v1.json");
 const OUTPUT_PATH = path.join(__dirname, "../src/data/puzzles.v1.sample.json");
+const COMPACT_OUTPUT_PATH = path.join(__dirname, "../src/data/puzzles.v1.compact.json");
 
 const TARGET_PER_DIFFICULTY = Number(process.env.SAMPLE_PER_DIFFICULTY ?? 2000);
 
@@ -166,7 +168,8 @@ stream.on("end", () => {
   };
 
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(dataset));
-  console.log(`Wrote ${puzzles.length} puzzles to ${OUTPUT_PATH}`);
+  fs.writeFileSync(COMPACT_OUTPUT_PATH, JSON.stringify(compactDataset(dataset)) + "\n");
+  console.log(`Wrote ${puzzles.length} puzzles to ${OUTPUT_PATH} and ${COMPACT_OUTPUT_PATH}`);
 });
 
 stream.on("error", (error) => {

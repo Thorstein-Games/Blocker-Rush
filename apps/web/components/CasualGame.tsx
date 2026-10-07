@@ -9,6 +9,8 @@ import {
   type MouseEvent,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { track } from "../lib/analytics";
+import { withBasePath } from "../lib/basePath";
 import type {
   Coordinate,
   Difficulty,
@@ -278,6 +280,7 @@ function CasualGameLayout() {
     if (hasRecordedSolve) return;
     const elapsed = Date.now() - startedAt;
     setRoundStats({ moves: moveCount, elapsedMs: elapsed });
+    track("Casual Solved", { difficulty: puzzleDifficulty ?? "custom" });
 
     if (!puzzleDifficulty) {
       setHasRecordedSolve(true);
@@ -360,8 +363,9 @@ function CasualGameLayout() {
   };
 
   const handleShare = async () => {
+    track("Share", { mode: "casual" });
     if (!puzzleId) return;
-    const baseUrl = `${window.location.origin}/casual`;
+    const baseUrl = `${window.location.origin}${withBasePath("/casual")}`;
     const text = buildShareText(puzzleId, board.placements, baseUrl, {
       messageText: solved
         ? `I just solved a ${puzzleDifficulty ?? "mystery"} puzzle in ${moveCount} moves Blocker Rush! Can you solve it?`

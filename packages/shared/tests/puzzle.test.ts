@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+// @ts-expect-error -- plain JS build script, no type declarations
+import { compactDataset } from "../scripts/compact-puzzles.js";
+import compactJson from "../src/data/puzzles.v1.compact.json" assert { type: "json" };
+import sampleJson from "../src/data/puzzles.v1.sample.json" assert { type: "json" };
 import {
   PUZZLE_DATASET_VERSION,
   RULES_VERSION,
@@ -21,6 +25,11 @@ import {
 
 describe("puzzle dataset", () => {
   const puzzles = getPuzzleDataset();
+
+  it("loads a compact copy that matches the sample dataset", () => {
+    // Run `node packages/shared/scripts/compact-puzzles.js` if this fails.
+    expect(compactJson).toEqual(compactDataset(sampleJson));
+  });
 
   it("matches the current dataset/rules version", () => {
     expect(getPuzzleDatasetVersion()).toBe(PUZZLE_DATASET_VERSION);
@@ -100,6 +109,18 @@ describe("sharing", () => {
     const text = buildShareText(id, {} as never, "https://example.com/");
     expect(text).toContain("https://example.com/?p=" + id);
     expect(text).toContain("Play Blocker Rush!");
+  });
+
+  it("puts the message, emoji board and link on separate lines", () => {
+    const text = buildShareText(id, {} as never, "https://example.com/br", {
+      messageText: "Solved it",
+      renderEmojis: true,
+    });
+    const lines = text.split("\n");
+    expect(lines[0]).toBe("Solved it");
+    expect(lines[lines.length - 1]).toBe(`https://example.com/br?p=${id}`);
+    expect(lines).toHaveLength(8);
+    expect(text).not.toContain(",");
   });
 
   it("renders blockers on a 6x6 emoji grid", () => {

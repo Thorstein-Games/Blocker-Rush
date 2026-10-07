@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Colyseus from "colyseus.js";
+import { track } from "../../lib/analytics";
 import type { MatchSettings, ServerMessages } from "@blocker-rush/protocol";
 import type { PieceId } from "@blocker-rush/shared";
 import {
@@ -312,6 +313,7 @@ export function useMultiplayerSocket() {
       try {
         const room = await client.joinOrCreate("blocker_rush", { playerName: name });
         attachGameRoom(room);
+        track("Multiplayer Join Public");
       } catch (error) {
         setState((prev) => ({
           ...prev,
@@ -330,6 +332,7 @@ export function useMultiplayerSocket() {
         const roomId = await resolveRoomCode(roomCode);
         const room = await client.joinById(roomId, { playerName: name });
         attachGameRoom(room);
+        track("Multiplayer Join Code");
       } catch (error) {
         setState((prev) => ({
           ...prev,
@@ -347,6 +350,7 @@ export function useMultiplayerSocket() {
       try {
         const room = await client.create("blocker_rush", { playerName: name, settings, private: true });
         attachGameRoom(room);
+        track("Multiplayer Create Private", { rounds: settings.rounds });
       } catch (error) {
         setState((prev) => ({
           ...prev,

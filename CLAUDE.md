@@ -36,7 +36,11 @@ To add or change a message: edit `packages/protocol/src/messages.ts`, sync, then
 
 ## Puzzle dataset
 
-`packages/shared/src/data/puzzles.v1.sample.json` (committed, ~1MB, 2000 puzzles per difficulty) is what the app and server load. It's hidden from search by `.ignore`; grep it with `rg --no-ignore-dot`. It's derived from `fullpuzzles.v1.json` (gitignored): `npm run gen-puzzles` builds the full set (slow, multi-worker), then `npm run refresh-samples` samples it. Difficulty = solution count: insane 1–3, hard 4–10, medium 11–50, easy 51+ (the solver caps at 51). Those ranges are duplicated in `generate-puzzles.js` and `difficulty.ts`, so change both together. Unit tests check that every puzzle's id, blockers and difficulty are consistent.
+`packages/shared/src/data/puzzles.v1.sample.json` (committed, ~1MB, 2000 puzzles per difficulty) is the source of truth. The app and server load `puzzles.v1.compact.json` instead (~140KB, `"<id>:<solutionCount>"` strings grouped by difficulty in sample order), which `node packages/shared/scripts/compact-puzzles.js` derives from the sample; a unit test fails if they drift. Both are hidden from search by `.ignore`; grep them with `rg --no-ignore-dot`. The sample is derived from `fullpuzzles.v1.json` (gitignored): `npm run gen-puzzles` builds the full set (slow, multi-worker), then `npm run refresh-samples` samples it and rewrites the compact copy. Sample order matters: the daily puzzle is a seeded index into each difficulty's list. Difficulty = solution count: insane 1–3, hard 4–10, medium 11–50, easy 51+ (the solver caps at 51). Those ranges are duplicated in `generate-puzzles.js` and `difficulty.ts`, so change both together. Unit tests check that every puzzle's id, blockers and difficulty are consistent.
+
+## Analytics
+
+Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.
 
 ## E2E gotchas
 

@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Oxanium, Space_Grotesk } from "next/font/google";
 import InteractiveGridBackground from "../components/background/InteractiveGridBackground";
+import Analytics from "../components/Analytics";
 import {
   DEFAULT_KEYWORDS,
   SITE_DESCRIPTION,
@@ -98,6 +99,7 @@ export default function RootLayout({
         />
         <InteractiveGridBackground />
         <div className="app-shell">{children}</div>
+        <Analytics />
       </body>
     </html>
   );
