@@ -1207,6 +1207,9 @@ input {
 .context-difficulty {
   text-transform: capitalize;
 }
+.context-timer {
+  font-variant-numeric: tabular-nums;
+}
 .game-objective {
   margin: 0;
   font-size: 1rem;

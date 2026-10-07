@@ -22,6 +22,12 @@ import {
   reconcileStats,
   recordDailySolve,
 } from "./dailyStats";
+import {
+  advanceElapsed,
+  dailyShareMessage,
+  describeSolve,
+  formatDuration,
+} from "./dailyTimer";
 
 const DAILY_STATS_KEY = "blockerRush.daily.stats";
 const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
@@ -32,7 +38,13 @@ type DailyProgress = {
   placements: Placement[];
   pieceStates: Record<PieceId, PieceState>;
   startedAt: number | null;
+  /** Moves across every visit today, not just since the last page load. */
   moveCount: number;
+  /**
+   * Visible solving time. Missing (null) on progress saved before the timer
+   * existed, which only matters for an already-solved board.
+   */
+  elapsedMs: number | null;
 };
 
 const readDailyStats = (): DailyStats => {
@@ -75,6 +87,7 @@ const readDailyProgress = (
     return {
       ...parsed,
       moveCount: typeof parsed.moveCount === "number" ? parsed.moveCount : 0,
+      elapsedMs: typeof parsed.elapsedMs === "number" ? parsed.elapsedMs : null,
     };
   } catch {
     return null;
@@ -111,7 +124,12 @@ function DailyGameLayout({ date }: { date: Date }) {
   const [hasRecorded, setHasRecorded] = useState(false);
   const [progress, setProgress] = useState<DailyProgress | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  // GameContext counts moves since the board was last loaded; add the moves
+  // from earlier visits today so a reload doesn't reset the count.
+  const [earlierMoves, setEarlierMoves] = useState(0);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(0);
   const hasRestoredRef = useRef<string | null>(null);
+  const totalMoves = earlierMoves + moveCount;
 
   useEffect(() => {
     if (dailyPuzzle.id === puzzleId) return;
@@ -126,6 +144,8 @@ function DailyGameLayout({ date }: { date: Date }) {
     const saved = readDailyProgress(dateKey, dailyPuzzle.id);
     setProgress(saved);
     hasRestoredRef.current = null;
+    setEarlierMoves(0);
+    setElapsedMs(0);
     if (!saved) {
       clearDailyProgress();
     }
@@ -141,8 +161,38 @@ function DailyGameLayout({ date }: { date: Date }) {
       blockers: dailyPuzzle.blockers,
       startedAt: progress.startedAt,
     });
+    setEarlierMoves(progress.moveCount);
+    const wasSolved = progress.placements.length === PIECES.length;
+    setElapsedMs(progress.elapsedMs ?? (wasSolved ? null : 0));
     hasRestoredRef.current = dateKey;
   }, [progress, puzzleId, dailyPuzzle, dateKey, restoreState]);
+
+  // Solve timer: runs from the first move until solved, only while visible.
+  const timerRunning =
+    puzzleId === dailyPuzzle.id && !solved && totalMoves > 0;
+  useEffect(() => {
+    if (!timerRunning) return;
+    let lastTickAt = Date.now();
+    const tick = () => {
+      const now = Date.now();
+      if (document.visibilityState === "visible") {
+        const since = lastTickAt;
+        setElapsedMs((prev) => advanceElapsed(prev ?? 0, since, now));
+      }
+      lastTickAt = now;
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") lastTickAt = Date.now();
+    };
+    const interval = window.setInterval(tick, 1000);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      // Count the partial second up to the solving move.
+      tick();
+    };
+  }, [timerRunning]);
 
   useEffect(() => {
     setStats((prev) => {
@@ -170,6 +220,8 @@ function DailyGameLayout({ date }: { date: Date }) {
 
   useEffect(() => {
     if (puzzleId !== dailyPuzzle.id) return;
+    // Don't overwrite saved progress with the empty board before it's restored.
+    if (progress && hasRestoredRef.current !== dateKey) return;
     const placements = PIECES.reduce<Placement[]>((acc, piece) => {
       const placement = board.placements[piece.id];
       if (placement) acc.push(placement);
@@ -181,23 +233,20 @@ function DailyGameLayout({ date }: { date: Date }) {
       placements,
       pieceStates,
       startedAt,
-      moveCount,
+      moveCount: totalMoves,
+      elapsedMs,
     });
   }, [
     board,
     pieceStates,
     startedAt,
-    moveCount,
+    totalMoves,
+    elapsedMs,
+    progress,
     puzzleId,
     dailyPuzzle.id,
     dateKey,
   ]);
-
-  const solvedMoveCount = solved
-    ? moveCount > 0
-      ? moveCount
-      : (progress?.moveCount ?? 0)
-    : 0;
 
   const statusLabel =
     stats.lastCompletedDateKey === dateKey ? "Completed" : "Not yet solved";
@@ -226,10 +275,9 @@ function DailyGameLayout({ date }: { date: Date }) {
     if (!puzzleId) return;
     track("Share", { mode: "daily" });
     const baseUrl = `${window.location.origin}${BASE_PATH}`;
-    const messageText =
-      solvedMoveCount > 0
-        ? `I solved today's Blocker Rush in ${solvedMoveCount} moves! Can you beat that?`
-        : "Play today's Blocker Rush challenge";
+    const messageText = solved
+      ? dailyShareMessage(totalMoves, elapsedMs)
+      : "Play today's Blocker Rush challenge";
     const text = buildShareText(puzzleId, board.placements, baseUrl, {
       messageText,
       revealPieceCount: 3,
@@ -259,13 +307,18 @@ function DailyGameLayout({ date }: { date: Date }) {
           </time>
           <span className="context-difficulty">{dailyPuzzle.difficulty}</span>
           <span>{stats.streak}-day streak</span>
+          {elapsedMs !== null && (
+            <span className="context-timer" aria-label="Solve time">
+              {formatDuration(elapsedMs)}
+            </span>
+          )}
         </>
       }
     >
       {solved && (
         <>
           <div className="notice" role="status">
-            Completed in {solvedMoveCount} moves.
+            Completed in {describeSolve(totalMoves, elapsedMs)}.
           </div>
           <div className="settings-actions">
             <button className="button" type="button" onClick={handleShare}>

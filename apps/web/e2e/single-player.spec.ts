@@ -68,24 +68,33 @@ test.describe("daily puzzle", () => {
           pieceStates,
           startedAt: Date.now(),
           moveCount: 8,
+          elapsedMs: 95_000,
         },
       },
     );
     await page.reload();
     await expect(pieceCells(page)).toHaveCount(28);
     await expect(contextStrip(page)).toContainText("0-day streak");
+    // Timer resumes from the saved time rather than restarting.
+    await expect(page.getByLabel("Solve time")).toHaveText(/^1:3\d$/);
 
     await page.getByRole("button", { name: "Select Dot" }).click();
     await page.locator(".board-cell:not(.blocker):not(.piece)").click();
 
     await expect(pieceCells(page)).toHaveCount(29);
-    await expect(page.getByRole("status").filter({ hasText: "Completed in" })).toBeVisible();
+    // Moves from before the reload count too (8 restored + the Dot).
+    const completed = page.getByRole("status").filter({ hasText: "Completed in" });
+    await expect(completed).toHaveText(/^Completed in 1:3\d with 9 moves\.$/);
+    const completedText = await completed.textContent();
     await expect(contextStrip(page)).toContainText("1-day streak");
 
-    // Solved state and streak survive a reload without counting twice.
+    // Solved state, time and streak survive a reload without changing.
     await page.reload();
     await expect(pieceCells(page)).toHaveCount(29);
     await expect(contextStrip(page)).toContainText("1-day streak");
+    await expect(completed).toHaveText(completedText!);
+    await page.waitForTimeout(1500);
+    await expect(completed).toHaveText(completedText!);
     const stats = await page.evaluate(
       (key) => JSON.parse(window.localStorage.getItem(key)!),
       STATS_KEY,
@@ -97,6 +106,7 @@ test.describe("daily puzzle", () => {
     await expect(page.getByRole("status").filter({ hasText: "Copied" })).toBeVisible();
     const shared = await page.evaluate(() => navigator.clipboard.readText());
     expect(shared).toContain(`/blocker-rush?p=${puzzleId}`);
+    expect(shared).toContain(`today's Blocker Rush in ${completedText!.slice("Completed in ".length, -1)}!`);
 
     expect(errors).toEqual([]);
     await context.close();
