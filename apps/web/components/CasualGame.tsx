@@ -40,6 +40,7 @@ import {
 } from "./GameContext";
 import GameHeader from "./GameHeader";
 import ThemeSelect from "./ThemeSelect";
+import { formatDuration, formatMoves } from "./dailyTimer";
 
 const SETTINGS_KEY = "blockerRush.casual.settings";
 const STATS_KEY = "blockerRush.casual.stats";
@@ -125,13 +126,6 @@ const readStats = (): CasualStats => {
 const writeStats = (stats: CasualStats) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-};
-
-const formatElapsedTime = (elapsedMs: number) => {
-  const totalSeconds = Math.max(0, Math.floor(elapsedMs / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 };
 
 function CasualGameLayout() {
@@ -368,7 +362,7 @@ function CasualGameLayout() {
     const baseUrl = `${window.location.origin}${withBasePath("/casual")}`;
     const text = buildShareText(puzzleId, board.placements, baseUrl, {
       messageText: solved
-        ? `I just solved a ${puzzleDifficulty ?? "mystery"} puzzle in ${moveCount} moves Blocker Rush! Can you solve it?`
+        ? `I just solved a ${puzzleDifficulty ?? "mystery"} Blocker Rush puzzle in ${formatMoves(moveCount)}! Can you solve it?`
         : "Check out this puzzle I found in Blocker Rush!",
     });
     try {
@@ -430,7 +424,7 @@ function CasualGameLayout() {
         {solved && roundStats && (
           <span>
             Moves: {roundStats.moves} · Time:{" "}
-            {formatElapsedTime(roundStats.elapsedMs)}
+            {formatDuration(roundStats.elapsedMs)}
           </span>
         )}
       </div>
@@ -501,8 +495,8 @@ function CasualGameLayout() {
           {solved && (
             <>
               <div className="notice" role="status">
-                Completed in {roundStats?.moves ?? moveCount} moves in{" "}
-                {formatElapsedTime(roundStats?.elapsedMs ?? 0)}.
+                Completed in {formatMoves(roundStats?.moves ?? moveCount)} in{" "}
+                {formatDuration(roundStats?.elapsedMs ?? 0)}.
               </div>
               <div className="settings-actions">
                 <button className="button" type="button" onClick={handleShare}>
