@@ -41,5 +41,7 @@ export const describeSolve = (moves: number, elapsedMs: number | null): string =
 export const dailyShareMessage = (
   moves: number,
   elapsedMs: number | null,
+  /** e.g. "Oct 6" for an archive puzzle; omitted for today's. */
+  dayLabel?: string,
 ): string =>
-  `I solved today's Blocker Rush in ${describeSolve(moves, elapsedMs)}! Can you beat that?`;
+  `I solved ${dayLabel ? `the ${dayLabel} daily` : "today's"} Blocker Rush in ${describeSolve(moves, elapsedMs)}! Can you beat that?`;

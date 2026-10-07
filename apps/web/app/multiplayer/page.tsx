@@ -19,7 +19,7 @@ export default function MultiplayerPage() {
       </Suspense>
       <SeoContent
         heading="Race other players in Blocker Rush multiplayer"
-        jsonLd={[breadcrumbJsonLd("Multiplayer", "/multiplayer")]}
+        jsonLd={[breadcrumbJsonLd(["Multiplayer", "/multiplayer"])]}
       >
         <p>
           In multiplayer, everyone in the room gets the same 6×6 board with the

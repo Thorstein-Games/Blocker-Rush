@@ -12,6 +12,7 @@ type SeoContentProps = {
 
 const modeLinks = [
   { href: "/", label: "Daily puzzle" },
+  { href: "/daily", label: "Past daily puzzles" },
   { href: "/casual", label: "Casual practice" },
   { href: "/multiplayer", label: "Multiplayer" },
 ];

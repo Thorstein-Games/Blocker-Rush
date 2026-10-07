@@ -1,8 +1,9 @@
 "use client";
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Placement, PieceId } from "@blocker-rush/shared";
+import type { Placement } from "@blocker-rush/shared";
 import {
   buildShareText,
   getDateKey,
@@ -13,12 +14,12 @@ import GameBoard from "./GameBoard";
 import PiecesTray from "./PiecesTray";
 import { GameProvider, useGame } from "./GameContext";
 import GameHeader from "./GameHeader";
-import type { PieceState } from "./gameTypes";
 import ThemeSelect from "./ThemeSelect";
 import { track } from "../lib/analytics";
 import { BASE_PATH } from "../lib/basePath";
 import {
   type DailyStats,
+  parseDateKey,
   reconcileStats,
   recordDailySolve,
 } from "./dailyStats";
@@ -28,83 +29,28 @@ import {
   describeSolve,
   formatDuration,
 } from "./dailyTimer";
+import { type SolveHistory, archiveDayStatus, recordSolve } from "./dailyArchive";
+import {
+  type DailyProgress,
+  clearDailyProgress,
+  progressKeyFor,
+  readDailyProgress,
+  readDailyStats,
+  readSolveHistory,
+  writeDailyProgress,
+  writeDailyStats,
+  writeSolveHistory,
+} from "./dailyStorage";
 
-const DAILY_STATS_KEY = "blockerRush.daily.stats";
-const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
+const shortDate = (date: Date) =>
+  date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
-type DailyProgress = {
-  dateKey: string;
-  puzzleId: string;
-  placements: Placement[];
-  pieceStates: Record<PieceId, PieceState>;
-  startedAt: number | null;
-  /** Moves across every visit today, not just since the last page load. */
-  moveCount: number;
-  /**
-   * Visible solving time. Missing (null) on progress saved before the timer
-   * existed, which only matters for an already-solved board.
-   */
-  elapsedMs: number | null;
-};
-
-const readDailyStats = (): DailyStats => {
-  if (typeof window === "undefined") {
-    return { streak: 0 };
-  }
-  try {
-    const raw = window.localStorage.getItem(DAILY_STATS_KEY);
-    if (!raw) return { streak: 0 };
-    const parsed = JSON.parse(raw) as DailyStats;
-    return {
-      streak: typeof parsed.streak === "number" ? parsed.streak : 0,
-      lastCompletedDateKey: parsed.lastCompletedDateKey,
-    };
-  } catch {
-    return { streak: 0 };
-  }
-};
-
-const writeDailyStats = (stats: DailyStats) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(DAILY_STATS_KEY, JSON.stringify(stats));
-};
-
-const readDailyProgress = (
-  dateKey: string,
-  puzzleId: string,
-): DailyProgress | null => {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(DAILY_PROGRESS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as DailyProgress;
-    if (!parsed || parsed.dateKey !== dateKey || parsed.puzzleId !== puzzleId) {
-      return null;
-    }
-    if (!Array.isArray(parsed.placements) || !parsed.pieceStates) {
-      return null;
-    }
-    return {
-      ...parsed,
-      moveCount: typeof parsed.moveCount === "number" ? parsed.moveCount : 0,
-      elapsedMs: typeof parsed.elapsedMs === "number" ? parsed.elapsedMs : null,
-    };
-  } catch {
-    return null;
-  }
-};
-
-const writeDailyProgress = (progress: DailyProgress) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(DAILY_PROGRESS_KEY, JSON.stringify(progress));
-};
-
-const clearDailyProgress = () => {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(DAILY_PROGRESS_KEY);
-};
-
-function DailyGameLayout({ date }: { date: Date }) {
+/**
+ * Plays the daily puzzle for `date`. Today's puzzle (`archive` false) keeps
+ * the streak; an archive puzzle has its own saved progress and timer but
+ * never touches the streak.
+ */
+function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
   const {
     solved,
     puzzleId,
@@ -118,14 +64,16 @@ function DailyGameLayout({ date }: { date: Date }) {
   const router = useRouter();
   const dateKey = getDateKey(date);
   const dailyPuzzle = useMemo(() => getDailyPuzzle(date), [dateKey]);
+  const progressKey = progressKeyFor(dateKey, archive);
   const [stats, setStats] = useState<DailyStats>(() =>
     reconcileStats(readDailyStats(), dateKey),
   );
+  const [history, setHistory] = useState<SolveHistory>(readSolveHistory);
   const [hasRecorded, setHasRecorded] = useState(false);
   const [progress, setProgress] = useState<DailyProgress | null>(null);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
   // GameContext counts moves since the board was last loaded; add the moves
-  // from earlier visits today so a reload doesn't reset the count.
+  // from earlier visits so a reload doesn't reset the count.
   const [earlierMoves, setEarlierMoves] = useState(0);
   const [elapsedMs, setElapsedMs] = useState<number | null>(0);
   const hasRestoredRef = useRef<string | null>(null);
@@ -141,15 +89,15 @@ function DailyGameLayout({ date }: { date: Date }) {
   }, [dailyPuzzle, puzzleId, applyPuzzle]);
 
   useEffect(() => {
-    const saved = readDailyProgress(dateKey, dailyPuzzle.id);
+    const saved = readDailyProgress(progressKey, dateKey, dailyPuzzle.id);
     setProgress(saved);
     hasRestoredRef.current = null;
     setEarlierMoves(0);
     setElapsedMs(0);
     if (!saved) {
-      clearDailyProgress();
+      clearDailyProgress(progressKey);
     }
-  }, [dateKey, dailyPuzzle.id]);
+  }, [progressKey, dateKey, dailyPuzzle.id]);
 
   useEffect(() => {
     if (!progress) return;
@@ -195,16 +143,17 @@ function DailyGameLayout({ date }: { date: Date }) {
   }, [timerRunning]);
 
   useEffect(() => {
+    if (archive) return;
     setStats((prev) => {
       const next = reconcileStats(prev, dateKey);
       writeDailyStats(next);
       return next;
     });
     setHasRecorded(false);
-  }, [dateKey]);
+  }, [archive, dateKey]);
 
   useEffect(() => {
-    if (!solved || hasRecorded) return;
+    if (archive || !solved || hasRecorded) return;
     setStats((prev) => {
       const next = recordDailySolve(prev, dateKey);
       if (!next) return reconcileStats(prev, dateKey);
@@ -216,7 +165,32 @@ function DailyGameLayout({ date }: { date: Date }) {
       return next;
     });
     setHasRecorded(true);
-  }, [solved, hasRecorded, dateKey, dailyPuzzle.difficulty]);
+  }, [archive, solved, hasRecorded, dateKey, dailyPuzzle.difficulty]);
+
+  // The archive list's ✓ and times. Re-runs once more after solving, when
+  // the timer's final partial second lands.
+  useEffect(() => {
+    if (!solved || puzzleId !== dailyPuzzle.id) return;
+    const record = { moves: totalMoves, elapsedMs };
+    const next = recordSolve(history, dateKey, record);
+    if (next === history) return;
+    if (archive && !history[dateKey]) {
+      track("Archive Solved", { difficulty: dailyPuzzle.difficulty });
+    }
+    // Merge into a fresh read so a solve saved in another tab isn't dropped.
+    writeSolveHistory(recordSolve(readSolveHistory(), dateKey, record));
+    setHistory(next);
+  }, [
+    history,
+    solved,
+    puzzleId,
+    dailyPuzzle.id,
+    dailyPuzzle.difficulty,
+    dateKey,
+    totalMoves,
+    elapsedMs,
+    archive,
+  ]);
 
   useEffect(() => {
     if (puzzleId !== dailyPuzzle.id) return;
@@ -227,7 +201,7 @@ function DailyGameLayout({ date }: { date: Date }) {
       if (placement) acc.push(placement);
       return acc;
     }, []);
-    writeDailyProgress({
+    writeDailyProgress(progressKey, {
       dateKey,
       puzzleId,
       placements,
@@ -243,22 +217,28 @@ function DailyGameLayout({ date }: { date: Date }) {
     totalMoves,
     elapsedMs,
     progress,
+    progressKey,
     puzzleId,
     dailyPuzzle.id,
     dateKey,
   ]);
 
-  const statusLabel =
-    stats.lastCompletedDateKey === dateKey ? "Completed" : "Not yet solved";
+  const completed = archive
+    ? solved || Boolean(history[dateKey])
+    : stats.lastCompletedDateKey === dateKey;
   const statsPanel = (
     <div className="stats-grid">
-      <div className="stat-card">
-        <span className="stat-label">Streak</span>
-        <span className="stat-value">{stats.streak}</span>
-      </div>
+      {!archive && (
+        <div className="stat-card">
+          <span className="stat-label">Streak</span>
+          <span className="stat-value">{stats.streak}</span>
+        </div>
+      )}
       <div className="stat-card">
         <span className="stat-label">Status</span>
-        <span className="stat-value">{statusLabel}</span>
+        <span className="stat-value">
+          {completed ? "Completed" : "Not yet solved"}
+        </span>
       </div>
       <div className="stat-card">
         <span className="stat-label">Difficulty</span>
@@ -273,15 +253,24 @@ function DailyGameLayout({ date }: { date: Date }) {
 
   const handleShare = async () => {
     if (!puzzleId) return;
-    track("Share", { mode: "daily" });
+    track("Share", { mode: archive ? "archive" : "daily" });
     const baseUrl = `${window.location.origin}${BASE_PATH}`;
-    const messageText = solved
-      ? dailyShareMessage(totalMoves, elapsedMs)
-      : "Play today's Blocker Rush challenge";
-    const text = buildShareText(puzzleId, board.placements, baseUrl, {
-      messageText,
-      revealPieceCount: 3,
-    });
+    let text: string;
+    if (archive) {
+      text = [
+        solved
+          ? dailyShareMessage(totalMoves, elapsedMs, shortDate(date))
+          : `Play the ${shortDate(date)} Blocker Rush daily puzzle`,
+        `${baseUrl}/daily/${dateKey}`,
+      ].join("\n");
+    } else {
+      text = buildShareText(puzzleId, board.placements, baseUrl, {
+        messageText: solved
+          ? dailyShareMessage(totalMoves, elapsedMs)
+          : "Play today's Blocker Rush challenge",
+        revealPieceCount: 3,
+      });
+    }
     try {
       if (navigator.share) {
         await navigator.share({ text });
@@ -296,17 +285,13 @@ function DailyGameLayout({ date }: { date: Date }) {
 
   return (
     <DailyFrame
+      label={archive ? "Archive" : "Daily"}
       statsPanel={statsPanel}
       contextStrip={
         <>
-          <time dateTime={dateKey}>
-            {date.toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })}
-          </time>
+          <time dateTime={dateKey}>{shortDate(date)}</time>
           <span className="context-difficulty">{dailyPuzzle.difficulty}</span>
-          <span>{stats.streak}-day streak</span>
+          {!archive && <span>{stats.streak}-day streak</span>}
           {elapsedMs !== null && (
             <span className="context-timer" aria-label="Solve time">
               {formatDuration(elapsedMs)}
@@ -324,20 +309,40 @@ function DailyGameLayout({ date }: { date: Date }) {
             <button className="button" type="button" onClick={handleShare}>
               Share
             </button>
+            {archive && (
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => router.push("/")}
+              >
+                Today&apos;s Puzzle
+              </button>
+            )}
             <button
               className="button secondary"
               type="button"
-              onClick={() => router.push("/casual")}
+              onClick={() => router.push("/daily")}
             >
-              Play Casual
+              {archive ? "More Past Puzzles" : "Past Puzzles"}
             </button>
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => router.push("/multiplayer")}
-            >
-              Play Multiplayer
-            </button>
+            {!archive && (
+              <>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => router.push("/casual")}
+                >
+                  Play Casual
+                </button>
+                <button
+                  className="button secondary"
+                  type="button"
+                  onClick={() => router.push("/multiplayer")}
+                >
+                  Play Multiplayer
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -352,12 +357,16 @@ function DailyGameLayout({ date }: { date: Date }) {
 
 /** Page chrome shared by the real daily layout and the pre-mount shell. */
 function DailyFrame({
+  label = "Daily",
   statsPanel,
   contextStrip,
+  showBoard = true,
   children,
 }: {
+  label?: string;
   statsPanel?: ReactNode;
   contextStrip?: ReactNode;
+  showBoard?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -378,11 +387,15 @@ function DailyFrame({
             className="game-context-strip"
             aria-label="Daily challenge details"
           >
-            <strong>Daily</strong>
+            <strong>{label}</strong>
             {contextStrip}
           </div>
-          <GameBoard />
-          <PiecesTray />
+          {showBoard && (
+            <>
+              <GameBoard />
+              <PiecesTray />
+            </>
+          )}
           {children}
         </div>
       </section>
@@ -390,7 +403,43 @@ function DailyFrame({
   );
 }
 
-export default function DailyGame() {
+/** An archive date that isn't playable yet: today's lives at "/". */
+function ArchiveGate({
+  dateKey,
+  status,
+}: {
+  dateKey: string;
+  status: "today" | "future";
+}) {
+  const router = useRouter();
+  useEffect(() => {
+    if (status === "today") router.replace("/");
+  }, [status, router]);
+  if (status === "today") return <DailyFrame label="Archive" />;
+  return (
+    <DailyFrame label="Archive" showBoard={false}>
+      <div className="notice" role="status">
+        The puzzle for{" "}
+        {parseDateKey(dateKey).toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "long",
+          day: "numeric",
+        })}{" "}
+        isn&apos;t out yet. <Link href="/">Play today&apos;s puzzle</Link>
+      </div>
+    </DailyFrame>
+  );
+}
+
+/**
+ * Today's daily puzzle, or with `archiveDateKey` (a validated YYYY-MM-DD),
+ * that day's puzzle from the archive.
+ */
+export default function DailyGame({
+  archiveDateKey,
+}: {
+  archiveDateKey?: string;
+}) {
   // Unknown until mount. This page is prerendered at build time, so the
   // server can't know the visitor's date, and their streak lives in
   // localStorage; rendering either during hydration mismatches the HTML and
@@ -412,9 +461,20 @@ export default function DailyGame() {
     return () => window.clearTimeout(timeout);
   }, [today]);
 
-  return (
-    <GameProvider lockOnSolve>
-      {today ? <DailyGameLayout date={today} /> : <DailyFrame />}
-    </GameProvider>
-  );
+  let content: ReactNode;
+  if (!today) {
+    content = <DailyFrame label={archiveDateKey ? "Archive" : "Daily"} />;
+  } else if (!archiveDateKey) {
+    content = <DailyGameLayout date={today} archive={false} />;
+  } else {
+    const status = archiveDayStatus(archiveDateKey, getDateKey(today));
+    content =
+      status === "past" ? (
+        <DailyGameLayout date={parseDateKey(archiveDateKey)} archive />
+      ) : (
+        <ArchiveGate dateKey={archiveDateKey} status={status} />
+      );
+  }
+
+  return <GameProvider lockOnSolve>{content}</GameProvider>;
 }

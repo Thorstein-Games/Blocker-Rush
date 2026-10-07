@@ -22,7 +22,8 @@ Single test file: `npx vitest run tests/solver.test.ts` from `packages/shared` (
 
 - `packages/shared` (`@blocker-rush/shared`) — pure puzzle logic: board, pieces/transforms, solver, difficulty, daily puzzle, share text, puzzle dataset. Tests in `packages/shared/tests/`.
 - `packages/protocol` (`@blocker-rush/protocol`) — client ↔ server types. `domain.ts` = domain types; `messages.ts` = every `blocker_rush` wire payload (`ServerMessages`, `ClientMessages`).
-- `apps/web` — Next.js 14 App Router. Casual mode `app/casual`, multiplayer `app/multiplayer`.
+- `apps/web` — Next.js 14 App Router. Casual mode `app/casual`, multiplayer `app/multiplayer`, daily archive `app/daily` (list) and `app/daily/[date]` (one past day; rendered on first request and cached, invalid or pre-`ARCHIVE_START_KEY` dates 404).
+  - `components/DailyGame.tsx` — today's puzzle, or a past day with `archiveDateKey` (own progress and timer, never touches the streak; today's date redirects to `/`, future dates show a gate). localStorage I/O lives in `dailyStorage.ts`; pure date/history helpers in `dailyArchive.ts`.
   - `components/GameContext.tsx` — single-player board state + drag/drop/keyboard interaction (types in `gameTypes.ts`, pure helpers in `pieceGeometry.ts`).
   - `components/multiplayer/useMultiplayerSocket.ts` — Colyseus connection and actions. Server-message state transitions are pure reducers in `multiplayerReducers.ts` (unit-tested); state shape in `multiplayerTypes.ts`; client/URL/seat-reservation shim in `colyseusClient.ts`.
 
@@ -45,7 +46,7 @@ Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (not s
 ## E2E gotchas
 
 - `playwright.config.ts` starts megingjord (`pnpm dev` in `MEGINGJORD_DIR`, default `../megingjord`) with `MATCHMAKE_RATE_MAX=1000`. All simulated players share one IP, so megingjord's per-IP matchmake rate limit would otherwise make create/join calls fail silently. If you reuse an already-running megingjord that was started without that env var, you'll see the same failures, and they look like UI bugs.
-- `e2e/single-player.spec.ts` covers the daily solve → streak → reload → share flow (it restores 8 pieces of a real solver solution into localStorage, then places the Dot through the UI), daily hydration on a later day with a saved streak, casual `?p=` links, and that pages load without console errors. `e2e/blocker-rush-multiplayer.spec.ts` covers join, ready, start, kick, reconnect, leave and invite links. Multiplayer gameplay message handling is covered by `multiplayerReducers.test.ts`; daily streak math by `components/dailyStats.test.ts`; the daily solve timer and move/time formatting by `components/dailyTimer.test.ts`. The daily move count and visible solving time are saved in the progress entry in localStorage, so both survive a reload.
+- `e2e/single-player.spec.ts` covers the daily solve → streak → reload → share flow (it restores 8 pieces of a real solver solution into localStorage, then places the Dot through the UI), daily hydration on a later day with a saved streak, the archive (solving a past day, today/future/invalid dates), casual `?p=` links, and that pages load without console errors. `e2e/blocker-rush-multiplayer.spec.ts` covers join, ready, start, kick, reconnect, leave and invite links. Multiplayer gameplay message handling is covered by `multiplayerReducers.test.ts`; daily streak math by `components/dailyStats.test.ts`; the daily solve timer and move/time formatting by `components/dailyTimer.test.ts`. The daily move count and visible solving time are saved in the progress entry in localStorage, so both survive a reload.
 - Specs fail on any console error, so a React hydration warning in dev fails them too.
 
 ## CI

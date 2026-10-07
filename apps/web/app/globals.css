@@ -1614,3 +1614,77 @@ input {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+
+/* Daily archive (/daily) */
+.archive {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.archive h2 {
+  margin: 0;
+  font-family: var(--font-display), sans-serif;
+}
+
+.archive-summary {
+  margin: 0;
+  color: var(--muted);
+}
+
+.archive-month h3 {
+  margin: 8px 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.archive-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr));
+  gap: 8px;
+}
+
+.archive-day {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "date status"
+    "badge status";
+  align-items: center;
+  gap: 4px 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.archive-day:hover,
+.archive-day:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--panel-2);
+}
+
+.archive-day time {
+  grid-area: date;
+}
+
+.archive-day .badge {
+  grid-area: badge;
+  justify-self: start;
+}
+
+.archive-status {
+  grid-area: status;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.archive-day.solved .archive-status {
+  color: var(--accent-2);
+}
