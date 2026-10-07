@@ -29,19 +29,29 @@ export const formatDuration = (ms: number): string => {
 export const formatMoves = (moves: number): string =>
   `${moves} ${moves === 1 ? "move" : "moves"}`;
 
+export const formatHints = (hints: number): string =>
+  `${hints} ${hints === 1 ? "hint" : "hints"}`;
+
 /**
- * "1:43 with 12 moves", or just "12 moves" when the time is unknown (a solve
- * saved before the timer existed).
+ * "1:43 with 12 moves", plus " and 2 hints" when hints were used, or just
+ * "12 moves" when the time is unknown (a solve saved before the timer
+ * existed).
  */
-export const describeSolve = (moves: number, elapsedMs: number | null): string =>
-  elapsedMs === null
-    ? formatMoves(moves)
-    : `${formatDuration(elapsedMs)} with ${formatMoves(moves)}`;
+export const describeSolve = (
+  moves: number,
+  elapsedMs: number | null,
+  hints = 0,
+): string => {
+  const counts =
+    hints > 0 ? `${formatMoves(moves)} and ${formatHints(hints)}` : formatMoves(moves);
+  return elapsedMs === null ? counts : `${formatDuration(elapsedMs)} with ${counts}`;
+};
 
 export const dailyShareMessage = (
   moves: number,
   elapsedMs: number | null,
   /** e.g. "Oct 6" for an archive puzzle; omitted for today's. */
   dayLabel?: string,
+  hints = 0,
 ): string =>
-  `I solved ${dayLabel ? `the ${dayLabel} daily` : "today's"} Blocker Rush in ${describeSolve(moves, elapsedMs)}! Can you beat that?`;
+  `I solved ${dayLabel ? `the ${dayLabel} daily` : "today's"} Blocker Rush in ${describeSolve(moves, elapsedMs, hints)}! Can you beat that?`;

@@ -8,3 +8,4 @@ export * from "./rules";
 export * from "./puzzle-dataset";
 export * from "./puzzle";
 export * from "./share";
+export * from "./hint";

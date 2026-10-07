@@ -24,6 +24,8 @@ export type DailyProgress = {
    * existed, which only matters for an already-solved board.
    */
   elapsedMs: number | null;
+  /** Hints shown so far (0 on progress saved before hints existed). */
+  hintsUsed: number;
 };
 
 /**
@@ -81,6 +83,7 @@ export const readDailyProgress = (
     ...parsed,
     moveCount: typeof parsed.moveCount === "number" ? parsed.moveCount : 0,
     elapsedMs: typeof parsed.elapsedMs === "number" ? parsed.elapsedMs : null,
+    hintsUsed: typeof parsed.hintsUsed === "number" ? parsed.hintsUsed : 0,
   };
 };
 

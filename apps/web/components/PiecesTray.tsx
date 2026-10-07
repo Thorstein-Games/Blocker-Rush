@@ -5,7 +5,12 @@ import { PIECES } from "@blocker-rush/shared";
 import { PIECE_COLORS } from "./pieceColors";
 import { useGame } from "./GameContext";
 
-export default function PiecesTray() {
+type PiecesTrayProps = {
+  /** Shows a Hint button next to Undo/Clear when set. */
+  onHint?: () => void;
+};
+
+export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
   const {
     pieceStates,
     activePieceId,
@@ -60,6 +65,16 @@ export default function PiecesTray() {
             >
               Clear
             </button>
+            {onHint && (
+              <button
+                className="button secondary"
+                type="button"
+                onClick={onHint}
+                disabled={readOnly || !!draggingPieceId}
+              >
+                Hint
+              </button>
+            )}
           </div>
           <div className="pieces-header-actions">
             {activePiece ? (

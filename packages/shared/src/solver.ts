@@ -76,18 +76,45 @@ export const solvePuzzle = (
   blockers: Coordinate[],
   options: SolveOptions = {},
   size: BoardSize = DEFAULT_BOARD
+): SolveResult => solveFromPlacements(blockers, {}, options, size);
+
+/**
+ * Like solvePuzzle, but with some pieces already on the board: only
+ * solutions that keep them where they are count, and each solution includes
+ * them. Placements that overlap, leave the board or name an unknown
+ * orientation make the board unsolvable.
+ */
+export const solveFromPlacements = (
+  blockers: Coordinate[],
+  fixed: Partial<Record<PieceId, { origin: { x: number; y: number }; transformId: string }>>,
+  options: SolveOptions = {},
+  size: BoardSize = DEFAULT_BOARD
 ): SolveResult => {
   const maxSolutions = options.maxSolutions ?? 2;
   const board = withBlockers(blockers, size);
   const baseCells = [...board.cells];
-
-  const pieceIds = orderPieces(PIECES.map((piece) => piece.id));
   const placements = createEmptyPlacements();
   const result: SolveResult = {
     solutionCount: 0,
     nodesVisited: 0,
     maxDepth: 0,
   };
+
+  for (const [pieceId, placement] of Object.entries(fixed)) {
+    if (!placement) continue;
+    const transform = PIECE_TRANSFORMS[pieceId as PieceId]?.find(
+      (item) => item.id === placement.transformId
+    );
+    if (!transform || !canPlaceAt(baseCells, size, placement.origin, transform.cells)) {
+      return result;
+    }
+    placeCells(baseCells, size, placement.origin, transform.cells, pieceId as PieceId);
+    placements[pieceId as PieceId] = placement;
+  }
+
+  const pieceIds = orderPieces(
+    PIECES.map((piece) => piece.id).filter((id) => !placements[id])
+  );
 
   const recurse = (index: number) => {
     if (result.solutionCount >= maxSolutions) return;

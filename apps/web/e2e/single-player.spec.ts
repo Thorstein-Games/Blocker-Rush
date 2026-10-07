@@ -1,9 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
 // Imported file-by-file: the package index pulls in the puzzle dataset via a
 // JSON import assertion, which the test runner's transform doesn't need.
-import { solvePuzzle } from "../../../packages/shared/src/solver";
+import { solveFromPlacements, solvePuzzle } from "../../../packages/shared/src/solver";
 import { parsePuzzleId } from "../../../packages/shared/src/coords";
-import { PIECES } from "../../../packages/shared/src/pieces";
+import { PIECES, PIECE_TRANSFORMS } from "../../../packages/shared/src/pieces";
 
 // Single-player flows. None of these need megingjord.
 
@@ -139,6 +139,69 @@ test.describe("daily puzzle", () => {
       dateKey(later),
     );
     await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe("hints", () => {
+  const hintButton = (page: Page) => page.getByRole("button", { name: "Hint", exact: true });
+
+  test("following hints solves the daily puzzle and is counted", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/blocker-rush");
+    await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
+
+    for (let step = 1; step <= PIECES.length; step += 1) {
+      await hintButton(page).click();
+      await expect(page.getByText(/^Hint: place .+ on the outlined squares\.$/)).toBeVisible();
+      // The hint selects and orients the piece and focuses its square.
+      await page.keyboard.press("Enter");
+      await expect
+        .poll(() =>
+          page.evaluate(
+            (key) => JSON.parse(window.localStorage.getItem(key) ?? "{}").placements?.length,
+            PROGRESS_KEY,
+          ),
+        )
+        .toBe(step);
+    }
+
+    await expect(pieceCells(page)).toHaveCount(29);
+    await expect(page.getByRole("status").filter({ hasText: "Completed in" })).toHaveText(
+      /with 9 moves and 9 hints\.$/,
+    );
+    // Survives a reload.
+    await page.reload();
+    await expect(page.getByRole("status").filter({ hasText: "Completed in" })).toHaveText(
+      /with 9 moves and 9 hints\.$/,
+    );
+    expect(errors).toEqual([]);
+  });
+
+  test("says which piece to take back from a dead end", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/blocker-rush/casual?p=A2A4D1D2F4F5F6");
+    await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
+
+    // A square for the Dot that no solution uses.
+    const blockers = parsePuzzleId("A2A4D1D2F4F5F6");
+    const taken = new Set(blockers.map((b) => (b.row - 1) * 6 + b.col.charCodeAt(0) - 65));
+    let deadEnd = -1;
+    for (let index = 0; index < 36 && deadEnd < 0; index += 1) {
+      if (taken.has(index)) continue;
+      const fixed = {
+        p1: { transformId: PIECE_TRANSFORMS.p1[0]!.id, origin: { x: index % 6, y: Math.floor(index / 6) } },
+      };
+      if (!solveFromPlacements(blockers, fixed).firstSolution) deadEnd = index;
+    }
+    expect(deadEnd).toBeGreaterThanOrEqual(0);
+
+    await page.getByRole("button", { name: "Select Dot" }).click();
+    await page.locator(`.board-cell[data-index="${deadEnd}"]`).click();
+    await expect(pieceCells(page)).toHaveCount(1);
+
+    await hintButton(page).click();
+    await expect(page.getByRole("status").filter({ hasText: "The Dot can't stay where it is" })).toBeVisible();
     expect(errors).toEqual([]);
   });
 });
