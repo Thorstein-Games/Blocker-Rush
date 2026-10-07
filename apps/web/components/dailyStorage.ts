@@ -58,6 +58,7 @@ export const readDailyStats = (): DailyStats => {
   return {
     streak: typeof parsed?.streak === "number" ? parsed.streak : 0,
     lastCompletedDateKey: parsed?.lastCompletedDateKey,
+    ...(typeof parsed?.bestStreak === "number" ? { bestStreak: parsed.bestStreak } : {}),
   };
 };
 

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { getDailyDifficulty, getDateKey } from "@blocker-rush/shared";
 import GameHeader from "./GameHeader";
 import ThemeSelect from "./ThemeSelect";
-import { parseDateKey } from "./dailyStats";
+import { type DailyStats, parseDateKey, reconcileStats } from "./dailyStats";
+import DailyStatsPanel from "./DailyStatsPanel";
 import { formatDuration } from "./dailyTimer";
 import { type SolveHistory, archiveDateKeys } from "./dailyArchive";
 import { readDailyStats, readSolveHistory } from "./dailyStorage";
@@ -13,8 +14,7 @@ import { readDailyStats, readSolveHistory } from "./dailyStorage";
 type ArchiveState = {
   todayKey: string;
   history: SolveHistory;
-  /** Today's solve from before solve history was recorded. */
-  lastCompletedDateKey?: string;
+  stats: DailyStats;
 };
 
 const groupByMonth = (keys: string[]) => {
@@ -40,19 +40,24 @@ export default function DailyArchive() {
     setState({
       todayKey: getDateKey(new Date()),
       history: readSolveHistory(),
-      lastCompletedDateKey: readDailyStats().lastCompletedDateKey,
+      stats: reconcileStats(readDailyStats(), getDateKey(new Date())),
     });
   }, []);
 
   const keys = state ? archiveDateKeys(state.todayKey) : [];
   const isSolved = (key: string) =>
-    Boolean(state?.history[key]) || state?.lastCompletedDateKey === key;
+    // lastCompletedDateKey covers a solve from before history was recorded.
+    Boolean(state?.history[key]) || state?.stats.lastCompletedDateKey === key;
   const solvedCount = keys.filter(isSolved).length;
 
   return (
     <main className="page archive-page">
       <GameHeader
         mode="daily"
+        statsTitle="Daily Stats"
+        statsPanel={
+          state ? <DailyStatsPanel stats={state.stats} history={state.history} /> : undefined
+        }
         settingsPanel={
           <div className="settings-stack">
             <ThemeSelect />

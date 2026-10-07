@@ -99,7 +99,7 @@ test.describe("daily puzzle", () => {
       (key) => JSON.parse(window.localStorage.getItem(key)!),
       STATS_KEY,
     );
-    expect(stats).toEqual({ streak: 1, lastCompletedDateKey: saved.dateKey });
+    expect(stats).toEqual({ streak: 1, lastCompletedDateKey: saved.dateKey, bestStreak: 1 });
 
     // Share link points at the game, not the host site's root.
     await page.getByRole("button", { name: "Share" }).click();
@@ -295,6 +295,17 @@ test.describe("daily archive", () => {
     await expect(page.locator(`a[href$="/daily/${daysAgo(1)}"]`)).not.toHaveClass(/solved/);
     await expect(page.locator(".archive-day").first()).toContainText("Today");
     await expect(page.locator(".archive-day").first()).toHaveAttribute("href", "/blocker-rush");
+
+    // The stats panel counts the solve under that day's difficulty, with no
+    // streak.
+    await page.getByRole("button", { name: "Open stats" }).click();
+    const panel = page.getByRole("dialog");
+    await expect(panel.locator(".stat-card").filter({ hasText: "Solved" })).toContainText("1");
+    await expect(panel.locator(".stat-card").filter({ hasText: /^Streak/ })).toContainText("0");
+    const difficulty = (await day.locator(".badge").textContent())!.trim().toLowerCase();
+    const row = panel.getByRole("row", { name: new RegExp(`^${difficulty} `, "i") });
+    await expect(row.getByRole("cell").nth(0)).toHaveText("1");
+    await expect(row.getByRole("cell").nth(2)).toHaveText(/^1:0\d$/);
 
     expect(errors).toEqual([]);
     await context.close();

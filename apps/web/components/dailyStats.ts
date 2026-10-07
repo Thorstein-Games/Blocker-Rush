@@ -7,7 +7,13 @@ import { getDateKey } from "@blocker-rush/shared";
 export type DailyStats = {
   streak: number;
   lastCompletedDateKey?: string;
+  /** Longest streak so far. Missing on stats saved before it was tracked. */
+  bestStreak?: number;
 };
+
+/** Best streak, counting the current one for stats that predate bestStreak. */
+export const getBestStreak = (stats: DailyStats): number =>
+  Math.max(stats.bestStreak ?? 0, stats.streak);
 
 export const parseDateKey = (dateKey: string): Date => {
   const [year, month, day] = dateKey.split("-").map((value) => Number(value));
@@ -45,9 +51,13 @@ export const recordDailySolve = (
   const base = reconcileStats(stats, dateKey);
   if (base.lastCompletedDateKey === dateKey) return null;
   const continues = base.lastCompletedDateKey === getYesterdayKey(dateKey);
+  const streak = continues ? base.streak + 1 : 1;
   return {
     ...base,
-    streak: continues ? base.streak + 1 : 1,
+    streak,
     lastCompletedDateKey: dateKey,
+    // From the stats before reconciling: a streak that just lapsed still
+    // counts as a best.
+    bestStreak: Math.max(getBestStreak(stats), streak),
   };
 };

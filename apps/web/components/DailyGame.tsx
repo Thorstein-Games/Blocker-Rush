@@ -31,6 +31,7 @@ import {
 } from "./dailyTimer";
 import { type SolveHistory, archiveDayStatus, recordSolve } from "./dailyArchive";
 import { useHint } from "./useHint";
+import DailyStatsPanel from "./DailyStatsPanel";
 import {
   type DailyProgress,
   clearDailyProgress,
@@ -66,8 +67,9 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
   const dateKey = getDateKey(date);
   const dailyPuzzle = useMemo(() => getDailyPuzzle(date), [dateKey]);
   const progressKey = progressKeyFor(dateKey, archive);
+  // Streaks are always as of today, even on an archive day's page.
   const [stats, setStats] = useState<DailyStats>(() =>
-    reconcileStats(readDailyStats(), dateKey),
+    reconcileStats(readDailyStats(), archive ? getDateKey(new Date()) : dateKey),
   );
   const [history, setHistory] = useState<SolveHistory>(readSolveHistory);
   const [hasRecorded, setHasRecorded] = useState(false);
@@ -176,7 +178,7 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
   // the timer's final partial second lands.
   useEffect(() => {
     if (!solved || puzzleId !== dailyPuzzle.id) return;
-    const record = { moves: totalMoves, elapsedMs };
+    const record = { moves: totalMoves, elapsedMs, hints: hintsUsed };
     const next = recordSolve(history, dateKey, record);
     if (next === history) return;
     if (archive && !history[dateKey]) {
@@ -194,6 +196,7 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
     dateKey,
     totalMoves,
     elapsedMs,
+    hintsUsed,
     archive,
   ]);
 
@@ -234,28 +237,14 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
     ? solved || Boolean(history[dateKey])
     : stats.lastCompletedDateKey === dateKey;
   const statsPanel = (
-    <div className="stats-grid">
-      {!archive && (
-        <div className="stat-card">
-          <span className="stat-label">Streak</span>
-          <span className="stat-value">{stats.streak}</span>
-        </div>
-      )}
+    <DailyStatsPanel stats={stats} history={history}>
       <div className="stat-card">
-        <span className="stat-label">Status</span>
+        <span className="stat-label">{archive ? shortDate(date) : "Today"}</span>
         <span className="stat-value">
           {completed ? "Completed" : "Not yet solved"}
         </span>
       </div>
-      <div className="stat-card">
-        <span className="stat-label">Difficulty</span>
-        <span className="badge">{dailyPuzzle.difficulty}</span>
-      </div>
-      <div className="stat-card">
-        <span className="stat-label">Date</span>
-        <span className="stat-value">{dateKey}</span>
-      </div>
-    </div>
+    </DailyStatsPanel>
   );
 
   const handleShare = async () => {
