@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
+import { Oxanium, Space_Grotesk } from "next/font/google";
 import InteractiveGridBackground from "../components/background/InteractiveGridBackground";
 import Analytics from "../components/Analytics";
 import {
@@ -7,32 +8,42 @@ import {
   SITE_DESCRIPTION,
   SITE_NAME,
   SITE_URL,
-  buildPageMetadata,
+  jsonLdScript,
   webSiteJsonLd,
 } from "../lib/seo";
 import { withBasePath } from "../lib/basePath";
 
-const rootMetadata = buildPageMetadata({
-  title: "Daily Puzzle Challenge",
-  description: SITE_DESCRIPTION,
-  path: "/",
+// Self-hosted by next/font: no render-blocking request to Google Fonts, and
+// size-adjusted fallbacks avoid layout shift while the font loads.
+const bodyFont = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-body",
+});
+
+const displayFont = Oxanium({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   applicationName: SITE_NAME,
   title: {
-    default: `${SITE_NAME} | Play Genius Square Online Free`,
+    default: `${SITE_NAME} – Free Daily Block Puzzle Like Genius Square`,
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   keywords: DEFAULT_KEYWORDS,
   category: "games",
-  alternates: {
-    canonical: "/",
+  openGraph: {
+    siteName: SITE_NAME,
+    locale: "en_US",
+    type: "website",
   },
-  openGraph: rootMetadata.openGraph,
-  twitter: rootMetadata.twitter,
   robots: {
     index: true,
     follow: true,
@@ -80,11 +91,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${bodyFont.variable} ${displayFont.variable}`}>
       <body>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(webSiteJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdScript(webSiteJsonLd) }}
         />
         <InteractiveGridBackground />
         <div className="app-shell">{children}</div>
