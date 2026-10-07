@@ -143,6 +143,124 @@ test.describe("daily puzzle", () => {
   });
 });
 
+const localDateKey = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+const daysAgo = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return localDateKey(date);
+};
+
+test.describe("daily archive", () => {
+  test("solving a past day records it without touching the streak", async ({ browser }) => {
+    const context = await browser.newContext({
+      permissions: ["clipboard-read", "clipboard-write"],
+    });
+    await context.addInitScript(() => {
+      Object.defineProperty(navigator, "share", { value: undefined });
+    });
+    const page = await context.newPage();
+    const errors = watchForErrors(page);
+    const dateKey = daysAgo(3);
+    const progressKey = `blockerRush.archive.progress.${dateKey}`;
+
+    await page.goto(`/blocker-rush/daily/${dateKey}`);
+    await expect(page).toHaveTitle(/^Daily Puzzle for .+ \| Blocker Rush$/);
+    await expect(contextStrip(page)).toContainText("Archive");
+    await expect(contextStrip(page)).not.toContainText("streak");
+    await expect(contextStrip(page).locator("time")).toHaveAttribute("datetime", dateKey);
+    await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
+
+    const puzzleId: string = await expect
+      .poll(async () =>
+        page.evaluate((key) => window.localStorage.getItem(key), progressKey),
+      )
+      .not.toBeNull()
+      .then(() =>
+        page.evaluate((key) => JSON.parse(window.localStorage.getItem(key)!).puzzleId, progressKey),
+      );
+    // Today's progress is separate and untouched.
+    expect(await page.evaluate((key) => window.localStorage.getItem(key), PROGRESS_KEY)).toBeNull();
+
+    const solution = solvePuzzle(parsePuzzleId(puzzleId), { maxSolutions: 1 }).firstSolution!;
+    await page.evaluate(
+      ({ key, progress }) => window.localStorage.setItem(key, JSON.stringify(progress)),
+      {
+        key: progressKey,
+        progress: {
+          dateKey,
+          puzzleId,
+          placements: Object.values(solution).filter((p) => p.pieceId !== "p1"),
+          pieceStates: Object.fromEntries(
+            PIECES.map((piece) => [piece.id, { rotation: 0, flipped: false }]),
+          ),
+          startedAt: Date.now(),
+          moveCount: 8,
+          elapsedMs: 60_000,
+        },
+      },
+    );
+    await page.reload();
+    await expect(pieceCells(page)).toHaveCount(28);
+    await page.getByRole("button", { name: "Select Dot" }).click();
+    await page.locator(".board-cell:not(.blocker):not(.piece)").click();
+
+    const completed = page.getByRole("status").filter({ hasText: "Completed in" });
+    await expect(completed).toHaveText(/^Completed in 1:0\d with 9 moves\.$/);
+
+    // Recorded in the solve history, with no streak written.
+    const history = await page.evaluate(() =>
+      JSON.parse(window.localStorage.getItem("blockerRush.daily.history")!),
+    );
+    expect(history[dateKey]).toMatchObject({ moves: 9 });
+    expect(await page.evaluate((key) => window.localStorage.getItem(key), STATS_KEY)).toBeNull();
+
+    // Share links to this day's page.
+    await page.getByRole("button", { name: "Share" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Copied" })).toBeVisible();
+    const shared = await page.evaluate(() => navigator.clipboard.readText());
+    expect(shared).toContain(" daily Blocker Rush in 1:0");
+    expect(shared).toContain(`/blocker-rush/daily/${dateKey}`);
+
+    // The archive list shows it solved, with its time; today links home.
+    await page.getByRole("button", { name: "More Past Puzzles" }).click();
+    await expect(page).toHaveURL(/\/blocker-rush\/daily$/);
+    const day = page.locator(`a[href$="/daily/${dateKey}"]`);
+    await expect(day).toHaveClass(/solved/);
+    await expect(day).toContainText(/✓ 1:0\d/);
+    await expect(page.locator(`a[href$="/daily/${daysAgo(1)}"]`)).not.toHaveClass(/solved/);
+    await expect(page.locator(".archive-day").first()).toContainText("Today");
+    await expect(page.locator(".archive-day").first()).toHaveAttribute("href", "/blocker-rush");
+
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+
+  test("today's date redirects to the daily page", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto(`/blocker-rush/daily/${daysAgo(0)}`);
+    await expect(page).toHaveURL(/\/blocker-rush$/);
+    await expect(contextStrip(page)).toContainText("streak");
+    expect(errors).toEqual([]);
+  });
+
+  test("a future date isn't playable yet", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto(`/blocker-rush/daily/${daysAgo(-2)}`);
+    await expect(page.getByRole("status")).toContainText("isn't out yet");
+    await expect(page.locator(".board-cell")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  for (const bad of ["2026-02-30", "2020-01-01", "yesterday"]) {
+    test(`invalid date ${bad} is a 404`, async ({ page }) => {
+      const response = await page.goto(`/blocker-rush/daily/${bad}`);
+      expect(response?.status()).toBe(404);
+    });
+  }
+});
+
 test("casual ?p= link loads that exact puzzle", async ({ page }) => {
   const errors = watchForErrors(page);
   const id = "A2A4D1D2F4F5F6";
@@ -170,6 +288,13 @@ test.describe("pages load without errors", () => {
       expect(errors).toEqual([]);
     });
   }
+
+  test("/blocker-rush/daily", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto("/blocker-rush/daily");
+    await expect(page.locator(".archive-day").first()).toBeVisible();
+    expect(errors).toEqual([]);
+  });
 
   test("unknown path returns the 404 page", async ({ page }) => {
     const errors = watchForErrors(page);

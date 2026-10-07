@@ -19,7 +19,7 @@ export default function CasualPage() {
       </Suspense>
       <SeoContent
         heading="Unlimited Blocker Rush practice puzzles"
-        jsonLd={[breadcrumbJsonLd("Casual practice", "/casual")]}
+        jsonLd={[breadcrumbJsonLd(["Casual practice", "/casual"])]}
       >
         <p>
           Casual mode gives you as many Blocker Rush boards as you want. Every

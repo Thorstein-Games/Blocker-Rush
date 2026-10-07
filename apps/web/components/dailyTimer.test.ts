@@ -52,6 +52,12 @@ describe("solve text", () => {
     );
   });
 
+  it("names the day for archive puzzles", () => {
+    expect(dailyShareMessage(9, 103_000, "Oct 6")).toBe(
+      "I solved the Oct 6 daily Blocker Rush in 1:43 with 9 moves! Can you beat that?",
+    );
+  });
+
   it("falls back to moves only for solves saved before the timer", () => {
     expect(describeSolve(9, null)).toBe("9 moves");
   });

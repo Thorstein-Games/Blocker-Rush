@@ -155,12 +155,18 @@ export const faqJsonLd = (faqs: Faq[]) => ({
   })),
 });
 
-export const breadcrumbJsonLd = (name: string, path: PagePath) => ({
+/** Trail below the home page, outermost first: [["Casual practice", "/casual"]]. */
+export const breadcrumbJsonLd = (...trail: Array<[name: string, path: PagePath]>) => ({
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
     { "@type": "ListItem", position: 1, name: SITE_NAME, item: SITE_URL },
-    { "@type": "ListItem", position: 2, name, item: pageUrl(path) },
+    ...trail.map(([name, path], index) => ({
+      "@type": "ListItem",
+      position: index + 2,
+      name,
+      item: pageUrl(path),
+    })),
   ],
 });
 
