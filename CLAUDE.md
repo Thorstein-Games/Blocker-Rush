@@ -11,7 +11,7 @@ Blocker Rush is a block-placement puzzle game: fit 9 pieces (29 cells) into a 6�
 ```bash
 npm run verify           # typecheck + lint + unit tests + megingjord drift check (~6s, no servers) — run before committing
 npm test                 # unit tests only (vitest, all workspaces)
-npm run test:e2e         # Playwright multiplayer suite; starts megingjord + Next itself (~20s)
+npm run test:e2e         # Playwright suite; starts megingjord + Next itself (~50s). E2E_NO_MEGINGJORD=1 runs only single-player specs
 npm run dev              # Next.js dev server on :3000
 npm run sync:megingjord  # copy shared/protocol into megingjord after changing them
 ```
@@ -40,9 +40,14 @@ To add or change a message: edit `packages/protocol/src/messages.ts`, sync, then
 
 ## Analytics
 
-Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.
+Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (not set up in production yet; see the TODO in `lib/analytics.ts`) (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.
 
 ## E2E gotchas
 
 - `playwright.config.ts` starts megingjord (`pnpm dev` in `MEGINGJORD_DIR`, default `../megingjord`) with `MATCHMAKE_RATE_MAX=1000`. All simulated players share one IP, so megingjord's per-IP matchmake rate limit would otherwise make create/join calls fail silently. If you reuse an already-running megingjord that was started without that env var, you'll see the same failures, and they look like UI bugs.
-- Only multiplayer flows (join, ready, start, kick, reconnect, leave) have e2e coverage. Gameplay message handling is covered by `multiplayerReducers.test.ts`.
+- `e2e/single-player.spec.ts` covers the daily solve → streak → reload → share flow (it restores 8 pieces of a real solver solution into localStorage, then places the Dot through the UI), daily hydration on a later day with a saved streak, casual `?p=` links, and that pages load without console errors. `e2e/blocker-rush-multiplayer.spec.ts` covers join, ready, start, kick, reconnect, leave and invite links. Multiplayer gameplay message handling is covered by `multiplayerReducers.test.ts`; daily streak math by `components/dailyStats.test.ts`.
+- Specs fail on any console error, so a React hydration warning in dev fails them too.
+
+## CI
+
+`.github/workflows/ci.yml` runs `npm run verify` and the Playwright suite on every PR. megingjord is private: the e2e job checks it out only if the repo has a `MEGINGJORD_TOKEN` secret, and otherwise runs with `E2E_NO_MEGINGJORD=1`. The megingjord drift check doesn't run in CI.

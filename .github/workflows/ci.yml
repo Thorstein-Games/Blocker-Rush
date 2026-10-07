@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The megingjord drift check skips here (megingjord isn't checked out);
+      # it still runs locally via `npm run verify`.
+      - run: npm run verify
+
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      # megingjord is private. With a MEGINGJORD_TOKEN secret (a fine-grained
+      # token with read access to Thorstein-Games/megingjord) the full suite
+      # runs; without one, only the single-player specs do.
+      HAS_MEGINGJORD: ${{ secrets.MEGINGJORD_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out megingjord
+        if: env.HAS_MEGINGJORD == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: Thorstein-Games/megingjord
+          token: ${{ secrets.MEGINGJORD_TOKEN }}
+          path: megingjord
+      - if: env.HAS_MEGINGJORD == 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      # Blocker-Rush pins Node 20 and megingjord Node 24; 22 runs both.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - if: env.HAS_MEGINGJORD == 'true'
+        run: pnpm install --frozen-lockfile
+        working-directory: megingjord
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run test:e2e
+        env:
+          MEGINGJORD_DIR: ${{ github.workspace }}/megingjord
+          E2E_NO_MEGINGJORD: ${{ env.HAS_MEGINGJORD != 'true' && '1' || '' }}
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: apps/web/test-results
+          retention-days: 7

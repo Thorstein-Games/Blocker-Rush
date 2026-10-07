@@ -1,3 +1,11 @@
+// TODO(analytics): not live yet. To turn it on:
+//   1. Create a Plausible account (plausible.io, or self-host) and add the
+//      site thorsteingames.com.
+//   2. In Netlify, set NEXT_PUBLIC_PLAUSIBLE_DOMAIN=thorsteingames.com for
+//      production (and NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC if Plausible gives you
+//      a site-specific script URL), then redeploy; it's read at build time.
+//   3. In Plausible, add the custom events below as goals so they show up.
+//
 // Privacy-friendly analytics via Plausible (no cookies, so no consent
 // banner). Off unless NEXT_PUBLIC_PLAUSIBLE_DOMAIN is set at build time; then
 // <Analytics /> loads the script and track() sends custom events.

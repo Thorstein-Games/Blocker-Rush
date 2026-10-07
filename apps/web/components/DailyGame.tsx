@@ -17,14 +17,14 @@ import type { PieceState } from "./gameTypes";
 import ThemeSelect from "./ThemeSelect";
 import { track } from "../lib/analytics";
 import { BASE_PATH } from "../lib/basePath";
+import {
+  type DailyStats,
+  reconcileStats,
+  recordDailySolve,
+} from "./dailyStats";
 
 const DAILY_STATS_KEY = "blockerRush.daily.stats";
 const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
-
-type DailyStats = {
-  streak: number;
-  lastCompletedDateKey?: string;
-};
 
 type DailyProgress = {
   dateKey: string;
@@ -89,31 +89,6 @@ const writeDailyProgress = (progress: DailyProgress) => {
 const clearDailyProgress = () => {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(DAILY_PROGRESS_KEY);
-};
-
-const parseDateKey = (dateKey: string): Date => {
-  const [year, month, day] = dateKey.split("-").map((value) => Number(value));
-  return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1);
-};
-
-const getYesterdayKey = (dateKey: string): string => {
-  const date = parseDateKey(dateKey);
-  date.setDate(date.getDate() - 1);
-  return getDateKey(date);
-};
-
-const reconcileStats = (stats: DailyStats, dateKey: string): DailyStats => {
-  if (!stats.lastCompletedDateKey) {
-    return { ...stats, streak: 0 };
-  }
-  if (stats.lastCompletedDateKey === dateKey) {
-    return stats;
-  }
-  const yesterdayKey = getYesterdayKey(dateKey);
-  if (stats.lastCompletedDateKey === yesterdayKey) {
-    return stats;
-  }
-  return { ...stats, streak: 0 };
 };
 
 function DailyGameLayout({ date }: { date: Date }) {
@@ -181,22 +156,12 @@ function DailyGameLayout({ date }: { date: Date }) {
   useEffect(() => {
     if (!solved || hasRecorded) return;
     setStats((prev) => {
-      const base = reconcileStats(prev, dateKey);
-      if (base.lastCompletedDateKey === dateKey) {
-        return base;
-      }
-      const yesterdayKey = getYesterdayKey(dateKey);
-      const nextStreak =
-        base.lastCompletedDateKey === yesterdayKey ? base.streak + 1 : 1;
-      const next = {
-        ...base,
-        streak: nextStreak,
-        lastCompletedDateKey: dateKey,
-      };
+      const next = recordDailySolve(prev, dateKey);
+      if (!next) return reconcileStats(prev, dateKey);
       writeDailyStats(next);
       track("Daily Solved", {
         difficulty: dailyPuzzle.difficulty,
-        streak: nextStreak,
+        streak: next.streak,
       });
       return next;
     });
