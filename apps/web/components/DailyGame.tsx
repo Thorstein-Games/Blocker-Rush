@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Placement, PieceId } from "@blocker-rush/shared";
 import {
@@ -15,6 +15,7 @@ import { GameProvider, useGame } from "./GameContext";
 import GameHeader from "./GameHeader";
 import type { PieceState } from "./gameTypes";
 import ThemeSelect from "./ThemeSelect";
+import { track } from "../lib/analytics";
 
 const DAILY_STATS_KEY = "blockerRush.daily.stats";
 const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
@@ -192,10 +193,14 @@ function DailyGameLayout({ date }: { date: Date }) {
         lastCompletedDateKey: dateKey,
       };
       writeDailyStats(next);
+      track("Daily Solved", {
+        difficulty: dailyPuzzle.difficulty,
+        streak: nextStreak,
+      });
       return next;
     });
     setHasRecorded(true);
-  }, [solved, hasRecorded, dateKey]);
+  }, [solved, hasRecorded, dateKey, dailyPuzzle.difficulty]);
 
   useEffect(() => {
     if (puzzleId !== dailyPuzzle.id) return;
@@ -253,6 +258,7 @@ function DailyGameLayout({ date }: { date: Date }) {
 
   const handleShare = async () => {
     if (!puzzleId) return;
+    track("Share", { mode: "daily" });
     const baseUrl = `${window.location.origin}`;
     const messageText =
       solvedMoveCount > 0
@@ -275,6 +281,67 @@ function DailyGameLayout({ date }: { date: Date }) {
   };
 
   return (
+    <DailyFrame
+      statsPanel={statsPanel}
+      contextStrip={
+        <>
+          <time dateTime={dateKey}>
+            {date.toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </time>
+          <span className="context-difficulty">{dailyPuzzle.difficulty}</span>
+          <span>{stats.streak}-day streak</span>
+        </>
+      }
+    >
+      {solved && (
+        <>
+          <div className="notice" role="status">
+            Completed in {solvedMoveCount} moves.
+          </div>
+          <div className="settings-actions">
+            <button className="button" type="button" onClick={handleShare}>
+              Share
+            </button>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => router.push("/casual")}
+            >
+              Play Casual
+            </button>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => router.push("/multiplayer")}
+            >
+              Play Multiplayer
+            </button>
+          </div>
+        </>
+      )}
+      {shareStatus && (
+        <div className="notice" role="status">
+          {shareStatus}
+        </div>
+      )}
+    </DailyFrame>
+  );
+}
+
+/** Page chrome shared by the real daily layout and the pre-mount shell. */
+function DailyFrame({
+  statsPanel,
+  contextStrip,
+  children,
+}: {
+  statsPanel?: ReactNode;
+  contextStrip?: ReactNode;
+  children?: ReactNode;
+}) {
+  return (
     <main className="page game-page no-scroll-mobile">
       <GameHeader
         mode="daily"
@@ -293,48 +360,11 @@ function DailyGameLayout({ date }: { date: Date }) {
             aria-label="Daily challenge details"
           >
             <strong>Daily</strong>
-            <time dateTime={dateKey}>
-              {date.toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}
-            </time>
-            <span className="context-difficulty">{dailyPuzzle.difficulty}</span>
-            <span>{stats.streak}-day streak</span>
+            {contextStrip}
           </div>
           <GameBoard />
           <PiecesTray />
-          {solved && (
-            <>
-              <div className="notice" role="status">
-                Completed in {solvedMoveCount} moves.
-              </div>
-              <div className="settings-actions">
-                <button className="button" type="button" onClick={handleShare}>
-                  Share
-                </button>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => router.push("/casual")}
-                >
-                  Play Casual
-                </button>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => router.push("/multiplayer")}
-                >
-                  Play Multiplayer
-                </button>
-              </div>
-            </>
-          )}
-          {shareStatus && (
-            <div className="notice" role="status">
-              {shareStatus}
-            </div>
-          )}
+          {children}
         </div>
       </section>
     </main>
@@ -342,9 +372,17 @@ function DailyGameLayout({ date }: { date: Date }) {
 }
 
 export default function DailyGame() {
-  const [today, setToday] = useState(() => new Date());
+  // Unknown until mount. This page is prerendered at build time, so the
+  // server can't know the visitor's date, and their streak lives in
+  // localStorage; rendering either during hydration mismatches the HTML and
+  // makes React discard it and re-render the whole page.
+  const [today, setToday] = useState<Date | null>(null);
 
   useEffect(() => {
+    if (!today) {
+      setToday(new Date());
+      return;
+    }
     const now = new Date();
     const nextMidnight = new Date(now);
     nextMidnight.setHours(24, 0, 0, 50);
@@ -357,7 +395,7 @@ export default function DailyGame() {
 
   return (
     <GameProvider lockOnSolve>
-      <DailyGameLayout date={today} />
+      {today ? <DailyGameLayout date={today} /> : <DailyFrame />}
     </GameProvider>
   );
 }

@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+// @ts-expect-error -- plain JS build script, no type declarations
+import { compactDataset } from "../scripts/compact-puzzles.js";
+import compactJson from "../src/data/puzzles.v1.compact.json" assert { type: "json" };
+import sampleJson from "../src/data/puzzles.v1.sample.json" assert { type: "json" };
 import {
   PUZZLE_DATASET_VERSION,
   RULES_VERSION,
@@ -21,6 +25,11 @@ import {
 
 describe("puzzle dataset", () => {
   const puzzles = getPuzzleDataset();
+
+  it("loads a compact copy that matches the sample dataset", () => {
+    // Run `node packages/shared/scripts/compact-puzzles.js` if this fails.
+    expect(compactJson).toEqual(compactDataset(sampleJson));
+  });
 
   it("matches the current dataset/rules version", () => {
     expect(getPuzzleDatasetVersion()).toBe(PUZZLE_DATASET_VERSION);
