@@ -1,25 +1,23 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "../lib/seo";
+import { pageUrl } from "../lib/seo";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
 
   return [
     {
-      url: `${SITE_URL}/`,
+      url: pageUrl("/"),
       lastModified: now,
       changeFrequency: "daily",
       priority: 1,
     },
     {
-      url: `${SITE_URL}/casual`,
-      lastModified: now,
+      url: pageUrl("/casual"),
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: `${SITE_URL}/multiplayer`,
-      lastModified: now,
+      url: pageUrl("/multiplayer"),
       changeFrequency: "weekly",
       priority: 0.8,
     },
