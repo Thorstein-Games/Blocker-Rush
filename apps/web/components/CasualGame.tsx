@@ -4,43 +4,29 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
-  type MouseEvent,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { track } from "../lib/analytics";
 import { withBasePath } from "../lib/basePath";
-import type {
-  Coordinate,
-  Difficulty,
-  PieceId,
-  Placement,
-  Vec2,
-} from "@blocker-rush/shared";
+import type { Coordinate, Difficulty } from "@blocker-rush/shared";
 import {
-  PIECES,
   buildShareText,
   canonicalizePuzzleId,
   difficultyOptions,
-  formatCoordinate,
   getPuzzleById,
   parsePuzzleId,
   pickPuzzleByDifficulty,
   scoreDifficulty,
   solvePuzzle,
-  vecToCoord,
 } from "@blocker-rush/shared";
 import GameBoard from "./GameBoard";
 import PiecesTray from "./PiecesTray";
-import {
-  GameProvider,
-  findOrientationForTransform,
-  useGame,
-} from "./GameContext";
+import { GameProvider, useGame } from "./GameContext";
 import GameHeader from "./GameHeader";
 import ThemeSelect from "./ThemeSelect";
-import { formatDuration, formatMoves } from "./dailyTimer";
+import { formatDuration, formatHints, formatMoves } from "./dailyTimer";
+import { useHint } from "./useHint";
 
 const SETTINGS_KEY = "blockerRush.casual.settings";
 const STATS_KEY = "blockerRush.casual.stats";
@@ -59,11 +45,6 @@ type RoundStats = {
   moves: number;
   elapsedMs: number;
 };
-
-type SolutionCache = Record<
-  PieceId,
-  { origin: Vec2; transformId: string } | undefined
->;
 
 type PuzzleSpec = {
   id: string;
@@ -138,23 +119,17 @@ function CasualGameLayout() {
     moveCount,
     startedAt,
     applyPuzzle,
-    selectPiece,
-    setPieceState,
-    boardRef,
   } = useGame();
+  const { hintMessage, hintPlacement, requestHint } = useHint();
   const router = useRouter();
   const searchParams = useSearchParams();
   const puzzleParam = searchParams.get("p");
-  const hintTimeoutRef = useRef<number | null>(null);
 
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [puzzleInput, setPuzzleInput] = useState<string>("");
-  const [hint, setHint] = useState<string | null>(null);
-  const [hintPlacement, setHintPlacement] = useState<Placement | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [hintsUsed, setHintsUsed] = useState(0);
   const [shareStatus, setShareStatus] = useState<string | null>(null);
-  const [solutionCache, setSolutionCache] = useState<SolutionCache | null>(
-    null,
-  );
   const [stats, setStats] = useState<CasualStats>(() => readStats());
   const [roundStats, setRoundStats] = useState<RoundStats | null>(null);
   const [hasRecordedSolve, setHasRecordedSolve] = useState(false);
@@ -178,24 +153,11 @@ function CasualGameLayout() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (hintTimeoutRef.current) {
-        window.clearTimeout(hintTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    setHint(null);
+    setLoadError(null);
     setShareStatus(null);
-    setHintPlacement(null);
-    setSolutionCache(null);
+    setHintsUsed(0);
     setRoundStats(null);
     setHasRecordedSolve(false);
-    if (hintTimeoutRef.current) {
-      window.clearTimeout(hintTimeoutRef.current);
-      hintTimeoutRef.current = null;
-    }
   }, [puzzleId]);
 
   const setPuzzleParam = useCallback(
@@ -240,9 +202,9 @@ function CasualGameLayout() {
       try {
         const next = resolvePuzzleSpec(raw);
         setPuzzleParam(next.id);
-        setHint(null);
+        setLoadError(null);
       } catch {
-        setHint(INVALID_PUZZLE_MESSAGE);
+        setLoadError(INVALID_PUZZLE_MESSAGE);
       }
     },
     [resolvePuzzleSpec, setPuzzleParam],
@@ -258,9 +220,9 @@ function CasualGameLayout() {
       if (next.id === puzzleId) return;
       applyPuzzle(next);
       setPuzzleInput(next.id);
-      setHint(null);
+      setLoadError(null);
     } catch {
-      setHint(INVALID_PUZZLE_MESSAGE);
+      setLoadError(INVALID_PUZZLE_MESSAGE);
     }
   }, [puzzleParam, puzzleId, applyPuzzle, resolvePuzzleSpec, setPuzzleParam]);
 
@@ -304,56 +266,10 @@ function CasualGameLayout() {
     loadPuzzleFromId(puzzleInput);
   };
 
-  const handleHint = (event: MouseEvent<HTMLButtonElement>) => {
-    if (!puzzleId) return;
-    let solution = solutionCache;
-    if (!solution) {
-      const result = solvePuzzle(blockers, { maxSolutions: 1 });
-      solution = result.firstSolution ?? null;
-      setSolutionCache(solution);
-    }
-    if (!solution) {
-      setHint("No hints available for this puzzle.");
-      return;
-    }
-    const remaining = PIECES.filter((piece) => !board.placements[piece.id]);
-    const target = remaining[0];
-    if (!target) {
-      setHint("All pieces are already placed.");
-      return;
-    }
-    const placement = solution[target.id];
-    if (!placement) {
-      setHint("Hint unavailable for that piece.");
-      return;
-    }
-    const coord = vecToCoord(placement.origin);
-    const orientation = findOrientationForTransform(
-      target.id,
-      placement.transformId,
-    );
-    setHintPlacement({ ...placement, pieceId: target.id });
-    setPieceState(target.id, orientation);
-    selectPiece(target.id);
-    setHint(
-      `Try placing ${target.name} so its top-left is at ${formatCoordinate(
-        coord,
-      )}.`,
-    );
-    event.currentTarget.closest("dialog")?.close();
-    window.requestAnimationFrame(() => {
-      boardRef.current
-        ?.querySelector<HTMLElement>(
-          `[data-index="${placement.origin.y * board.size.cols + placement.origin.x}"]`,
-        )
-        ?.focus();
-    });
-    if (hintTimeoutRef.current) {
-      window.clearTimeout(hintTimeoutRef.current);
-    }
-    hintTimeoutRef.current = window.setTimeout(() => {
-      setHint(null);
-    }, 6000);
+  const handleHint = () => {
+    if (!requestHint()) return;
+    setHintsUsed((count) => count + 1);
+    track("Hint", { mode: "casual" });
   };
 
   const handleShare = async () => {
@@ -429,9 +345,6 @@ function CasualGameLayout() {
         )}
       </div>
       <div className="settings-actions">
-        <button className="button secondary" type="button" onClick={handleHint}>
-          Hint
-        </button>
         <button
           className="button secondary"
           type="button"
@@ -440,9 +353,9 @@ function CasualGameLayout() {
           Share
         </button>
       </div>
-      {hint && (
+      {loadError && (
         <div className="notice" role="status">
-          {hint}
+          {loadError}
         </div>
       )}
       {shareStatus && (
@@ -491,12 +404,18 @@ function CasualGameLayout() {
             </span>
           </div>
           <GameBoard hintPlacement={hintPlacement} />
-          <PiecesTray />
+          <PiecesTray onHint={handleHint} />
+          {hintMessage && !solved && (
+            <div className="notice" role="status">
+              {hintMessage}
+            </div>
+          )}
           {solved && (
             <>
               <div className="notice" role="status">
                 Completed in {formatMoves(roundStats?.moves ?? moveCount)} in{" "}
-                {formatDuration(roundStats?.elapsedMs ?? 0)}.
+                {formatDuration(roundStats?.elapsedMs ?? 0)}
+                {hintsUsed > 0 && ` with ${formatHints(hintsUsed)}`}.
               </div>
               <div className="settings-actions">
                 <button className="button" type="button" onClick={handleShare}>

@@ -22,6 +22,7 @@ export const PLAUSIBLE_SCRIPT_SRC =
 export type AnalyticsEvent =
   | "Daily Solved"
   | "Archive Solved"
+  | "Hint"
   | "Casual Solved"
   | "Share"
   | "Multiplayer Join Public"

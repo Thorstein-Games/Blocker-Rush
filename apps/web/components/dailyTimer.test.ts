@@ -5,6 +5,7 @@ import {
   dailyShareMessage,
   describeSolve,
   formatDuration,
+  formatHints,
   formatMoves,
 } from "./dailyTimer";
 
@@ -44,7 +45,23 @@ describe("formatMoves", () => {
   });
 });
 
+describe("formatHints", () => {
+  it("pluralises", () => {
+    expect(formatHints(1)).toBe("1 hint");
+    expect(formatHints(3)).toBe("3 hints");
+  });
+});
+
 describe("solve text", () => {
+  it("mentions hints only when used", () => {
+    expect(describeSolve(12, 103_000, 0)).toBe("1:43 with 12 moves");
+    expect(describeSolve(12, 103_000, 2)).toBe("1:43 with 12 moves and 2 hints");
+    expect(describeSolve(9, null, 1)).toBe("9 moves and 1 hint");
+    expect(dailyShareMessage(9, 7_000, undefined, 1)).toBe(
+      "I solved today's Blocker Rush in 0:07 with 9 moves and 1 hint! Can you beat that?",
+    );
+  });
+
   it("includes the time when known", () => {
     expect(describeSolve(12, 103_000)).toBe("1:43 with 12 moves");
     expect(dailyShareMessage(1, 7_000)).toBe(

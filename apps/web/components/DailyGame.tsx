@@ -30,6 +30,7 @@ import {
   formatDuration,
 } from "./dailyTimer";
 import { type SolveHistory, archiveDayStatus, recordSolve } from "./dailyArchive";
+import { useHint } from "./useHint";
 import {
   type DailyProgress,
   clearDailyProgress,
@@ -76,6 +77,8 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
   // from earlier visits so a reload doesn't reset the count.
   const [earlierMoves, setEarlierMoves] = useState(0);
   const [elapsedMs, setElapsedMs] = useState<number | null>(0);
+  const [hintsUsed, setHintsUsed] = useState(0);
+  const { hintMessage, hintPlacement, requestHint } = useHint();
   const hasRestoredRef = useRef<string | null>(null);
   const totalMoves = earlierMoves + moveCount;
 
@@ -94,6 +97,7 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
     hasRestoredRef.current = null;
     setEarlierMoves(0);
     setElapsedMs(0);
+    setHintsUsed(0);
     if (!saved) {
       clearDailyProgress(progressKey);
     }
@@ -110,6 +114,7 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
       startedAt: progress.startedAt,
     });
     setEarlierMoves(progress.moveCount);
+    setHintsUsed(progress.hintsUsed);
     const wasSolved = progress.placements.length === PIECES.length;
     setElapsedMs(progress.elapsedMs ?? (wasSolved ? null : 0));
     hasRestoredRef.current = dateKey;
@@ -209,8 +214,10 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
       startedAt,
       moveCount: totalMoves,
       elapsedMs,
+      hintsUsed,
     });
   }, [
+    hintsUsed,
     board,
     pieceStates,
     startedAt,
@@ -259,14 +266,14 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
     if (archive) {
       text = [
         solved
-          ? dailyShareMessage(totalMoves, elapsedMs, shortDate(date))
+          ? dailyShareMessage(totalMoves, elapsedMs, shortDate(date), hintsUsed)
           : `Play the ${shortDate(date)} Blocker Rush daily puzzle`,
         `${baseUrl}/daily/${dateKey}`,
       ].join("\n");
     } else {
       text = buildShareText(puzzleId, board.placements, baseUrl, {
         messageText: solved
-          ? dailyShareMessage(totalMoves, elapsedMs)
+          ? dailyShareMessage(totalMoves, elapsedMs, undefined, hintsUsed)
           : "Play today's Blocker Rush challenge",
         revealPieceCount: 3,
       });
@@ -283,10 +290,18 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
     }
   };
 
+  const handleHint = () => {
+    if (!requestHint()) return;
+    setHintsUsed((count) => count + 1);
+    track("Hint", { mode: archive ? "archive" : "daily" });
+  };
+
   return (
     <DailyFrame
       label={archive ? "Archive" : "Daily"}
       statsPanel={statsPanel}
+      onHint={handleHint}
+      hintPlacement={hintPlacement}
       contextStrip={
         <>
           <time dateTime={dateKey}>{shortDate(date)}</time>
@@ -300,10 +315,15 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
         </>
       }
     >
+      {hintMessage && !solved && (
+        <div className="notice" role="status">
+          {hintMessage}
+        </div>
+      )}
       {solved && (
         <>
           <div className="notice" role="status">
-            Completed in {describeSolve(totalMoves, elapsedMs)}.
+            Completed in {describeSolve(totalMoves, elapsedMs, hintsUsed)}.
           </div>
           <div className="settings-actions">
             <button className="button" type="button" onClick={handleShare}>
@@ -361,9 +381,13 @@ function DailyFrame({
   statsPanel,
   contextStrip,
   showBoard = true,
+  onHint,
+  hintPlacement,
   children,
 }: {
   label?: string;
+  onHint?: () => void;
+  hintPlacement?: Placement | null;
   statsPanel?: ReactNode;
   contextStrip?: ReactNode;
   showBoard?: boolean;
@@ -392,8 +416,8 @@ function DailyFrame({
           </div>
           {showBoard && (
             <>
-              <GameBoard />
-              <PiecesTray />
+              <GameBoard hintPlacement={hintPlacement} />
+              <PiecesTray onHint={onHint} />
             </>
           )}
           {children}
