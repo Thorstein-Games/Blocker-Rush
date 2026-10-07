@@ -111,6 +111,18 @@ describe("sharing", () => {
     expect(text).toContain("Play Blocker Rush!");
   });
 
+  it("puts the message, emoji board and link on separate lines", () => {
+    const text = buildShareText(id, {} as never, "https://example.com/br", {
+      messageText: "Solved it",
+      renderEmojis: true,
+    });
+    const lines = text.split("\n");
+    expect(lines[0]).toBe("Solved it");
+    expect(lines[lines.length - 1]).toBe(`https://example.com/br?p=${id}`);
+    expect(lines).toHaveLength(8);
+    expect(text).not.toContain(",");
+  });
+
   it("renders blockers on a 6x6 emoji grid", () => {
     const grid = renderEmojiBoard(puzzleFromId(id).blockers, {} as never);
     const rows = grid.split("\n");

@@ -113,18 +113,11 @@ export const buildShareText = (
   },
 ): string => {
   const url = `${originUrl}?p=${puzzleId}`;
-  const finalShareText = [url];
-  if (options.renderEmojis === true) {
-    const emojiBoard = renderEmojiBoard(
-      parsePuzzleId(puzzleId),
-      placements,
-      options,
-    );
-    finalShareText.unshift("\n");
-    finalShareText.unshift(emojiBoard);
-    finalShareText.unshift("\n");
-  }
   const msg = options.messageText ?? "Play Blocker Rush!";
-  finalShareText.unshift(msg);
-  return finalShareText.join();
+  const parts = [msg];
+  if (options.renderEmojis === true) {
+    parts.push(renderEmojiBoard(parsePuzzleId(puzzleId), placements, options));
+  }
+  parts.push(url);
+  return parts.join("\n");
 };

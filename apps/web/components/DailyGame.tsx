@@ -16,6 +16,7 @@ import GameHeader from "./GameHeader";
 import type { PieceState } from "./gameTypes";
 import ThemeSelect from "./ThemeSelect";
 import { track } from "../lib/analytics";
+import { BASE_PATH } from "../lib/basePath";
 
 const DAILY_STATS_KEY = "blockerRush.daily.stats";
 const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
@@ -259,7 +260,7 @@ function DailyGameLayout({ date }: { date: Date }) {
   const handleShare = async () => {
     if (!puzzleId) return;
     track("Share", { mode: "daily" });
-    const baseUrl = `${window.location.origin}`;
+    const baseUrl = `${window.location.origin}${BASE_PATH}`;
     const messageText =
       solvedMoveCount > 0
         ? `I solved today's Blocker Rush in ${solvedMoveCount} moves! Can you beat that?`
