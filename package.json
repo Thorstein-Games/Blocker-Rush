@@ -14,6 +14,7 @@
     "lint": "npm run lint -w apps/web",
     "test": "npm run test --workspaces --if-present",
     "test:e2e": "npm run test:e2e -w apps/web",
+    "test:e2e:prod": "npm run test:e2e:prod -w apps/web",
     "verify": "bash ./verify.sh",
     "gen-puzzles": "node packages/shared/scripts/generate-puzzles.js",
     "refresh-samples": "node packages/shared/scripts/sample-puzzles.js",

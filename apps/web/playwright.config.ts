@@ -15,7 +15,8 @@ const withMegingjord = !process.env.E2E_NO_MEGINGJORD;
 
 export default defineConfig({
   testDir: "./e2e",
-  testIgnore: withMegingjord ? undefined : ["**/*multiplayer*"],
+  // *.prod.spec.ts need a production build: playwright.prod.config.ts.
+  testIgnore: ["**/*.prod.spec.ts", ...(withMegingjord ? [] : ["**/*multiplayer*"])],
   timeout: 30_000,
   fullyParallel: false,
   workers: 1,

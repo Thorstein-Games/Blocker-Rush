@@ -18,7 +18,9 @@ function manifest(): MetadataRoute.Manifest {
     name: SITE_NAME,
     short_name: SITE_NAME,
     description: SITE_DESCRIPTION,
+    id: withBasePath("/"),
     start_url: withBasePath("/"),
+    scope: withBasePath("/"),
     display: "standalone",
     background_color: "#06101b",
     theme_color: "#08111d",
@@ -37,6 +39,22 @@ function manifest(): MetadataRoute.Manifest {
         src: withBasePath("/apple-icon"),
         sizes: "180x180",
         type: "image/png",
+      },
+      {
+        src: withBasePath("/pwa-icon/192"),
+        sizes: "192x192",
+        type: "image/png",
+      },
+      {
+        src: withBasePath("/pwa-icon/512"),
+        sizes: "512x512",
+        type: "image/png",
+      },
+      {
+        src: withBasePath("/pwa-icon/maskable-512"),
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
   };
