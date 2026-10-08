@@ -54,6 +54,8 @@ jobs:
         env:
           MEGINGJORD_DIR: ${{ github.workspace }}/megingjord
           E2E_NO_MEGINGJORD: ${{ env.HAS_MEGINGJORD != 'true' && '1' || '' }}
+      # Production build: the offline service worker only registers there.
+      - run: npm run test:e2e:prod
       - if: failure()
         uses: actions/upload-artifact@v4
         with:

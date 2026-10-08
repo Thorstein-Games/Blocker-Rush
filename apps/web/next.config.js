@@ -17,6 +17,20 @@ const nextConfig = {
   experimental: {
     typedRoutes: false
   },
+  async headers() {
+    return [
+      {
+        // The service worker controls /blocker-rush itself, not just
+        // /blocker-rush/…, which is wider than its script's directory
+        // allows by default. no-cache so a new worker is picked up promptly.
+        source: "/sw.js",
+        headers: [
+          { key: "Service-Worker-Allowed", value: basePath },
+          { key: "Cache-Control", value: "no-cache" }
+        ]
+      }
+    ];
+  },
   async redirects() {
     // Netlify sets CONTEXT at build time. Only production sends visitors
     // who hit blocker-rush.netlify.app directly over to the canonical
