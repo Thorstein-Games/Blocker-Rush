@@ -1688,3 +1688,43 @@ input {
 .archive-day.solved .archive-status {
   color: var(--accent-2);
 }
+
+/* Daily stats panel: solve times per difficulty */
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+}
+
+.stats-table caption {
+  text-align: left;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  padding-bottom: 6px;
+}
+
+.stats-table th,
+.stats-table td {
+  padding: 6px 8px;
+  text-align: right;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.stats-table th:first-child {
+  text-align: left;
+  text-transform: capitalize;
+}
+
+.stats-table thead th {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.stats-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

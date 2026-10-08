@@ -1,4 +1,9 @@
-import { getDateKey } from "@blocker-rush/shared";
+import {
+  type Difficulty,
+  difficultyOptions,
+  getDailyDifficulty,
+  getDateKey,
+} from "@blocker-rush/shared";
 import { parseDateKey } from "./dailyStats";
 
 // Pure helpers for the daily archive (/daily and /daily/YYYY-MM-DD). Date
@@ -37,7 +42,12 @@ export const archiveDateKeys = (todayKey: string): string[] => {
   return keys;
 };
 
-export type SolveRecord = { moves: number; elapsedMs: number | null };
+export type SolveRecord = {
+  moves: number;
+  elapsedMs: number | null;
+  /** 0 on records saved before hints were counted. */
+  hints: number;
+};
 
 /** Solved days, keyed by date key. Covers both today's and archive solves. */
 export type SolveHistory = Record<string, SolveRecord>;
@@ -51,7 +61,8 @@ export const recordSolve = (
   if (
     existing &&
     existing.moves === record.moves &&
-    existing.elapsedMs === record.elapsedMs
+    existing.elapsedMs === record.elapsedMs &&
+    existing.hints === record.hints
   ) {
     return history;
   }
@@ -64,12 +75,62 @@ export const parseSolveHistory = (value: unknown): SolveHistory => {
   const history: SolveHistory = {};
   for (const [key, record] of Object.entries(value)) {
     if (!isValidDateKey(key) || !record || typeof record !== "object") continue;
-    const { moves, elapsedMs } = record as Partial<SolveRecord>;
+    const { moves, elapsedMs, hints } = record as Partial<SolveRecord>;
     if (typeof moves !== "number") continue;
     history[key] = {
       moves,
       elapsedMs: typeof elapsedMs === "number" ? elapsedMs : null,
+      hints: typeof hints === "number" ? hints : 0,
     };
   }
   return history;
+};
+
+export type DifficultySummary = {
+  solved: number;
+  /** Mean of solves with a recorded time; null if there are none. */
+  averageMs: number | null;
+  /** Fastest solve without hints; null if there are none. */
+  bestMs: number | null;
+};
+
+export type HistorySummary = {
+  solved: number;
+  byDifficulty: Record<Difficulty, DifficultySummary>;
+};
+
+/**
+ * Totals per daily difficulty (which follows the weekday, so it comes from
+ * the date key). Covers today's and archive solves alike.
+ */
+export const summarizeHistory = (history: SolveHistory): HistorySummary => {
+  const times = Object.fromEntries(
+    difficultyOptions.map((difficulty) => [
+      difficulty,
+      { solved: 0, timed: [] as number[], unassisted: [] as number[] },
+    ]),
+  ) as Record<Difficulty, { solved: number; timed: number[]; unassisted: number[] }>;
+  for (const [key, record] of Object.entries(history)) {
+    const bucket = times[getDailyDifficulty(parseDateKey(key))];
+    bucket.solved += 1;
+    if (record.elapsedMs === null) continue;
+    bucket.timed.push(record.elapsedMs);
+    if (record.hints === 0) bucket.unassisted.push(record.elapsedMs);
+  }
+  const byDifficulty = Object.fromEntries(
+    difficultyOptions.map((difficulty) => {
+      const { solved, timed, unassisted } = times[difficulty];
+      return [
+        difficulty,
+        {
+          solved,
+          averageMs: timed.length
+            ? timed.reduce((sum, ms) => sum + ms, 0) / timed.length
+            : null,
+          bestMs: unassisted.length ? Math.min(...unassisted) : null,
+        },
+      ];
+    }),
+  ) as Record<Difficulty, DifficultySummary>;
+  return { solved: Object.keys(history).length, byDifficulty };
 };

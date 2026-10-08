@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getYesterdayKey, reconcileStats, recordDailySolve } from "./dailyStats";
+import { getBestStreak, getYesterdayKey, reconcileStats, recordDailySolve } from "./dailyStats";
 
 // Pin a zone with DST so the DST cases below mean something wherever the
 // tests run (Node applies TZ changes at runtime).
@@ -48,24 +48,42 @@ describe("recordDailySolve", () => {
     expect(recordDailySolve({ streak: 0 }, "2026-10-07")).toEqual({
       streak: 1,
       lastCompletedDateKey: "2026-10-07",
+      bestStreak: 1,
     });
   });
 
   it("extends a streak from yesterday, across a month boundary", () => {
     expect(
       recordDailySolve({ streak: 6, lastCompletedDateKey: "2026-02-28" }, "2026-03-01"),
-    ).toEqual({ streak: 7, lastCompletedDateKey: "2026-03-01" });
+    ).toEqual({ streak: 7, lastCompletedDateKey: "2026-03-01", bestStreak: 7 });
   });
 
   it("restarts at 1 after a missed day", () => {
     expect(
       recordDailySolve({ streak: 6, lastCompletedDateKey: "2026-10-04" }, "2026-10-07"),
-    ).toEqual({ streak: 1, lastCompletedDateKey: "2026-10-07" });
+    ).toEqual({ streak: 1, lastCompletedDateKey: "2026-10-07", bestStreak: 6 });
+  });
+
+  it("keeps a higher best streak", () => {
+    expect(
+      recordDailySolve(
+        { streak: 2, lastCompletedDateKey: "2026-10-06", bestStreak: 9 },
+        "2026-10-07",
+      ),
+    ).toEqual({ streak: 3, lastCompletedDateKey: "2026-10-07", bestStreak: 9 });
   });
 
   it("returns null when today is already recorded", () => {
     expect(
       recordDailySolve({ streak: 2, lastCompletedDateKey: "2026-10-07" }, "2026-10-07"),
     ).toBeNull();
+  });
+});
+
+describe("getBestStreak", () => {
+  it("counts the current streak for stats saved before bestStreak existed", () => {
+    expect(getBestStreak({ streak: 4 })).toBe(4);
+    expect(getBestStreak({ streak: 4, bestStreak: 10 })).toBe(10);
+    expect(getBestStreak({ streak: 0, bestStreak: 3 })).toBe(3);
   });
 });

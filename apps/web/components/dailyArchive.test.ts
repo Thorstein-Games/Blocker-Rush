@@ -7,6 +7,7 @@ import {
   isValidDateKey,
   parseSolveHistory,
   recordSolve,
+  summarizeHistory,
 } from "./dailyArchive";
 
 // A zone with DST, so the November change falls inside one of these ranges
@@ -62,11 +63,12 @@ describe("archiveDateKeys", () => {
 
 describe("recordSolve", () => {
   it("adds and updates entries, returning the same object when unchanged", () => {
-    const one = recordSolve({}, "2026-10-06", { moves: 9, elapsedMs: 1000 });
-    expect(one).toEqual({ "2026-10-06": { moves: 9, elapsedMs: 1000 } });
-    expect(recordSolve(one, "2026-10-06", { moves: 9, elapsedMs: 1000 })).toBe(one);
-    expect(recordSolve(one, "2026-10-06", { moves: 9, elapsedMs: 1400 })).toEqual({
-      "2026-10-06": { moves: 9, elapsedMs: 1400 },
+    const one = recordSolve({}, "2026-10-06", { moves: 9, elapsedMs: 1000, hints: 0 });
+    expect(one).toEqual({ "2026-10-06": { moves: 9, elapsedMs: 1000, hints: 0 } });
+    expect(recordSolve(one, "2026-10-06", { moves: 9, elapsedMs: 1000, hints: 0 })).toBe(one);
+    expect(recordSolve(one, "2026-10-06", { moves: 9, elapsedMs: 1000, hints: 1 })).not.toBe(one);
+    expect(recordSolve(one, "2026-10-06", { moves: 9, elapsedMs: 1400, hints: 0 })).toEqual({
+      "2026-10-06": { moves: 9, elapsedMs: 1400, hints: 0 },
     });
   });
 });
@@ -75,19 +77,53 @@ describe("parseSolveHistory", () => {
   it("keeps valid entries and drops malformed ones", () => {
     expect(
       parseSolveHistory({
-        "2026-10-06": { moves: 9, elapsedMs: 1000 },
+        "2026-10-06": { moves: 9, elapsedMs: 1000, hints: 2 },
         "2026-10-05": { moves: 12 },
         "not-a-date": { moves: 1, elapsedMs: 1 },
         "2026-10-04": { elapsedMs: 5 },
         "2026-10-03": null,
       }),
     ).toEqual({
-      "2026-10-06": { moves: 9, elapsedMs: 1000 },
-      "2026-10-05": { moves: 12, elapsedMs: null },
+      "2026-10-06": { moves: 9, elapsedMs: 1000, hints: 2 },
+      "2026-10-05": { moves: 12, elapsedMs: null, hints: 0 },
     });
   });
 
   it.each([null, "x", 3, []])("returns {} for %j", (value) => {
     expect(parseSolveHistory(value)).toEqual({});
+  });
+});
+
+describe("summarizeHistory", () => {
+  // 2026-10-04 is a Sunday (easy), 10-05 Monday (easy), 10-06 Tuesday
+  // (medium), 10-10 Saturday (insane).
+  const history = {
+    "2026-10-04": { moves: 9, elapsedMs: 60_000, hints: 0 },
+    "2026-10-05": { moves: 10, elapsedMs: 120_000, hints: 0 },
+    "2026-10-06": { moves: 12, elapsedMs: 30_000, hints: 2 },
+    "2026-10-10": { moves: 9, elapsedMs: null, hints: 0 },
+  };
+
+  it("groups by the weekday's difficulty", () => {
+    const summary = summarizeHistory(history);
+    expect(summary.solved).toBe(4);
+    expect(summary.byDifficulty.easy).toEqual({ solved: 2, averageMs: 90_000, bestMs: 60_000 });
+    expect(summary.byDifficulty.hard).toEqual({ solved: 0, averageMs: null, bestMs: null });
+  });
+
+  it("averages hinted solves but leaves them out of best times", () => {
+    expect(summarizeHistory(history).byDifficulty.medium).toEqual({
+      solved: 1,
+      averageMs: 30_000,
+      bestMs: null,
+    });
+  });
+
+  it("counts untimed solves without timing them", () => {
+    expect(summarizeHistory(history).byDifficulty.insane).toEqual({
+      solved: 1,
+      averageMs: null,
+      bestMs: null,
+    });
   });
 });
