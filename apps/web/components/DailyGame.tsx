@@ -391,6 +391,9 @@ function DailyFrame({
         settingsPanel={
           <div className="settings-stack">
             <ThemeSelect />
+            <Link href="/transfer" className="settings-link">
+              Move progress to another device
+            </Link>
           </div>
         }
       />
