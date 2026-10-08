@@ -105,8 +105,15 @@ test.describe("daily puzzle", () => {
     await page.getByRole("button", { name: "Share" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Copied" })).toBeVisible();
     const shared = await page.evaluate(() => navigator.clipboard.readText());
-    expect(shared).toContain(`/blocker-rush?p=${puzzleId}`);
-    expect(shared).toContain(`today's Blocker Rush in ${completedText!.slice("Completed in ".length, -1)}!`);
+    // Time, moves and streak, then a link to this day's page (not the home
+    // page), so a friend opening it later still gets the same board.
+    const lines = shared.split("\n");
+    expect(lines).toHaveLength(4);
+    expect(lines[0]).toMatch(/^Blocker Rush · [A-Z][a-z]{2} \d{1,2} · (Easy|Medium|Hard|Insane)$/);
+    expect(lines[1]).toMatch(/^⏱️ 1:3\d · 9 moves$/);
+    expect(completedText).toContain(lines[1]!.slice("⏱️ ".length, -" · 9 moves".length));
+    expect(lines[2]).toBe("🔥 1-day streak");
+    expect(lines[3]).toMatch(new RegExp(`/blocker-rush/daily/${saved.dateKey}$`));
 
     expect(errors).toEqual([]);
     await context.close();
@@ -283,8 +290,11 @@ test.describe("daily archive", () => {
     await page.getByRole("button", { name: "Share" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Copied" })).toBeVisible();
     const shared = await page.evaluate(() => navigator.clipboard.readText());
-    expect(shared).toContain(" daily Blocker Rush in 1:0");
-    expect(shared).toContain(`/blocker-rush/daily/${dateKey}`);
+    // No streak line: past puzzles don't count toward it.
+    const lines = shared.split("\n");
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toMatch(/^⏱️ 1:0\d · 9 moves$/);
+    expect(lines[2]).toMatch(new RegExp(`/blocker-rush/daily/${dateKey}$`));
 
     // The archive list shows it solved, with its time; today links home.
     await page.getByRole("button", { name: "More Past Puzzles" }).click();

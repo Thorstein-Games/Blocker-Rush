@@ -47,11 +47,38 @@ export const describeSolve = (
   return elapsedMs === null ? counts : `${formatDuration(elapsedMs)} with ${counts}`;
 };
 
-export const dailyShareMessage = (
-  moves: number,
-  elapsedMs: number | null,
-  /** e.g. "Oct 6" for an archive puzzle; omitted for today's. */
-  dayLabel?: string,
-  hints = 0,
-): string =>
-  `I solved ${dayLabel ? `the ${dayLabel} daily` : "today's"} Blocker Rush in ${describeSolve(moves, elapsedMs, hints)}! Can you beat that?`;
+export type DailyShareResult = {
+  /** e.g. "Oct 8". */
+  dayLabel: string;
+  difficulty: string;
+  moves: number;
+  elapsedMs: number | null;
+  hints: number;
+  /** The current streak; null for archive puzzles, which don't count. */
+  streak: number | null;
+  /** That day's puzzle page, so friends get the same board on any day. */
+  url: string;
+};
+
+/**
+ * The text the Share button sends after solving a daily puzzle:
+ *
+ *   Blocker Rush · Oct 8 · Medium
+ *   ⏱️ 1:43 · 12 moves · 💡 1 hint
+ *   🔥 5-day streak
+ *   https://thorsteingames.com/blocker-rush/daily/2026-10-08
+ */
+export const dailyShareText = (result: DailyShareResult): string => {
+  const difficulty = result.difficulty.charAt(0).toUpperCase() + result.difficulty.slice(1);
+  const counts = [
+    ...(result.elapsedMs === null ? [] : [`⏱️ ${formatDuration(result.elapsedMs)}`]),
+    formatMoves(result.moves),
+    ...(result.hints > 0 ? [`💡 ${formatHints(result.hints)}`] : []),
+  ];
+  return [
+    `Blocker Rush · ${result.dayLabel} · ${difficulty}`,
+    counts.join(" · "),
+    ...(result.streak ? [`🔥 ${result.streak}-day streak`] : []),
+    result.url,
+  ].join("\n");
+};

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Placement } from "@blocker-rush/shared";
 import {
-  buildShareText,
   getDateKey,
   getDailyPuzzle,
   PIECES,
@@ -25,7 +24,7 @@ import {
 } from "./dailyStats";
 import {
   advanceElapsed,
-  dailyShareMessage,
+  dailyShareText,
   describeSolve,
   formatDuration,
 } from "./dailyTimer";
@@ -250,31 +249,28 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
   const handleShare = async () => {
     if (!puzzleId) return;
     track("Share", { mode: archive ? "archive" : "daily" });
-    const baseUrl = `${window.location.origin}${BASE_PATH}`;
-    let text: string;
-    if (archive) {
-      text = [
-        solved
-          ? dailyShareMessage(totalMoves, elapsedMs, shortDate(date), hintsUsed)
-          : `Play the ${shortDate(date)} Blocker Rush daily puzzle`,
-        `${baseUrl}/daily/${dateKey}`,
-      ].join("\n");
-    } else {
-      text = buildShareText(puzzleId, board.placements, baseUrl, {
-        messageText: solved
-          ? dailyShareMessage(totalMoves, elapsedMs, undefined, hintsUsed)
-          : "Play today's Blocker Rush challenge",
-        revealPieceCount: 3,
-      });
-    }
+    const text = dailyShareText({
+      dayLabel: shortDate(date),
+      difficulty: dailyPuzzle.difficulty,
+      moves: totalMoves,
+      elapsedMs,
+      hints: hintsUsed,
+      streak: archive ? null : stats.streak,
+      // That day's page rather than the home page: a friend opening it
+      // tomorrow still gets this board (today's date redirects home).
+      url: `${window.location.origin}${BASE_PATH}/daily/${dateKey}`,
+    });
     try {
       if (navigator.share) {
         await navigator.share({ text });
-      } else if (navigator.clipboard) {
+        setShareStatus(null);
+      } else {
         await navigator.clipboard.writeText(text);
+        setShareStatus("Copied your result. Paste it anywhere to share.");
       }
-      setShareStatus("Copied share text.");
-    } catch {
+    } catch (error) {
+      // Closing the share sheet isn't a failure.
+      if ((error as Error).name === "AbortError") return;
       setShareStatus("Unable to share right now.");
     }
   };
