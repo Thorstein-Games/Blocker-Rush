@@ -1728,3 +1728,42 @@ input {
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+/* /transfer: moving progress between devices */
+.transfer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+}
+
+.transfer-card h3,
+.transfer-card p {
+  margin: 0;
+}
+
+.transfer-card h3 {
+  font-size: 1rem;
+}
+
+.transfer-note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.transfer-row {
+  display: flex;
+  gap: 8px;
+}
+
+.transfer-row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-link {
+  color: var(--text);
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

@@ -61,6 +61,9 @@ export default function DailyArchive() {
         settingsPanel={
           <div className="settings-stack">
             <ThemeSelect />
+            <Link href="/transfer" className="settings-link">
+              Move progress to another device
+            </Link>
           </div>
         }
       />
