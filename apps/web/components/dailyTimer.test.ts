@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_TICK_MS,
   advanceElapsed,
-  dailyShareMessage,
+  dailyShareText,
   describeSolve,
   formatDuration,
   formatHints,
@@ -57,25 +57,50 @@ describe("solve text", () => {
     expect(describeSolve(12, 103_000, 0)).toBe("1:43 with 12 moves");
     expect(describeSolve(12, 103_000, 2)).toBe("1:43 with 12 moves and 2 hints");
     expect(describeSolve(9, null, 1)).toBe("9 moves and 1 hint");
-    expect(dailyShareMessage(9, 7_000, undefined, 1)).toBe(
-      "I solved today's Blocker Rush in 0:07 with 9 moves and 1 hint! Can you beat that?",
-    );
   });
 
   it("includes the time when known", () => {
     expect(describeSolve(12, 103_000)).toBe("1:43 with 12 moves");
-    expect(dailyShareMessage(1, 7_000)).toBe(
-      "I solved today's Blocker Rush in 0:07 with 1 move! Can you beat that?",
-    );
-  });
-
-  it("names the day for archive puzzles", () => {
-    expect(dailyShareMessage(9, 103_000, "Oct 6")).toBe(
-      "I solved the Oct 6 daily Blocker Rush in 1:43 with 9 moves! Can you beat that?",
-    );
   });
 
   it("falls back to moves only for solves saved before the timer", () => {
     expect(describeSolve(9, null)).toBe("9 moves");
+  });
+});
+
+describe("dailyShareText", () => {
+  const base = {
+    dayLabel: "Oct 8",
+    difficulty: "medium",
+    moves: 12,
+    elapsedMs: 103_000,
+    hints: 0,
+    streak: 5,
+    url: "https://thorsteingames.com/blocker-rush/daily/2026-10-08",
+  };
+
+  it("shares time, moves, streak and that day's link", () => {
+    expect(dailyShareText(base)).toBe(
+      [
+        "Blocker Rush · Oct 8 · Medium",
+        "⏱️ 1:43 · 12 moves",
+        "🔥 5-day streak",
+        "https://thorsteingames.com/blocker-rush/daily/2026-10-08",
+      ].join("\n"),
+    );
+  });
+
+  it("adds hints when used", () => {
+    expect(dailyShareText({ ...base, hints: 1 }).split("\n")[1]).toBe("⏱️ 1:43 · 12 moves · 💡 1 hint");
+  });
+
+  it("leaves out the streak for archive puzzles and an unknown time", () => {
+    expect(dailyShareText({ ...base, streak: null, elapsedMs: null, moves: 1 })).toBe(
+      [
+        "Blocker Rush · Oct 8 · Medium",
+        "1 move",
+        "https://thorsteingames.com/blocker-rush/daily/2026-10-08",
+      ].join("\n"),
+    );
   });
 });
