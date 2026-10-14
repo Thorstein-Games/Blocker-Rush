@@ -12,28 +12,28 @@ const PORT = 3301;
 const ORIGIN = `http://localhost:${PORT}`;
 
 const startServer = async (): Promise<ChildProcess> => {
-  const server = spawn("npx", ["next", "start", "-p", String(PORT)], {
+  const server = spawn("node", ["scripts/serve-pages.mjs", String(PORT)], {
     cwd: process.cwd().endsWith("web") ? process.cwd() : "apps/web",
     stdio: "ignore",
     detached: true,
   });
   for (let attempt = 0; attempt < 60; attempt += 1) {
     try {
-      if ((await fetch(`${ORIGIN}/blocker-rush`)).ok) return server;
+      if ((await fetch(`${ORIGIN}/blocker-rush/`)).ok) return server;
     } catch {
       // Not up yet.
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error("next start didn't come up");
+  throw new Error("the static server didn't come up");
 };
 
 const stopServer = async (server: ChildProcess) => {
-  // Kill the whole group: npx → next → its worker.
+  // Kill the whole group, in case anything was spawned under it.
   process.kill(-server.pid!, "SIGKILL");
   for (let attempt = 0; attempt < 40; attempt += 1) {
     try {
-      await fetch(`${ORIGIN}/blocker-rush`);
+      await fetch(`${ORIGIN}/blocker-rush/`);
     } catch {
       return;
     }
@@ -60,7 +60,7 @@ test("the game works offline after one visit", async ({ browser }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
 
-    await page.goto("/blocker-rush");
+    await page.goto("/blocker-rush/");
     await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
     await waitForServiceWorker(page);
 
@@ -73,14 +73,15 @@ test("the game works offline after one visit", async ({ browser }) => {
     await page.keyboard.press("Enter");
     await expect(page.locator(".board-cell.piece").first()).toBeVisible();
 
+    // Unslashed, as an old link would be: served from /casual/'s cache.
     await page.goto("/blocker-rush/casual?p=A2A4D1D2F4F5F6");
     await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
 
-    await page.goto("/blocker-rush/daily");
+    await page.goto("/blocker-rush/daily/");
     await expect(page.locator(".archive-day").first()).toBeVisible();
 
     // A page never opened online gets the offline page, linking home.
-    const response = await page.goto("/blocker-rush/daily/2026-03-01");
+    const response = await page.goto("/blocker-rush/daily/2026-03-01/");
     expect(response?.status()).toBe(503);
     await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
     await page.getByRole("link", { name: "Play the daily puzzle" }).click();
@@ -97,7 +98,8 @@ test("the game works offline after one visit", async ({ browser }) => {
   }
 });
 
-test("the manifest has installable PNG icons", async ({ request }) => {
+test("the manifest has installable PNG icons", async ({ page, request }) => {
+  await page.goto("/blocker-rush/");
   const manifest = await (await request.get("/blocker-rush/manifest.webmanifest")).json();
   expect(manifest).toMatchObject({
     start_url: "/blocker-rush/",
@@ -114,6 +116,11 @@ test("the manifest has installable PNG icons", async ({ request }) => {
   }
   expect(manifest.icons.some((item: { purpose?: string }) => item.purpose === "maskable")).toBe(true);
 
-  const sw = await request.get("/blocker-rush/sw.js");
-  expect(sw.headers()["service-worker-allowed"]).toBe("/blocker-rush");
+  // The site is static files with no custom headers, so the worker's scope
+  // is its own directory.
+  const scope = await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+    return (await navigator.serviceWorker.getRegistration())?.scope;
+  });
+  expect(new URL(scope!).pathname).toBe("/blocker-rush/");
 });

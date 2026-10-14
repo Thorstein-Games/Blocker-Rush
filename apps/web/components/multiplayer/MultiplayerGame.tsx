@@ -30,7 +30,7 @@ function MultiplayerGameContent() {
     if (!state.roomCode || currentRoom === state.roomCode) return;
     currentParams.set("room", state.roomCode);
     const query = currentParams.toString();
-    window.history.replaceState(null, "", withBasePath(`/multiplayer${query ? `?${query}` : ""}`));
+    window.history.replaceState(null, "", withBasePath(`/multiplayer/${query ? `?${query}` : ""}`));
   }, [state.roomCode]);
 
   if (!state.roomCode) {

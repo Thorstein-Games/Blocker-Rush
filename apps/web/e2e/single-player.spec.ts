@@ -35,7 +35,7 @@ test.describe("daily puzzle", () => {
     const page = await context.newPage();
     const errors = watchForErrors(page);
 
-    await page.goto("/blocker-rush");
+    await page.goto("/blocker-rush/");
     await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
     const saved = await expect
       .poll(async () =>
@@ -113,7 +113,7 @@ test.describe("daily puzzle", () => {
     expect(lines[1]).toMatch(/^⏱️ 1:3\d · 9 moves$/);
     expect(completedText).toContain(lines[1]!.slice("⏱️ ".length, -" · 9 moves".length));
     expect(lines[2]).toBe("🔥 1-day streak");
-    expect(lines[3]).toMatch(new RegExp(`/blocker-rush/daily/${saved.dateKey}$`));
+    expect(lines[3]).toMatch(new RegExp(`/blocker-rush/daily/${saved.dateKey}/$`));
 
     expect(errors).toEqual([]);
     await context.close();
@@ -139,7 +139,7 @@ test.describe("daily puzzle", () => {
     );
     const errors = watchForErrors(page);
 
-    await page.goto("/blocker-rush");
+    await page.goto("/blocker-rush/");
     await expect(contextStrip(page)).toContainText("5-day streak");
     await expect(contextStrip(page).locator("time")).toHaveAttribute(
       "datetime",
@@ -155,7 +155,7 @@ test.describe("hints", () => {
 
   test("following hints solves the daily puzzle and is counted", async ({ page }) => {
     const errors = watchForErrors(page);
-    await page.goto("/blocker-rush");
+    await page.goto("/blocker-rush/");
     await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
 
     for (let step = 1; step <= PIECES.length; step += 1) {
@@ -187,7 +187,7 @@ test.describe("hints", () => {
 
   test("says which piece to take back from a dead end", async ({ page }) => {
     const errors = watchForErrors(page);
-    await page.goto("/blocker-rush/casual?p=A2A4D1D2F4F5F6");
+    await page.goto("/blocker-rush/casual/?p=A2A4D1D2F4F5F6");
     await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
 
     // A square for the Dot that no solution uses.
@@ -235,7 +235,7 @@ test.describe("daily archive", () => {
     const dateKey = daysAgo(3);
     const progressKey = `blockerRush.archive.progress.${dateKey}`;
 
-    await page.goto(`/blocker-rush/daily/${dateKey}`);
+    await page.goto(`/blocker-rush/daily/${dateKey}/`);
     await expect(page).toHaveTitle(/^Daily Puzzle for .+ \| Blocker Rush$/);
     await expect(contextStrip(page)).toContainText("Archive");
     await expect(contextStrip(page)).not.toContainText("streak");
@@ -294,17 +294,17 @@ test.describe("daily archive", () => {
     const lines = shared.split("\n");
     expect(lines).toHaveLength(3);
     expect(lines[1]).toMatch(/^⏱️ 1:0\d · 9 moves$/);
-    expect(lines[2]).toMatch(new RegExp(`/blocker-rush/daily/${dateKey}$`));
+    expect(lines[2]).toMatch(new RegExp(`/blocker-rush/daily/${dateKey}/$`));
 
     // The archive list shows it solved, with its time; today links home.
     await page.getByRole("button", { name: "More Past Puzzles" }).click();
-    await expect(page).toHaveURL(/\/blocker-rush\/daily$/);
-    const day = page.locator(`a[href$="/daily/${dateKey}"]`);
+    await expect(page).toHaveURL(/\/blocker-rush\/daily\/$/);
+    const day = page.locator(`a[href$="/daily/${dateKey}/"]`);
     await expect(day).toHaveClass(/solved/);
     await expect(day).toContainText(/✓ 1:0\d/);
-    await expect(page.locator(`a[href$="/daily/${daysAgo(1)}"]`)).not.toHaveClass(/solved/);
+    await expect(page.locator(`a[href$="/daily/${daysAgo(1)}/"]`)).not.toHaveClass(/solved/);
     await expect(page.locator(".archive-day").first()).toContainText("Today");
-    await expect(page.locator(".archive-day").first()).toHaveAttribute("href", "/blocker-rush");
+    await expect(page.locator(".archive-day").first()).toHaveAttribute("href", "/blocker-rush/");
 
     // The stats panel counts the solve under that day's difficulty, with no
     // streak.
@@ -323,15 +323,15 @@ test.describe("daily archive", () => {
 
   test("today's date redirects to the daily page", async ({ page }) => {
     const errors = watchForErrors(page);
-    await page.goto(`/blocker-rush/daily/${daysAgo(0)}`);
-    await expect(page).toHaveURL(/\/blocker-rush$/);
+    await page.goto(`/blocker-rush/daily/${daysAgo(0)}/`);
+    await expect(page).toHaveURL(/\/blocker-rush\/$/);
     await expect(contextStrip(page)).toContainText("streak");
     expect(errors).toEqual([]);
   });
 
   test("a future date isn't playable yet", async ({ page }) => {
     const errors = watchForErrors(page);
-    await page.goto(`/blocker-rush/daily/${daysAgo(-2)}`);
+    await page.goto(`/blocker-rush/daily/${daysAgo(-2)}/`);
     await expect(page.getByRole("status")).toContainText("isn't out yet");
     await expect(page.locator(".board-cell")).toHaveCount(0);
     expect(errors).toEqual([]);
@@ -339,7 +339,7 @@ test.describe("daily archive", () => {
 
   for (const bad of ["2026-02-30", "2020-01-01", "yesterday"]) {
     test(`invalid date ${bad} is a 404`, async ({ page }) => {
-      const response = await page.goto(`/blocker-rush/daily/${bad}`);
+      const response = await page.goto(`/blocker-rush/daily/${bad}/`);
       expect(response?.status()).toBe(404);
     });
   }
@@ -348,7 +348,7 @@ test.describe("daily archive", () => {
 test("casual ?p= link loads that exact puzzle", async ({ page }) => {
   const errors = watchForErrors(page);
   const id = "A2A4D1D2F4F5F6";
-  await page.goto(`/blocker-rush/casual?p=${id}`);
+  await page.goto(`/blocker-rush/casual/?p=${id}`);
   const blockers = page.locator(".board-cell.blocker");
   await expect(blockers).toHaveCount(7);
   const labels = await blockers.evaluateAll((cells) =>
@@ -364,7 +364,7 @@ test("casual ?p= link loads that exact puzzle", async ({ page }) => {
 });
 
 test.describe("pages load without errors", () => {
-  for (const path of ["/blocker-rush", "/blocker-rush/casual"]) {
+  for (const path of ["/blocker-rush/", "/blocker-rush/casual/"]) {
     test(path, async ({ page }) => {
       const errors = watchForErrors(page);
       await page.goto(path);
@@ -373,16 +373,16 @@ test.describe("pages load without errors", () => {
     });
   }
 
-  test("/blocker-rush/daily", async ({ page }) => {
+  test("/blocker-rush/daily/", async ({ page }) => {
     const errors = watchForErrors(page);
-    await page.goto("/blocker-rush/daily");
+    await page.goto("/blocker-rush/daily/");
     await expect(page.locator(".archive-day").first()).toBeVisible();
     expect(errors).toEqual([]);
   });
 
   test("unknown path returns the 404 page", async ({ page }) => {
     const errors = watchForErrors(page);
-    const response = await page.goto("/blocker-rush/no-such-page");
+    const response = await page.goto("/blocker-rush/no-such-page/");
     expect(response?.status()).toBe(404);
     await expect(page.getByText("could not be found")).toBeVisible();
     // The 404 response itself is logged as a console error; nothing else.

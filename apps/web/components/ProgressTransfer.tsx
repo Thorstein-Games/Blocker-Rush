@@ -66,7 +66,7 @@ export default function ProgressTransfer() {
   }, []);
 
   const link = () =>
-    `${window.location.origin}${BASE_PATH}/transfer#p=${encodeTransfer(localProgress())}`;
+    `${window.location.origin}${BASE_PATH}/transfer/#p=${encodeTransfer(localProgress())}`;
 
   const copyLink = async () => {
     try {

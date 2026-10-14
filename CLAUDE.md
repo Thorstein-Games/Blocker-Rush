@@ -12,8 +12,9 @@ Blocker Rush is a block-placement puzzle game: fit 9 pieces (29 cells) into a 6�
 npm run verify           # typecheck + lint + unit tests + megingjord drift check (~6s, no servers) — run before committing
 npm test                 # unit tests only (vitest, all workspaces)
 npm run test:e2e         # Playwright suite; starts megingjord + Next itself (~50s). E2E_NO_MEGINGJORD=1 runs only single-player specs
-npm run test:e2e:prod    # *.prod.spec.ts against a production build on :3300 (offline/service worker, manifest)
+npm run test:e2e:prod    # *.prod.spec.ts against the static export on :3300 (offline/service worker, manifest)
 npm run dev              # Next.js dev server on :3000
+npm run build            # static export to apps/web/out; `npm start` serves it like GitHub Pages on :3000
 npm run sync:megingjord  # copy shared/protocol into megingjord after changing them
 ```
 
@@ -23,15 +24,19 @@ Single test file: `npx vitest run tests/solver.test.ts` from `packages/shared` (
 
 - `packages/shared` (`@blocker-rush/shared`) — pure puzzle logic: board, pieces/transforms, solver (`solveFromPlacements` solves around pieces already on the board), hints (`findHint`: next placement from the player's current board, or which piece to take back), progress transfer (`transfer.ts`: `encodeTransfer`/`decodeTransfer` pack stats + solve history into a compact base64url string, `mergeProgressData` combines two devices' progress), difficulty, daily puzzle, share text, puzzle dataset. Tests in `packages/shared/tests/`.
 - `packages/protocol` (`@blocker-rush/protocol`) — client ↔ server types. `domain.ts` = domain types; `messages.ts` = every `blocker_rush` wire payload (`ServerMessages`, `ClientMessages`).
-- `apps/web` — Next.js 14 App Router. Casual mode `app/casual`, multiplayer `app/multiplayer`, daily archive `app/daily` (list) and `app/daily/[date]` (one past day; rendered on first request and cached, invalid or pre-`ARCHIVE_START_KEY` dates 404).
+- `apps/web` — Next.js 14 App Router, built as a static export (see Hosting). Casual mode `app/casual`, multiplayer `app/multiplayer`, daily archive `app/daily` (list) and `app/daily/[date]` (one past day; pre-rendered from `ARCHIVE_START_KEY` to a week past the build date, other dates 404).
   - `components/DailyGame.tsx` — today's puzzle, or a past day with `archiveDateKey` (own progress and timer, never touches the streak; today's date redirects to `/`, future dates show a gate). localStorage I/O lives in `dailyStorage.ts`; pure date/history helpers in `dailyArchive.ts` (`blockerRush.daily.history` holds moves/time/hints per solved day, today's and archive alike; `summarizeHistory` feeds `DailyStatsPanel`'s per-difficulty times). Best streak is `bestStreak` in the stats entry (`getBestStreak` covers stats saved before it existed).
   - `app/transfer` + `components/ProgressTransfer.tsx` — moving progress between devices with no server: a `/transfer#p=…` link carries the data in its fragment (never sent to a server); opening it offers to merge it into this device. Linked from the daily/archive settings panels; `noindex`. Player data is deliberately not stored server-side (megingjord's Redis is a restart cache for room state).
   - `components/useHint.ts` — the Hint button's behaviour for single-player boards (casual, daily, archive; `PiecesTray onHint`). The daily progress entry saves the hint count, which shows in the completion notice and share text.
-  - Offline/PWA: `public/sw.js` (hand-written service worker, registered by `components/ServiceWorker.tsx` in production only, scope `/blocker-rush` via the `Service-Worker-Allowed` header in `next.config.js`). Pages are network-first with a cache fallback, `_next/static` is cache-first, and install precaches `/`, `/casual`, `/daily` plus every static file they reference. Manifest PNG icons come from `app/pwa-icon/[variant]` (rendered from `public/favicon.svg`).
+  - Offline/PWA: `public/sw.js` (hand-written service worker, registered by `components/ServiceWorker.tsx` in production only, scope `/blocker-rush/`: no custom headers on a static host, so it can't be wider than the script's directory). Pages are network-first with a cache fallback, `_next/static` is cache-first, and install precaches `/`, `/casual/`, `/daily/` plus every static file they reference. Manifest PNG icons come from `app/pwa-icon/[variant]` (`192.png` etc., rendered from `public/favicon.svg`).
   - `components/GameContext.tsx` — single-player board state + drag/drop/keyboard interaction (types in `gameTypes.ts`, pure helpers in `pieceGeometry.ts`).
   - `components/multiplayer/useMultiplayerSocket.ts` — Colyseus connection and actions. Server-message state transitions are pure reducers in `multiplayerReducers.ts` (unit-tested); state shape in `multiplayerTypes.ts`; client/URL/seat-reservation shim in `colyseusClient.ts`.
 
 Workspace packages export their TypeScript `src` directly; no build step is needed for the web app to consume them.
+
+## Hosting
+
+GitHub Pages, deployed by `.github/workflows/pages.yml` on every push to `main`, daily (to add the next archive day) and on demand. thorsteingames.com/blocker-rush proxies to it (the thorstein-games-website app's rewrite), so canonical URLs use thorsteingames.com. `next build` writes a static export (`output: "export"`, build phase only) to `apps/web/out`, so there's no server code: no headers, redirects, middleware or request-time rendering, and every route (route handlers and images included) must be static. `trailingSlash: true` makes every page `dir/index.html`; page URLs end in `/` (Next adds it to `<Link>`/router hrefs, add it yourself to hand-built URLs). Pages picks the Content-Type from the file extension, which is why images are `.png` routes rather than the extensionless `opengraph-image`/`apple-icon` conventions. `apps/web/scripts/serve-pages.mjs` serves `out/` the same way for `npm start` and the prod e2e specs. Build-time settings (`NEXT_PUBLIC_GAME_SERVER_URL`, Plausible) are optional repository Actions variables.
 
 ## Megingjord coupling (read before touching shared/protocol)
 
@@ -45,15 +50,15 @@ To add or change a message: edit `packages/protocol/src/messages.ts`, sync, then
 
 ## Analytics
 
-Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (not set up in production yet; see the TODO in `lib/analytics.ts`) (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.
+Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (a repository Actions variable) (not set up in production yet; see the TODO in `lib/analytics.ts`) (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.
 
 ## E2E gotchas
 
 - `playwright.config.ts` starts megingjord (`pnpm dev` in `MEGINGJORD_DIR`, default `../megingjord`) with `MATCHMAKE_RATE_MAX=1000`. All simulated players share one IP, so megingjord's per-IP matchmake rate limit would otherwise make create/join calls fail silently. If you reuse an already-running megingjord that was started without that env var, you'll see the same failures, and they look like UI bugs.
 - `e2e/single-player.spec.ts` covers the daily solve → streak → reload → share flow (it restores 8 pieces of a real solver solution into localStorage, then places the Dot through the UI), daily hydration on a later day with a saved streak, the archive (solving a past day, today/future/invalid dates), hints (following hints solves the daily; dead-end advice), casual `?p=` links, and that pages load without console errors. `e2e/transfer.spec.ts` moves progress between two browser contexts with a transfer link. `e2e/blocker-rush-multiplayer.spec.ts` covers join, ready, start, kick, reconnect, leave and invite links. Multiplayer gameplay message handling is covered by `multiplayerReducers.test.ts`; daily streak math by `components/dailyStats.test.ts`; the daily solve timer and move/time formatting by `components/dailyTimer.test.ts`. The daily move count and visible solving time are saved in the progress entry in localStorage, so both survive a reload.
 - Specs fail on any console error, so a React hydration warning in dev fails them too.
-- `e2e/offline.prod.spec.ts` starts and kills its own `next start` on :3301 to go offline: Playwright's `setOffline` doesn't stop a service worker's own fetches in Chromium, so it would pass without testing anything.
+- `e2e/offline.prod.spec.ts` starts and kills its own static server on :3301 to go offline: Playwright's `setOffline` doesn't stop a service worker's own fetches in Chromium, so it would pass without testing anything.
 
 ## CI
 
-`.github/workflows/ci.yml` runs `npm run verify` and the Playwright suite on every PR. megingjord is private: the e2e job checks it out only if the repo has a `MEGINGJORD_TOKEN` secret, and otherwise runs with `E2E_NO_MEGINGJORD=1`. The megingjord drift check doesn't run in CI.
+`.github/workflows/ci.yml` runs `npm run verify` and the Playwright suite on every PR; `pages.yml` deploys (see Hosting). megingjord is private: the e2e job checks it out only if the repo has a `MEGINGJORD_TOKEN` secret, and otherwise runs with `E2E_NO_MEGINGJORD=1`. The megingjord drift check doesn't run in CI.

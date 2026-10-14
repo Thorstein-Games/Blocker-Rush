@@ -258,7 +258,7 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
       streak: archive ? null : stats.streak,
       // That day's page rather than the home page: a friend opening it
       // tomorrow still gets this board (today's date redirects home).
-      url: `${window.location.origin}${BASE_PATH}/daily/${dateKey}`,
+      url: `${window.location.origin}${BASE_PATH}/daily/${dateKey}/`,
     });
     try {
       if (navigator.share) {

@@ -48,22 +48,22 @@ test("progress moves to another device with a transfer link", async ({ browser }
   });
 
   // The settings panel links to the transfer page.
-  await phone.page.goto("/blocker-rush");
+  await phone.page.goto("/blocker-rush/");
   await phone.page.getByRole("button", { name: "Open settings" }).click();
   await phone.page.getByRole("link", { name: "Move progress to another device" }).click();
-  await expect(phone.page).toHaveURL(/\/blocker-rush\/transfer$/);
+  await expect(phone.page).toHaveURL(/\/blocker-rush\/transfer\/$/);
   await expect(phone.page.getByText("3-day streak, best 5, 2 puzzles solved.")).toBeVisible();
 
   await phone.page.getByRole("button", { name: "Copy link" }).click();
   await expect(phone.page.getByText("Link copied")).toBeVisible();
   const link = await phone.page.evaluate(() => navigator.clipboard.readText());
-  expect(link).toMatch(/\/blocker-rush\/transfer#p=[A-Za-z0-9_-]+$/);
+  expect(link).toMatch(/\/blocker-rush\/transfer\/#p=[A-Za-z0-9_-]+$/);
 
   // The laptop opens the link and adds the phone's progress to its own.
   await laptop.page.goto(link.replace(/^https?:\/\/[^/]+/, ""));
   await expect(laptop.page.getByText("3-day streak, best 5, 2 puzzles solved.").first()).toBeVisible();
   // The progress doesn't linger in the address bar.
-  await expect(laptop.page).toHaveURL(/\/blocker-rush\/transfer$/);
+  await expect(laptop.page).toHaveURL(/\/blocker-rush\/transfer\/$/);
   await laptop.page.getByRole("button", { name: "Add to this device" }).click();
   await expect(laptop.page.getByRole("status").filter({ hasText: "Added." })).toContainText(
     "3-day streak, best 5, 3 puzzles solved",
@@ -88,12 +88,12 @@ test("a pasted link works, and a damaged one is rejected", async ({ browser }) =
   const phone = await device(browser, { streak: 1, lastCompletedDateKey: dateKey(0) }, {
     [dateKey(0)]: { moves: 9, elapsedMs: 50_000, hints: 0 },
   });
-  await phone.page.goto("/blocker-rush/transfer");
+  await phone.page.goto("/blocker-rush/transfer/");
   await phone.page.getByRole("button", { name: "Copy link" }).click();
   const link = await phone.page.evaluate(() => navigator.clipboard.readText());
 
   const tablet = await device(browser, { streak: 0 }, {});
-  await tablet.page.goto("/blocker-rush/transfer#p=AAAA");
+  await tablet.page.goto("/blocker-rush/transfer/#p=AAAA");
   await expect(tablet.page.getByText("This transfer link is incomplete or damaged.")).toBeVisible();
 
   await tablet.page.getByLabel("Paste a link from another device").fill(link);

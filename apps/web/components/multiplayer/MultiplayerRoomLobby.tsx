@@ -44,7 +44,7 @@ export default function MultiplayerRoomLobby() {
 
   const handleShareRoom = async () => {
     if (!state.roomCode) return;
-    const url = `${window.location.origin}${withBasePath(`/multiplayer?room=${state.roomCode}`)}`;
+    const url = `${window.location.origin}${withBasePath(`/multiplayer/?room=${state.roomCode}`)}`;
     try {
       if (navigator.share) {
         await navigator.share({ text: url, url });

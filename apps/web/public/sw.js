@@ -15,15 +15,16 @@
 // Bump VERSION to drop every cache when the caching scheme changes; normal
 // deploys don't need it.
 
-const VERSION = "v1";
+const VERSION = "v2";
 const PAGES = `blocker-rush-pages-${VERSION}`;
 const STATIC = `blocker-rush-static-${VERSION}`;
 const OTHER = `blocker-rush-other-${VERSION}`;
 const CACHES = [PAGES, STATIC, OTHER];
 
-// "/blocker-rush" (the scope has a trailing slash only if registered with one).
+// "/blocker-rush" (the scope is "/blocker-rush/").
 const BASE = new URL(self.registration.scope).pathname.replace(/\/$/, "");
-const PRECACHE_PAGES = [BASE, `${BASE}/casual`, `${BASE}/daily`];
+// Page URLs end in a slash (trailingSlash in next.config.js).
+const PRECACHE_PAGES = [`${BASE}/`, `${BASE}/casual/`, `${BASE}/daily/`];
 const STATIC_PREFIX = `${BASE}/_next/static/`;
 // Old deploys' hashed files pile up in STATIC; keep it bounded.
 const MAX_STATIC_ENTRIES = 300;
@@ -91,28 +92,29 @@ const offlineResponse = () =>
       "<title>Offline | Blocker Rush</title>" +
       "<body style='font-family:sans-serif;background:#06101b;color:#eaf6ff;padding:24px'>" +
       `<h1>You're offline</h1><p>This page hasn't been saved for offline play yet. ` +
-      `<a style='color:#f2c14e' href='${BASE}'>Play the daily puzzle</a></p>`,
+      `<a style='color:#f2c14e' href='${BASE}/'>Play the daily puzzle</a></p>`,
     { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
   );
+
+// Keyed without the query string (/casual/?p=… shares /casual/'s page) and
+// with the trailing slash the host would redirect to (/casual → /casual/).
+const pageKey = (request) => {
+  const url = new URL(request.url);
+  return url.origin + url.pathname.replace(/\/?$/, "/");
+};
 
 const handleNavigation = async (request) => {
   const cache = await caches.open(PAGES);
   try {
     const response = await fetch(request);
     if (response.ok && response.type === "basic" && !response.redirected) {
-      // Keyed without the query string: /casual?p=… shares /casual's page.
-      const url = new URL(request.url);
-      await cache.put(url.origin + url.pathname, response.clone());
+      await cache.put(pageKey(request), response.clone());
     }
     return response;
   } catch {
-    const url = new URL(request.url);
     // A page never opened online (e.g. an archive day) gets a short offline
     // page linking to today's puzzle, which is always precached.
-    return (
-      (await cache.match(url.origin + url.pathname, { ignoreVary: true })) ??
-      offlineResponse()
-    );
+    return (await cache.match(pageKey(request), { ignoreVary: true })) ?? offlineResponse();
   }
 };
 

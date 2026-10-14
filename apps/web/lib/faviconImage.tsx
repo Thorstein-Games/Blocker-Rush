@@ -1,12 +1,7 @@
 import { ImageResponse } from "next/og";
 
-export const size = {
-  width: 180,
-  height: 180,
-};
-export const contentType = "image/png";
-
-export default function AppleIcon() {
+/** The 32px "BR" favicon, served at /favicon.ico and /favicon-32x32.png. */
+export function faviconImage() {
   return new ImageResponse(
     (
       <div
@@ -17,17 +12,20 @@ export default function AppleIcon() {
           alignItems: "center",
           justifyContent: "center",
           background: "linear-gradient(145deg, #08111d 0%, #193c5f 100%)",
-          borderRadius: 40,
+          borderRadius: 7,
           color: "#eaf6ff",
           fontFamily: "Arial, sans-serif",
-          fontSize: 58,
+          fontSize: 14,
           fontWeight: 800,
-          letterSpacing: 2,
+          letterSpacing: 0.5,
         }}
       >
         BR
       </div>
     ),
-    size,
+    {
+      width: 32,
+      height: 32,
+    },
   );
 }

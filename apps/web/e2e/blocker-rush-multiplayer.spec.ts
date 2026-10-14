@@ -21,12 +21,12 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     const pageA = await contextA.newPage();
     const pageB = await contextB.newPage();
 
-    await pageA.goto("/blocker-rush/multiplayer");
+    await pageA.goto("/blocker-rush/multiplayer/");
     await pageA.getByRole("button", { name: "Join Public Matchmaking" }).click();
     await expect(roomCodeOf(pageA)).not.toHaveText("", { timeout: 10_000 });
     const codeA = await roomCodeOf(pageA).innerText();
 
-    await pageB.goto("/blocker-rush/multiplayer");
+    await pageB.goto("/blocker-rush/multiplayer/");
     await pageB.getByRole("button", { name: "Join Public Matchmaking" }).click();
     await expect(roomCodeOf(pageB)).not.toHaveText("", { timeout: 10_000 });
     const codeB = await roomCodeOf(pageB).innerText();
@@ -45,13 +45,13 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     const hostPage = await hostContext.newPage();
     const guestPage = await guestContext.newPage();
 
-    await hostPage.goto("/blocker-rush/multiplayer");
+    await hostPage.goto("/blocker-rush/multiplayer/");
     await hostPage.getByRole("button", { name: "Create Private Room" }).click();
     await expect(roomCodeOf(hostPage)).not.toHaveText("", { timeout: 10_000 });
     const roomCode = await roomCodeOf(hostPage).innerText();
     expect(roomCode.length).toBeGreaterThan(0);
 
-    await guestPage.goto("/blocker-rush/multiplayer");
+    await guestPage.goto("/blocker-rush/multiplayer/");
     await guestPage.locator("#room-code").fill(roomCode);
     await guestPage.getByRole("button", { name: "Join by Code" }).click();
     await expect(roomCodeOf(guestPage)).toHaveText(roomCode, { timeout: 10_000 });
@@ -86,12 +86,12 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     const hostPage = await hostContext.newPage();
     const guestPage = await guestContext.newPage();
 
-    await hostPage.goto("/blocker-rush/multiplayer");
+    await hostPage.goto("/blocker-rush/multiplayer/");
     await hostPage.getByRole("button", { name: "Create Private Room" }).click();
     await expect(roomCodeOf(hostPage)).not.toHaveText("", { timeout: 10_000 });
     const roomCode = await roomCodeOf(hostPage).innerText();
 
-    await guestPage.goto("/blocker-rush/multiplayer");
+    await guestPage.goto("/blocker-rush/multiplayer/");
     await guestPage.locator("#room-code").fill(roomCode);
     await guestPage.getByRole("button", { name: "Join by Code" }).click();
     await expect(roomCodeOf(guestPage)).toHaveText(roomCode, { timeout: 10_000 });
@@ -126,12 +126,12 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     const hostPage = await hostContext.newPage();
     const guestPage = await guestContext.newPage();
 
-    await hostPage.goto("/blocker-rush/multiplayer");
+    await hostPage.goto("/blocker-rush/multiplayer/");
     await hostPage.getByRole("button", { name: "Create Private Room" }).click();
     await expect(roomCodeOf(hostPage)).not.toHaveText("", { timeout: 10_000 });
     const roomCode = await roomCodeOf(hostPage).innerText();
 
-    await guestPage.goto("/blocker-rush/multiplayer");
+    await guestPage.goto("/blocker-rush/multiplayer/");
     await guestPage.locator("#room-code").fill(roomCode);
     await guestPage.getByRole("button", { name: "Join by Code" }).click();
     await expect(roomCodeOf(guestPage)).toHaveText(roomCode, { timeout: 10_000 });
@@ -157,7 +157,7 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    await page.goto("/blocker-rush/multiplayer");
+    await page.goto("/blocker-rush/multiplayer/");
     await page.getByRole("button", { name: "Create Private Room" }).click();
     await expect(roomCodeOf(page)).not.toHaveText("", { timeout: 10_000 });
 
@@ -176,7 +176,7 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
     });
-    await page.goto("/blocker-rush/multiplayer");
+    await page.goto("/blocker-rush/multiplayer/");
     await expect(page.getByRole("button", { name: "Join Public Matchmaking" })).toBeEnabled({
       timeout: 10_000,
     });
@@ -197,7 +197,7 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     const hostPage = await hostContext.newPage();
     const guestPage = await guestContext.newPage();
 
-    await hostPage.goto("/blocker-rush/multiplayer");
+    await hostPage.goto("/blocker-rush/multiplayer/");
     await hostPage.getByRole("button", { name: "Create Private Room" }).click();
     await expect(roomCodeOf(hostPage)).not.toHaveText("", { timeout: 10_000 });
     const roomCode = await roomCodeOf(hostPage).innerText();
@@ -205,7 +205,7 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     await hostPage.getByRole("button", { name: "Share Room Link" }).click();
     await expect(hostPage.getByText("Room link copied.")).toBeVisible();
     const invite = await hostPage.evaluate(() => navigator.clipboard.readText());
-    expect(new URL(invite).pathname).toBe("/blocker-rush/multiplayer");
+    expect(new URL(invite).pathname).toBe("/blocker-rush/multiplayer/");
     expect(new URL(invite).searchParams.get("room")).toBe(roomCode);
 
     // Opening the invite auto-joins the room.

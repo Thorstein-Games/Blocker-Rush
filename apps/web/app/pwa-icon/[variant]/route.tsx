@@ -10,9 +10,9 @@ export const dynamic = "force-static";
 export const dynamicParams = false;
 
 const VARIANTS = {
-  "192": { size: 192, maskable: false },
-  "512": { size: 512, maskable: false },
-  "maskable-512": { size: 512, maskable: true },
+  "192.png": { size: 192, maskable: false },
+  "512.png": { size: 512, maskable: false },
+  "maskable-512.png": { size: 512, maskable: true },
 } as const;
 
 type Variant = keyof typeof VARIANTS;

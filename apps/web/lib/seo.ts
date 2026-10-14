@@ -28,7 +28,7 @@ const normalizeSiteUrl = (value: string): string => {
 };
 
 // Origin only (no path) — the game is served under BASE_PATH on
-// thorsteingames.com via a proxy, so Netlify's own URL isn't canonical.
+// thorsteingames.com via a proxy, so GitHub Pages' own URL isn't canonical.
 const envSiteOrigin =
   process.env.NEXT_PUBLIC_SITE_URL ?? process.env.SITE_URL;
 
@@ -42,15 +42,14 @@ export const SITE_URL = `${SITE_ORIGIN}${BASE_PATH}`;
 type PagePath = `/${string}` | "/";
 
 /**
- * Absolute URL for a page. The home page is SITE_URL itself: Next serves
- * the base path without a trailing slash and redirects `/blocker-rush/` to
- * it, so a relative "/" canonical (which Next resolves to the slashed form)
- * would point Google at a redirect.
+ * Absolute URL for a page, with the trailing slash every page URL has
+ * (`trailingSlash` in next.config.js): GitHub Pages redirects the
+ * unslashed form, and a canonical shouldn't point Google at a redirect.
  */
 export const pageUrl = (path: PagePath): string =>
-  path === "/" ? SITE_URL : `${SITE_URL}${path}`;
+  path === "/" ? `${SITE_URL}/` : `${SITE_URL}${path}/`;
 
-const socialImageUrl = `${SITE_URL}/opengraph-image`;
+const socialImageUrl = `${SITE_URL}/opengraph-image.png`;
 
 type BuildPageMetadataInput = {
   /** Shown in search results; the layout template appends " | Blocker Rush". */
@@ -98,7 +97,7 @@ export const buildPageMetadata = ({
       card: "summary_large_image",
       title: fullTitle,
       description,
-      images: [`${SITE_URL}/twitter-image`],
+      images: [socialImageUrl],
     },
   };
 };
@@ -115,7 +114,7 @@ export const webSiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: SITE_NAME,
-  url: SITE_URL,
+  url: pageUrl("/"),
   inLanguage: "en-US",
   description: SITE_DESCRIPTION,
   publisher,
@@ -125,7 +124,7 @@ export const videoGameJsonLd = {
   "@context": "https://schema.org",
   "@type": ["VideoGame", "WebApplication"],
   name: SITE_NAME,
-  url: SITE_URL,
+  url: pageUrl("/"),
   description: SITE_DESCRIPTION,
   image: socialImageUrl,
   inLanguage: "en-US",
@@ -160,7 +159,7 @@ export const breadcrumbJsonLd = (...trail: Array<[name: string, path: PagePath]>
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   itemListElement: [
-    { "@type": "ListItem", position: 1, name: SITE_NAME, item: SITE_URL },
+    { "@type": "ListItem", position: 1, name: SITE_NAME, item: pageUrl("/") },
     ...trail.map(([name, path], index) => ({
       "@type": "ListItem",
       position: index + 2,

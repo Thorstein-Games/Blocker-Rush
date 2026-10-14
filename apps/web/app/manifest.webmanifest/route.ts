@@ -36,22 +36,22 @@ function manifest(): MetadataRoute.Manifest {
         type: "image/png",
       },
       {
-        src: withBasePath("/apple-icon"),
+        src: withBasePath("/apple-icon.png"),
         sizes: "180x180",
         type: "image/png",
       },
       {
-        src: withBasePath("/pwa-icon/192"),
+        src: withBasePath("/pwa-icon/192.png"),
         sizes: "192x192",
         type: "image/png",
       },
       {
-        src: withBasePath("/pwa-icon/512"),
+        src: withBasePath("/pwa-icon/512.png"),
         sizes: "512x512",
         type: "image/png",
       },
       {
-        src: withBasePath("/pwa-icon/maskable-512"),
+        src: withBasePath("/pwa-icon/maskable-512.png"),
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",

@@ -1,18 +1,30 @@
 import { notFound } from "next/navigation";
-import { getDailyDifficulty } from "@blocker-rush/shared";
+import { getDailyDifficulty, getDateKey } from "@blocker-rush/shared";
 import DailyGame from "../../../components/DailyGame";
 import SeoContent from "../../../components/SeoContent";
-import { isArchiveDateKey } from "../../../components/dailyArchive";
+import {
+  archiveDateKeys,
+  isArchiveDateKey,
+} from "../../../components/dailyArchive";
 import { parseDateKey } from "../../../components/dailyStats";
 import { breadcrumbJsonLd, buildPageMetadata } from "../../../lib/seo";
 
 type Params = { params: { date: string } };
 
-// Rendered on first request and then cached: dates keep arriving after the
-// build, and every date's page is identical for every visitor. Whether a
-// date is in the visitor's future is decided client-side.
-export const dynamicParams = true;
-export const generateStaticParams = () => [];
+// Static export: one page per day, from the archive start to a week past
+// the build date, so a page exists for "yesterday" in every time zone and
+// a few missed deploys don't break anything. The Pages workflow rebuilds
+// daily to keep adding days. Every date's page is identical for every
+// visitor; whether a date is in the visitor's future is decided
+// client-side. Any other date gets the 404 page.
+const BUILD_AHEAD_DAYS = 7;
+
+export const dynamicParams = false;
+export function generateStaticParams() {
+  const last = new Date();
+  last.setDate(last.getDate() + BUILD_AHEAD_DAYS);
+  return archiveDateKeys(getDateKey(last)).map((date) => ({ date }));
+}
 
 const longDate = (dateKey: string) =>
   parseDateKey(dateKey).toLocaleDateString("en-US", {

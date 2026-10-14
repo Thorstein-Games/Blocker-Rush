@@ -1,7 +1,9 @@
-import { NextResponse } from "next/server";
-import { withBasePath } from "../../lib/basePath";
+import { faviconImage } from "../../lib/faviconImage";
 
-export function GET(request: Request) {
-  const iconUrl = new URL(withBasePath("/favicon-32x32.png"), request.url);
-  return NextResponse.redirect(iconUrl, 308);
+// The same PNG as /favicon-32x32.png: a static host can't redirect, and
+// browsers read PNG data served as .ico.
+export const dynamic = "force-static";
+
+export function GET() {
+  return faviconImage();
 }

@@ -164,7 +164,7 @@ function CasualGameLayout() {
     (nextId: string) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set("p", nextId);
-      router.replace(`/casual?${params.toString()}`, { scroll: false });
+      router.replace(`/casual/?${params.toString()}`, { scroll: false });
     },
     [router, searchParams],
   );
@@ -275,7 +275,7 @@ function CasualGameLayout() {
   const handleShare = async () => {
     track("Share", { mode: "casual" });
     if (!puzzleId) return;
-    const baseUrl = `${window.location.origin}${withBasePath("/casual")}`;
+    const baseUrl = `${window.location.origin}${withBasePath("/casual/")}`;
     const text = buildShareText(puzzleId, board.placements, baseUrl, {
       messageText: solved
         ? `I just solved a ${puzzleDifficulty ?? "mystery"} Blocker Rush puzzle in ${formatMoves(moveCount)}! Can you solve it?`

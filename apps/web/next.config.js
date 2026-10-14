@@ -1,13 +1,23 @@
 // Served at thorsteingames.com/blocker-rush: the thorstein-games-website
 // Next app rewrites /blocker-rush/* to this site, so every route and asset
-// has to live under the same prefix.
-const basePath = "/blocker-rush";
-const canonicalOrigin = "https://thorsteingames.com";
+// has to live under the same prefix. The site itself is hosted on GitHub
+// Pages as a project site, which also lives at /blocker-rush.
+import { PHASE_PRODUCTION_BUILD } from "next/constants.js";
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const basePath = "/blocker-rush";
+
+/** @type {(phase: string) => import('next').NextConfig} */
+const nextConfig = (phase) => ({
   reactStrictMode: true,
   basePath,
+  // GitHub Pages only serves files: `next build` writes the whole site to
+  // out/ (deployed by .github/workflows/pages.yml). So no headers,
+  // redirects or per-request rendering. Build only: Next 14's dev server
+  // turns unlisted params of an export into 500s rather than 404s.
+  output: phase === PHASE_PRODUCTION_BUILD ? "export" : undefined,
+  // Every page is a directory with an index.html (out/daily/index.html),
+  // which is how GitHub Pages resolves /daily/. It redirects /daily there.
+  trailingSlash: true,
   env: {
     // Read via lib/basePath.ts for URLs Next doesn't prefix on its own
     // (raw <img>, history.replaceState, metadata icons, manifest).
@@ -16,38 +26,7 @@ const nextConfig = {
   transpilePackages: ["@blocker-rush/shared"],
   experimental: {
     typedRoutes: false
-  },
-  async headers() {
-    return [
-      {
-        // The service worker controls /blocker-rush itself, not just
-        // /blocker-rush/…, which is wider than its script's directory
-        // allows by default. no-cache so a new worker is picked up promptly.
-        source: "/sw.js",
-        headers: [
-          { key: "Service-Worker-Allowed", value: basePath },
-          { key: "Cache-Control", value: "no-cache" }
-        ]
-      }
-    ];
-  },
-  async redirects() {
-    // Netlify sets CONTEXT at build time. Only production sends visitors
-    // who hit blocker-rush.netlify.app directly over to the canonical
-    // domain; deploy previews and local dev keep working in place.
-    if (process.env.CONTEXT !== "production") return [];
-    return [
-      {
-        // Anything outside the base path (the old root URLs). Requests
-        // proxied from thorsteingames.com always arrive under /blocker-rush,
-        // so this can't loop.
-        source: `/:path((?!${basePath.slice(1)}(?:/|$)).*)`,
-        destination: `${canonicalOrigin}${basePath}/:path`,
-        basePath: false,
-        permanent: true
-      }
-    ];
   }
-};
+});
 
 export default nextConfig;
