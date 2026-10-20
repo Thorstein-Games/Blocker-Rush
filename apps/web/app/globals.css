@@ -1783,6 +1783,14 @@ tg-footer {
 }
 
 /* "Play a different game" tiles (tg-bar.js) under a finished puzzle or match. */
+/* Ad slots from tg-bar.js (see CLAUDE.md). */
+.finish-ad {
+  margin-top: 16px;
+}
+.page-ad {
+  padding: 24px 0;
+}
+
 .more-games {
   margin-top: 8px;
   padding-top: 14px;

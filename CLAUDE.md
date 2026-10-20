@@ -50,6 +50,7 @@ To add or change a message: edit `packages/protocol/src/messages.ts`, sync, then
 - The bar is always 40px. `globals.css` holds that space before the script loads (`tg-bar:not(:defined)`), and `.app-shell` / `.no-scroll-mobile` are `100dvh - 40px` so the footer starts below the fold. Keep those in step.
 - `NEXT_PUBLIC_TG_BAR_SRC` overrides the script URL; both Playwright configs set it to `""` so tests never load it from production (the tags and the 40px placeholder stay, so layout is unchanged).
 - The service worker only handles `/blocker-rush/*`, so offline the bar is simply missing.
+- Ads (`<tg-ad>`, rules and options in the thorstein-games-website CLAUDE.md): `layout.tsx` has a `rail` beside `.puzzle-workspace` (so only the daily and archive boards on wide screens, below the game header) and a `banner` between `.app-shell` and the footer; a `box` (`.finish-ad`) sits under each "Play a different game". Never on the board, tray or during a match. Check placements with `?tgads=preview`.
 
 ## Analytics
 

@@ -106,7 +106,9 @@ export default function RootLayout({
         {TG_BAR_SRC && <script src={TG_BAR_SRC} async />}
         <InteractiveGridBackground />
         <tg-bar game="blocker-rush"></tg-bar>
+        <tg-ad game="blocker-rush" format="rail" beside=".puzzle-workspace"></tg-ad>
         <div className="app-shell">{children}</div>
+        <tg-ad game="blocker-rush" format="banner" className="page-ad"></tg-ad>
         {/* No own links: every page's SEO section already ends with them. */}
         <tg-footer game="blocker-rush"></tg-footer>
         <Analytics />

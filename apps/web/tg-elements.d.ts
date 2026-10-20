@@ -5,6 +5,9 @@ import type { DetailedHTMLProps, HTMLAttributes } from "react";
 type TgElement = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
   game?: string;
   limit?: number;
+  format?: "banner" | "box" | "rail";
+  beside?: string;
+  side?: "left" | "right";
 };
 
 declare module "react" {
@@ -13,6 +16,7 @@ declare module "react" {
       "tg-bar": TgElement;
       "tg-footer": TgElement;
       "tg-more-games": TgElement;
+      "tg-ad": TgElement;
     }
   }
 }
