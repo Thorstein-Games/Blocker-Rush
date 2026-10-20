@@ -349,6 +349,7 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
               </>
             )}
           </div>
+          <tg-more-games game="blocker-rush" className="more-games"></tg-more-games>
         </>
       )}
       {shareStatus && (

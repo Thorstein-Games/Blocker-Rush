@@ -15,5 +15,6 @@ export default defineConfig({
     url: "http://localhost:3300/blocker-rush",
     timeout: 300_000,
     reuseExistingServer: true,
+    env: { NEXT_PUBLIC_TG_BAR_SRC: "" },
   },
 });

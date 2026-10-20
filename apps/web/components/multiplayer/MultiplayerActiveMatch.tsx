@@ -234,6 +234,7 @@ export default function MultiplayerActiveMatch() {
                 </article>
               ))}
             </div>
+            <tg-more-games game="blocker-rush" className="more-games"></tg-more-games>
           </section>
         ) : (
           <MultiplayerBoardPanel

@@ -86,6 +86,11 @@ export const viewport: Viewport = {
   themeColor: "#08111d",
 };
 
+// Shared Thorstein Games bar and footer (see CLAUDE.md). The Playwright
+// configs set this to "" so tests don't load it from production.
+const TG_BAR_SRC =
+  process.env.NEXT_PUBLIC_TG_BAR_SRC ?? "https://thorsteingames.com/tg-bar.js";
+
 export default function RootLayout({
   children,
 }: {
@@ -98,8 +103,12 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLdScript(webSiteJsonLd) }}
         />
+        {TG_BAR_SRC && <script src={TG_BAR_SRC} async />}
         <InteractiveGridBackground />
+        <tg-bar game="blocker-rush"></tg-bar>
         <div className="app-shell">{children}</div>
+        {/* No own links: every page's SEO section already ends with them. */}
+        <tg-footer game="blocker-rush"></tg-footer>
         <Analytics />
         <ServiceWorker />
       </body>

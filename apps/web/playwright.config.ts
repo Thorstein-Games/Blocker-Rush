@@ -31,6 +31,8 @@ export default defineConfig({
     {
       command: "npx next dev -p 3000",
       cwd: __dirname,
+      // Don't load the shared Thorstein Games bar from production in tests.
+      env: { NEXT_PUBLIC_TG_BAR_SRC: "" },
       url: "http://localhost:3000/blocker-rush",
       timeout: 60_000,
       reuseExistingServer: true,

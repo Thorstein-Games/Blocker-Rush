@@ -43,6 +43,14 @@ To add or change a message: edit `packages/protocol/src/messages.ts`, sync, then
 
 `packages/shared/src/data/puzzles.v1.sample.json` (committed, ~1MB, 2000 puzzles per difficulty) is the source of truth. The app and server load `puzzles.v1.compact.json` instead (~140KB, `"<id>:<solutionCount>"` strings grouped by difficulty in sample order), which `node packages/shared/scripts/compact-puzzles.js` derives from the sample; a unit test fails if they drift. Both are hidden from search by `.ignore`; grep them with `rg --no-ignore-dot`. The sample is derived from `fullpuzzles.v1.json` (gitignored): `npm run gen-puzzles` builds the full set (slow, multi-worker), then `npm run refresh-samples` samples it and rewrites the compact copy. Sample order matters: the daily puzzle is a seeded index into each difficulty's list. Difficulty = solution count: insane 1–3, hard 4–10, medium 11–50, easy 51+ (the solver caps at 51). Those ranges are duplicated in `generate-puzzles.js` and `difficulty.ts`, so change both together. Unit tests check that every puzzle's id, blockers and difficulty are consistent.
 
+## Shared Thorstein Games bar and footer
+
+`app/layout.tsx` loads `https://thorsteingames.com/tg-bar.js` (served by the thorstein-games-website repo, whose CLAUDE.md has the full contract) and renders `<tg-bar game="blocker-rush">` (thin site header that hides while scrolling down) above `.app-shell` and `<tg-footer game="blocker-rush">` after it. `<tg-more-games game="blocker-rush">` ("Play a different game") sits under the solved daily/archive and casual puzzles and the finished multiplayer match. JSX types for the tags are in `apps/web/tg-elements.d.ts`.
+
+- The bar is always 40px. `globals.css` holds that space before the script loads (`tg-bar:not(:defined)`), and `.app-shell` / `.no-scroll-mobile` are `100dvh - 40px` so the footer starts below the fold. Keep those in step.
+- `NEXT_PUBLIC_TG_BAR_SRC` overrides the script URL; both Playwright configs set it to `""` so tests never load it from production (the tags and the 40px placeholder stay, so layout is unchanged).
+- The service worker only handles `/blocker-rush/*`, so offline the bar is simply missing.
+
 ## Analytics
 
 Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (not set up in production yet; see the TODO in `lib/analytics.ts`) (`NEXT_PUBLIC_PLAUSIBLE_SCRIPT_SRC` overrides the script URL). Send custom events with `track()` from `apps/web/lib/analytics.ts`; event names are a union type there.

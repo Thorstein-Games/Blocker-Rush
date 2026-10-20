@@ -214,13 +214,27 @@ input {
   color: var(--text);
 }
 
+/* The shared Thorstein Games bar is 40px; hold its space before tg-bar.js
+   loads. The app fills the rest of the screen, so the shared footer starts
+   below the fold. */
+tg-bar:not(:defined) {
+  display: block;
+  height: 40px;
+  background: #0b0b0e;
+}
+
+tg-footer {
+  position: relative;
+  z-index: 1;
+}
+
 .app-shell {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100vh - 40px);
+  min-height: calc(100dvh - 40px);
 }
 
 .page {
@@ -1138,7 +1152,7 @@ input {
   }
 
   .page.game-page.no-scroll-mobile {
-    min-height: 100dvh;
+    min-height: calc(100dvh - 40px);
   }
 }
 
@@ -1766,4 +1780,12 @@ input {
   font-size: 0.9rem;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* "Play a different game" tiles (tg-bar.js) under a finished puzzle or match. */
+.more-games {
+  margin-top: 8px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text);
 }
