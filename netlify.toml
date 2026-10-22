@@ -1,0 +1,8 @@
+# Only this one setting lives here; everything else (base directory, build
+# command, publish dir) stays in the Netlify UI.
+[build]
+  # Skip the build (and its credits) when a push changes nothing that reaches
+  # the site: docs, tests, CI and dev-only scripts. Exit 0 = skip, 1 = build;
+  # a first build or an unknown previous commit makes git diff fail, which
+  # builds. Paths are from the repo root (:/), so this works from any base dir.
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- ':/' ':(top,exclude)**/*.md' ':(top,exclude).github/' ':(top,exclude)artifacts/' ':(top,exclude)scripts/' ':(top,exclude)verify.sh' ':(top,exclude)apps/web/e2e/' ':(top,exclude)apps/web/playwright.config.ts' ':(top,exclude)apps/web/playwright.prod.config.ts' ':(top,exclude)apps/web/vitest.config.ts' ':(top,exclude)**/*.test.ts' ':(top,exclude)**/*.test.tsx' ':(top,exclude)packages/shared/tests/' ':(top,exclude)packages/shared/scripts/' ':(top,exclude).gitignore' ':(top,exclude).ignore' ':(top,exclude).claude/'"

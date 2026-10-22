@@ -66,3 +66,5 @@ Plausible, off unless `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` is set at build time (not s
 ## CI
 
 `.github/workflows/ci.yml` runs `npm run verify` and the Playwright suite on every PR. megingjord is private: the e2e job checks it out only if the repo has a `MEGINGJORD_TOKEN` secret, and otherwise runs with `E2E_NO_MEGINGJORD=1`. The megingjord drift check doesn't run in CI.
+
+Netlify builds the site from `main` (settings in the Netlify UI). `netlify.toml` holds only an `ignore` command: pushes that change just docs, tests (`*.test.ts(x)`, `e2e/`, `packages/shared/tests/`), CI, dev scripts or tool settings skip the Netlify build, to save build credits. Paths in it are repo-root based (`:/`); add new test-only paths there. Anything else, including `package.json`, still builds.
