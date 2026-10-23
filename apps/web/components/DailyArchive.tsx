@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PROGRESS_SYNCED_EVENT } from "../lib/cloudSync";
 import Link from "next/link";
 import { getDailyDifficulty, getDateKey } from "@blocker-rush/shared";
 import GameHeader from "./GameHeader";
@@ -37,11 +38,16 @@ export default function DailyArchive() {
   const [state, setState] = useState<ArchiveState | null>(null);
 
   useEffect(() => {
-    setState({
-      todayKey: getDateKey(new Date()),
-      history: readSolveHistory(),
-      stats: reconcileStats(readDailyStats(), getDateKey(new Date())),
-    });
+    const load = () =>
+      setState({
+        todayKey: getDateKey(new Date()),
+        history: readSolveHistory(),
+        stats: reconcileStats(readDailyStats(), getDateKey(new Date())),
+      });
+    load();
+    // Another device's progress arrived (cloud saves, lib/cloudSync.ts).
+    window.addEventListener(PROGRESS_SYNCED_EVENT, load);
+    return () => window.removeEventListener(PROGRESS_SYNCED_EVENT, load);
   }, []);
 
   const keys = state ? archiveDateKeys(state.todayKey) : [];

@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { PROGRESS_SYNCED_EVENT } from "../lib/cloudSync";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Placement } from "@blocker-rush/shared";
@@ -147,6 +148,17 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
       tick();
     };
   }, [timerRunning]);
+
+  // Another device's progress arrived (cloud saves, lib/cloudSync.ts):
+  // show its streak and solves.
+  useEffect(() => {
+    const onSynced = () => {
+      setStats(reconcileStats(readDailyStats(), archive ? getDateKey(new Date()) : dateKey));
+      setHistory(readSolveHistory());
+    };
+    window.addEventListener(PROGRESS_SYNCED_EVENT, onSynced);
+    return () => window.removeEventListener(PROGRESS_SYNCED_EVENT, onSynced);
+  }, [archive, dateKey]);
 
   useEffect(() => {
     if (archive) return;

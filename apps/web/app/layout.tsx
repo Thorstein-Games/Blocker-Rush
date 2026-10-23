@@ -4,6 +4,7 @@ import { Oxanium, Space_Grotesk } from "next/font/google";
 import InteractiveGridBackground from "../components/background/InteractiveGridBackground";
 import Analytics from "../components/Analytics";
 import ServiceWorker from "../components/ServiceWorker";
+import CloudSync from "../components/CloudSync";
 import {
   DEFAULT_KEYWORDS,
   SITE_DESCRIPTION,
@@ -113,6 +114,7 @@ export default function RootLayout({
         <tg-footer game="blocker-rush"></tg-footer>
         <Analytics />
         <ServiceWorker />
+        <CloudSync />
       </body>
     </html>
   );

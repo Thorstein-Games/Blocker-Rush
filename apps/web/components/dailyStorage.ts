@@ -6,9 +6,16 @@ import { type SolveHistory, parseSolveHistory } from "./dailyArchive";
 // localStorage persistence for the daily puzzle and its archive. Every
 // accessor tolerates missing, malformed or unavailable storage.
 
-const DAILY_STATS_KEY = "blockerRush.daily.stats";
+export const DAILY_STATS_KEY = "blockerRush.daily.stats";
 const DAILY_PROGRESS_KEY = "blockerRush.daily.progress";
-const SOLVE_HISTORY_KEY = "blockerRush.daily.history";
+export const SOLVE_HISTORY_KEY = "blockerRush.daily.history";
+
+// Called after the stats or solve history change, so cloud saves
+// (lib/cloudSync.ts) can send them to a signed-in player's account.
+let onProgressWrite: () => void = () => {};
+export const setProgressWriteHook = (fn: () => void) => {
+  onProgressWrite = fn;
+};
 const ARCHIVE_PROGRESS_PREFIX = "blockerRush.archive.progress.";
 
 export type DailyProgress = {
@@ -65,6 +72,7 @@ export const readDailyStats = (): DailyStats => {
 export const writeDailyStats = (stats: DailyStats) => {
   if (typeof window === "undefined") return;
   writeJson(DAILY_STATS_KEY, stats);
+  onProgressWrite();
 };
 
 export const readDailyProgress = (
@@ -110,4 +118,5 @@ export const readSolveHistory = (): SolveHistory => {
 export const writeSolveHistory = (history: SolveHistory) => {
   if (typeof window === "undefined") return;
   writeJson(SOLVE_HISTORY_KEY, history);
+  onProgressWrite();
 };
