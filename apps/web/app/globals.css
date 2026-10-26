@@ -222,6 +222,14 @@ tg-bar:not(:defined) {
   height: 40px;
   background: #0b0b0e;
 }
+/* Its home link is for crawlers and link previews (no JS); the script hides
+   it. Until then, or if the script fails, it still takes players home. */
+tg-bar:not(:defined) > a {
+  padding: 0 14px;
+  color: #fff;
+  font: 600 14px/40px system-ui, sans-serif;
+  text-decoration: none;
+}
 
 tg-footer {
   position: relative;

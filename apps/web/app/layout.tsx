@@ -106,7 +106,10 @@ export default function RootLayout({
         />
         {TG_BAR_SRC && <script src={TG_BAR_SRC} async />}
         <InteractiveGridBackground />
-        <tg-bar game="blocker-rush"></tg-bar>
+        {/* The home link is for crawlers and link previews (no JS); tg-bar.js hides it. */}
+        <tg-bar game="blocker-rush">
+          <a href="https://thorsteingames.com/">Thorstein Games</a>
+        </tg-bar>
         <tg-ad game="blocker-rush" format="rail" beside=".puzzle-workspace"></tg-ad>
         <div className="app-shell">{children}</div>
         <tg-ad game="blocker-rush" format="banner" className="page-ad"></tg-ad>

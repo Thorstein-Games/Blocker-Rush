@@ -48,6 +48,7 @@ To add or change a message: edit `packages/protocol/src/messages.ts`, sync, then
 
 `app/layout.tsx` loads `https://thorsteingames.com/tg-bar.js` (served by the thorstein-games-website repo, whose CLAUDE.md has the full contract) and renders `<tg-bar game="blocker-rush">` (thin site header that hides while scrolling down) above `.app-shell` and `<tg-footer game="blocker-rush">` after it. `<tg-more-games game="blocker-rush">` ("Play a different game") sits under the solved daily/archive and casual puzzles and the finished multiplayer match. JSX types for the tags are in `apps/web/tg-elements.d.ts`.
 
+- `<tg-bar>` holds a plain `<a href="https://thorsteingames.com/">` so crawlers and link previews (no JS) see a home link; the script hides it.
 - The bar is always 40px. `globals.css` holds that space before the script loads (`tg-bar:not(:defined)`), and `.app-shell` / `.no-scroll-mobile` are `100dvh - 40px` so the footer starts below the fold. Keep those in step.
 - `NEXT_PUBLIC_TG_BAR_SRC` overrides the script URL; both Playwright configs set it to `""` so tests never load it from production (the tags and the 40px placeholder stay, so layout is unchanged).
 - The service worker only handles `/blocker-rush/*`, so offline the bar is simply missing.
