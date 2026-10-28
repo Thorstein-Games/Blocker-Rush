@@ -84,7 +84,14 @@ export default function MultiplayerRoomShell() {
         }
       />
 
-      {state.status === "lobby" && <MultiplayerRoomLobby />}
+      {state.status === "lobby" && (
+        <>
+          <MultiplayerRoomLobby />
+          {/* Players wait here for friends to join: an ad under the room,
+              clear of its buttons. Never during a match. */}
+          <tg-ad game="blocker-rush" format="box" class="waiting-ad"></tg-ad>
+        </>
+      )}
       {isInActiveGame && <MultiplayerActiveMatch />}
     </main>
   );

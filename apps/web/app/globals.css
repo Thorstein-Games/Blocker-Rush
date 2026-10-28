@@ -244,6 +244,22 @@ tg-footer {
   gap: 32px;
 }
 
+/* Screens with room for the side ad (layout.tsx; tg-bar.js shows it only
+   when the window is at least 672px tall) keep 192px free on the right. */
+@media (min-width: 1200px) and (min-height: 672px) {
+  .page {
+    margin-right: 192px;
+  }
+}
+
+/* Casual's settings panel beside the board needs ~1280px, so it gives up the
+   space only on wider screens (narrower, the ad simply stays away). */
+@media (min-width: 1200px) and (max-width: 1499px) {
+  .page:has(.side-panel) {
+    margin-right: 0;
+  }
+}
+
 .page.game-page {
   gap: 18px;
   padding-top: 20px;
@@ -1786,6 +1802,11 @@ tg-footer {
 /* Ad slots from tg-bar.js (see CLAUDE.md). */
 .finish-ad {
   margin-top: 16px;
+}
+.waiting-ad {
+  display: block;
+  min-width: 300px;
+  margin: 24px auto 0;
 }
 .page-ad {
   padding: 24px 0;

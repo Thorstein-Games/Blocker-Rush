@@ -429,8 +429,8 @@ function CasualGameLayout() {
                   Play Again
                 </button>
               </div>
-              <tg-more-games game="blocker-rush" className="more-games"></tg-more-games>
-              <tg-ad game="blocker-rush" format="box" className="finish-ad"></tg-ad>
+              <tg-more-games game="blocker-rush" class="more-games"></tg-more-games>
+              <tg-ad game="blocker-rush" format="box" class="finish-ad"></tg-ad>
             </>
           )}
         </div>

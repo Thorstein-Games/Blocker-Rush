@@ -63,6 +63,10 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
       timeout: 10_000,
     });
 
+    // While waiting, an ad slot under the room; none during the match.
+    const waitingAd = hostPage.locator("tg-ad.waiting-ad");
+    await expect(waitingAd).toHaveCount(1);
+
     await hostPage.getByRole("button", { name: "Ready", exact: true }).click();
     await guestPage.getByRole("button", { name: "Ready", exact: true }).click();
 
@@ -73,6 +77,7 @@ test.describe("Blocker Rush multiplayer (Megingjord transport)", () => {
     // 3s server-side countdown + network/render slack
     await expect(statusValue(hostPage)).toHaveText("in_game", { timeout: 10_000 });
     await expect(statusValue(guestPage)).toHaveText("in_game", { timeout: 10_000 });
+    await expect(waitingAd).toHaveCount(0);
 
     await hostContext.close();
     await guestContext.close();
