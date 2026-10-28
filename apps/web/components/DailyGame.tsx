@@ -30,7 +30,7 @@ import {
   formatDuration,
 } from "./dailyTimer";
 import { type SolveHistory, archiveDayStatus, recordSolve } from "./dailyArchive";
-import { useHint } from "./useHint";
+import { useHint, type HintNotice } from "./useHint";
 import DailyStatsPanel from "./DailyStatsPanel";
 import {
   type DailyProgress,
@@ -80,7 +80,7 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
   const [earlierMoves, setEarlierMoves] = useState(0);
   const [elapsedMs, setElapsedMs] = useState<number | null>(0);
   const [hintsUsed, setHintsUsed] = useState(0);
-  const { hintMessage, hintPlacement, requestHint } = useHint();
+  const { hintMessage, hintPlacement, requestHint, clearHint } = useHint();
   const hasRestoredRef = useRef<string | null>(null);
   const totalMoves = earlierMoves + moveCount;
 
@@ -299,11 +299,21 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
       statsPanel={statsPanel}
       onHint={handleHint}
       hintPlacement={hintPlacement}
+      hintNotice={hintMessage}
+      onHintDone={clearHint}
+      solvedExtra={
+        archive ? null : (
+          <span className="solved-extra">
+            <span className="streak-pill">{stats.streak}-day streak</span>
+            <NextPuzzleCountdown />
+          </span>
+        )
+      }
       contextStrip={
         <>
           <time dateTime={dateKey}>{shortDate(date)}</time>
           <span className="context-difficulty">{dailyPuzzle.difficulty}</span>
-          {!archive && <span>{stats.streak}-day streak</span>}
+          {!archive && stats.streak > 0 && <span>{stats.streak}-day streak</span>}
           {elapsedMs !== null && (
             <span className="context-timer" aria-label="Solve time">
               {formatDuration(elapsedMs)}
@@ -312,11 +322,6 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
         </>
       }
     >
-      {hintMessage && !solved && (
-        <div className="notice" role="status">
-          {hintMessage}
-        </div>
-      )}
       {solved && (
         <>
           <div className="notice" role="status">
@@ -342,25 +347,14 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
             >
               {archive ? "More Past Puzzles" : "Past Puzzles"}
             </button>
-            {!archive && (
-              <>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => router.push("/casual")}
-                >
-                  Play Casual
-                </button>
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => router.push("/multiplayer")}
-                >
-                  Play Multiplayer
-                </button>
-              </>
-            )}
           </div>
+          {!archive && (
+            <p className="finish-more">
+              More Blocker Rush: <Link href="/casual">Casual</Link>
+              {" · "}
+              <Link href="/multiplayer">Multiplayer</Link>
+            </p>
+          )}
           <tg-more-games game="blocker-rush" className="more-games"></tg-more-games>
           <tg-ad game="blocker-rush" format="box" className="finish-ad"></tg-ad>
         </>
@@ -374,6 +368,25 @@ function DailyGameLayout({ date, archive }: { date: Date; archive: boolean }) {
   );
 }
 
+/** "Next puzzle in 7h 12m": time until the local midnight. */
+function NextPuzzleCountdown() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const midnight = new Date(now);
+  midnight.setHours(24, 0, 0, 0);
+  const minutes = Math.max(1, Math.ceil((midnight.getTime() - now) / 60_000));
+  const hours = Math.floor(minutes / 60);
+  return (
+    <span className="next-puzzle">
+      Next puzzle in {hours > 0 ? `${hours}h ` : ""}
+      {minutes % 60}m
+    </span>
+  );
+}
+
 /** Page chrome shared by the real daily layout and the pre-mount shell. */
 function DailyFrame({
   label = "Daily",
@@ -382,11 +395,17 @@ function DailyFrame({
   showBoard = true,
   onHint,
   hintPlacement,
+  hintNotice,
+  onHintDone,
+  solvedExtra,
   children,
 }: {
   label?: string;
   onHint?: () => void;
   hintPlacement?: Placement | null;
+  hintNotice?: HintNotice | null;
+  onHintDone?: () => void;
+  solvedExtra?: ReactNode;
   statsPanel?: ReactNode;
   contextStrip?: ReactNode;
   showBoard?: boolean;
@@ -418,7 +437,12 @@ function DailyFrame({
           </div>
           {showBoard && (
             <>
-              <GameBoard hintPlacement={hintPlacement} />
+              <GameBoard
+                hintPlacement={hintPlacement}
+                hintNotice={hintNotice}
+                onHintDone={onHintDone}
+                solvedExtra={solvedExtra}
+              />
               <PiecesTray onHint={onHint} />
             </>
           )}
