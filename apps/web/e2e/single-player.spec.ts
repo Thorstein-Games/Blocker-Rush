@@ -74,7 +74,8 @@ test.describe("daily puzzle", () => {
     );
     await page.reload();
     await expect(pieceCells(page)).toHaveCount(28);
-    await expect(contextStrip(page)).toContainText("0-day streak");
+    // No streak yet: it isn't shown until there is one.
+    await expect(contextStrip(page)).not.toContainText("streak");
     // Timer resumes from the saved time rather than restarting.
     await expect(page.getByLabel("Solve time")).toHaveText(/^1:3\d$/);
 
@@ -150,6 +151,56 @@ test.describe("daily puzzle", () => {
   });
 });
 
+test.describe("placing pieces", () => {
+  // Empty puzzle-free board positions are easiest on a casual puzzle.
+  const PUZZLE = "A2A4D1D2F4F5F6";
+  const cell = (page: Page, index: number) => page.locator(`.board-cell[data-index="${index}"]`);
+
+  test("a tap places the piece over the tapped square", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto(`/blocker-rush/casual?p=${PUZZLE}`);
+    await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
+    // The 2×2 Square, tapped on row 4 column 3 (index 20): it must cover it.
+    await page.getByRole("button", { name: "Select Square" }).click();
+    // With a mouse, the outline shows where it will go before the click.
+    await cell(page, 20).hover();
+    await expect(page.locator(".ghost.outline .ghost-cell")).toHaveCount(4);
+    await cell(page, 20).click();
+    await expect(pieceCells(page)).toHaveCount(4);
+    await expect(cell(page, 20)).toHaveClass(/piece/);
+    expect(errors).toEqual([]);
+  });
+
+  test("a placed piece can be taken back from the tray", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto(`/blocker-rush/casual?p=${PUZZLE}`);
+    await page.getByRole("button", { name: "Select Dot" }).click();
+    await cell(page, 0).click();
+    await expect(pieceCells(page)).toHaveCount(1);
+    await page.getByRole("button", { name: "Take back Dot" }).click();
+    await expect(pieceCells(page)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Select Dot" })).toBeVisible();
+    expect(errors).toEqual([]);
+  });
+
+  test("tapping any outlined hint square places the hinted piece", async ({ page }) => {
+    const errors = watchForErrors(page);
+    await page.goto(`/blocker-rush/casual?p=${PUZZLE}`);
+    await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
+    await page.getByRole("button", { name: "Hint", exact: true }).click();
+    await expect(page.getByText(/^Hint: place .+ on the outlined squares\.$/)).toBeVisible();
+    // Tap the last outlined square (often not the piece's corner).
+    const outlined = page.locator(".ghost .ghost-cell");
+    const count = await outlined.count();
+    const target = await outlined.nth(count - 1).boundingBox();
+    await page.mouse.move(0, 0);
+    await page.mouse.click(target!.x + target!.width / 2, target!.y + target!.height / 2);
+    await expect(pieceCells(page)).toHaveCount(count);
+    await expect(page.locator(".board-feedback.error")).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+});
+
 test.describe("hints", () => {
   const hintButton = (page: Page) => page.getByRole("button", { name: "Hint", exact: true });
 
@@ -208,7 +259,10 @@ test.describe("hints", () => {
     await expect(pieceCells(page)).toHaveCount(1);
 
     await hintButton(page).click();
-    await expect(page.getByRole("status").filter({ hasText: "The Dot can't stay where it is" })).toBeVisible();
+    await expect(page.getByRole("status").filter({ hasText: "the Dot can't stay where it is" })).toBeVisible();
+    // The hint offers to take it back, right there.
+    await page.getByRole("button", { name: "Take back the Dot" }).click();
+    await expect(pieceCells(page)).toHaveCount(0);
     expect(errors).toEqual([]);
   });
 });
@@ -325,7 +379,7 @@ test.describe("daily archive", () => {
     const errors = watchForErrors(page);
     await page.goto(`/blocker-rush/daily/${daysAgo(0)}`);
     await expect(page).toHaveURL(/\/blocker-rush$/);
-    await expect(contextStrip(page)).toContainText("streak");
+    await expect(contextStrip(page)).toContainText("Daily");
     expect(errors).toEqual([]);
   });
 

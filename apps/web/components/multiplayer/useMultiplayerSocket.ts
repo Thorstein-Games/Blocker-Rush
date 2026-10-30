@@ -37,6 +37,8 @@ export function useMultiplayerSocket() {
   const lobbyRoomRef = useRef<GameRoom | null>(null);
   const gameRoomRef = useRef<GameRoom | null>(null);
   const clientSeqRef = useRef(0);
+  // Bumped by retryLobby to run the lobby connection again.
+  const [lobbyAttempt, setLobbyAttempt] = useState(0);
 
   const nextSeq = useCallback(() => {
     clientSeqRef.current += 1;
@@ -60,7 +62,12 @@ export function useMultiplayerSocket() {
           return;
         }
         lobbyRoomRef.current = room;
-        setState((prev) => ({ ...prev, connected: true, error: undefined }));
+        setState((prev) => ({
+          ...prev,
+          connected: true,
+          lobbyOffline: false,
+          error: undefined,
+        }));
 
         const syncLobbyRooms = () => {
           const rooms = (room.state.rooms ?? []) as Array<{
@@ -101,7 +108,8 @@ export function useMultiplayerSocket() {
       })
       .catch((error) => {
         console.error("Failed to connect to lobby:", error);
-        setState((prev) => ({ ...prev, connected: false, error: "Failed to connect" }));
+        if (disposed) return;
+        setState((prev) => ({ ...prev, connected: false, lobbyOffline: true }));
       });
 
     return () => {
@@ -112,7 +120,7 @@ export function useMultiplayerSocket() {
       gameRoomRef.current = null;
       clientRef.current = null;
     };
-  }, []);
+  }, [lobbyAttempt]);
 
   const resolveRoomCode = useCallback((roomCode: string): Promise<string> => {
     const lobby = lobbyRoomRef.current;
@@ -302,6 +310,12 @@ export function useMultiplayerSocket() {
 
   // --- Actions ---
 
+  /** Connects to the lobby again after it failed (lobbyOffline). */
+  const retryLobby = useCallback(() => {
+    setState((prev) => ({ ...prev, lobbyOffline: false, error: undefined }));
+    setLobbyAttempt((attempt) => attempt + 1);
+  }, []);
+
   const requestLobby = useCallback(() => {
     lobbyRoomRef.current?.send("list_rooms", {});
   }, []);
@@ -472,6 +486,7 @@ export function useMultiplayerSocket() {
     () => ({
       state,
       requestLobby,
+      retryLobby,
       joinPublic,
       joinByCode,
       createPrivate,
@@ -490,6 +505,7 @@ export function useMultiplayerSocket() {
     [
       state,
       requestLobby,
+      retryLobby,
       joinPublic,
       joinByCode,
       createPrivate,

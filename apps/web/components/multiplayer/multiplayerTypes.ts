@@ -93,6 +93,8 @@ export type MultiplayerState = {
     };
   };
   error?: string;
+  /** The lobby connection failed; the landing page offers Retry. */
+  lobbyOffline?: boolean;
 };
 
 export const createInitialState = (): MultiplayerState => ({

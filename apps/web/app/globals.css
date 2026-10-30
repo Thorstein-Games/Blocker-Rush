@@ -252,14 +252,6 @@ tg-footer {
   }
 }
 
-/* Casual's settings panel beside the board needs ~1280px, so it gives up the
-   space only on wider screens (narrower, the ad simply stays away). */
-@media (min-width: 1200px) and (max-width: 1499px) {
-  .page:has(.side-panel) {
-    margin-right: 0;
-  }
-}
-
 .page.game-page {
   gap: 18px;
   padding-top: 20px;
@@ -1817,4 +1809,236 @@ tg-footer {
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text);
+}
+
+/* ---- Placement outline, messages, solve banner (critique fixes) ---- */
+
+/* Where a tap, click or Enter will put the selected piece: a dashed outline
+   in the piece's colour, so it never looks like a placed piece. */
+.ghost.outline .ghost-cell {
+  outline: 2px dashed var(--text);
+  outline-offset: -4px;
+}
+.ghost.outline .block-cell {
+  opacity: 0.45;
+}
+.ghost.outline.invalid .block-cell {
+  opacity: 0.25;
+}
+
+/* Small text buttons inside a message line ("How to play", "Take back"). */
+.inline-action {
+  display: inline;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  /* 44px tall tap area without changing the line height. */
+  position: relative;
+}
+.inline-action::after {
+  content: "";
+  position: absolute;
+  inset: -12px -6px;
+}
+.inline-action:hover {
+  text-decoration-color: currentColor;
+}
+
+/* Secondary buttons light up in the brand gold, not mint. */
+.button.secondary:hover {
+  background: rgba(242, 193, 78, 0.14);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* The solve: the board glows row by row and the cheer sits under it, so
+   the finished board stays in view. */
+.board-shell.solved {
+  box-shadow:
+    inset 0 0 0 1px rgba(242, 193, 78, 0.35),
+    0 10px 40px rgba(242, 193, 78, 0.18);
+  transition: box-shadow 0.6s ease-out;
+}
+.board-shell.solved .board-cell.piece {
+  animation: solved-sweep 0.9s cubic-bezier(0.16, 1, 0.3, 1)
+    calc(var(--row, 0) * 80ms) both;
+}
+@keyframes solved-sweep {
+  0% {
+    filter: brightness(1);
+  }
+  35% {
+    filter: brightness(1.45) saturate(1.15);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+.celebration {
+  background: none;
+  animation: none;
+}
+
+.solved-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  padding: 4px 0 2px;
+}
+.solved-banner strong {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--text);
+  text-wrap: balance;
+}
+.solved-banner > span {
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-wrap: balance;
+}
+.solved-banner .solved-extra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.streak-pill {
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1c1405;
+  font-weight: 700;
+  animation: streak-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
+}
+@keyframes streak-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.finish-more {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.finish-more a {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+/* Casual: choose a difficulty and start a new puzzle beside the board. */
+.casual-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 12px;
+}
+.difficulty-picker {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+}
+.difficulty-picker button {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.difficulty-picker button[aria-pressed="true"] {
+  background: var(--panel-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.difficulty-picker button:hover {
+  color: var(--text);
+}
+/* Under the tray on phones, so the board and pieces fit the first screen;
+   above the board when the tray sits beside it. */
+@media (min-width: 981px) {
+  .puzzle-workspace > .casual-bar {
+    grid-row: 1;
+    grid-column: 1 / -1;
+  }
+}
+.casual-bar > .button {
+  min-height: 44px;
+  padding: 8px 18px;
+}
+.puzzle-id-details summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.puzzle-id-details[open] summary {
+  margin-bottom: 4px;
+}
+
+/* Multiplayer lobby: connection state above the panels. */
+.lobby-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+.notice.error {
+  background: rgba(242, 109, 91, 0.1);
+  border-color: rgba(242, 109, 91, 0.45);
+}
+
+/* Placeholders readable on the dark panels (were the browser's grey). */
+input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+/* A readable measure for the description under the game. */
+.seo-content p,
+.seo-content li,
+.seo-content dd {
+  max-width: 68ch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-shell.solved .board-cell.piece,
+  .streak-pill {
+    animation: none;
+  }
 }

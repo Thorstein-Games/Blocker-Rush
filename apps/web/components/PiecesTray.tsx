@@ -25,6 +25,7 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
     undo,
     canUndo,
     selectPiece,
+    takeBack,
     boardRef,
   } = useGame();
 
@@ -102,9 +103,7 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                   </button>
                 )}
               </div>
-            ) : (
-              <span className="pieces-hint">Tap or drag a piece</span>
-            )}
+            ) : null}
           </div>
         </div>
         <div className="pieces-grid">
@@ -130,8 +129,15 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                 key={piece.id}
                 className={slotClassName}
                 type="button"
-                onPointerDown={(event) => onPiecePointerDown(event, piece.id)}
+                onPointerDown={(event) => {
+                  // A placed piece's slot is a "take back" button.
+                  if (!placed) onPiecePointerDown(event, piece.id);
+                }}
                 onClick={(event) => {
+                  if (placed) {
+                    takeBack(piece.id);
+                    return;
+                  }
                   if (event.detail !== 0) return;
                   selectPiece(piece.id);
                   boardRef.current
@@ -140,10 +146,14 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                 }}
                 aria-pressed={activePieceId === piece.id}
                 aria-label={
-                  placed ? `${piece.name} placed` : `Select ${piece.name}`
+                  placed ? `Take back ${piece.name}` : `Select ${piece.name}`
                 }
-                aria-description={`${transform.cells.length} squares, ${transform.width} columns by ${transform.height} rows. Enter or Space selects this piece and focuses the board.`}
-                disabled={readOnly || placed}
+                aria-description={
+                  placed
+                    ? "Placed on the board. Activate to return it to the tray."
+                    : `${transform.cells.length} squares, ${transform.width} columns by ${transform.height} rows. Enter or Space selects this piece and focuses the board.`
+                }
+                disabled={readOnly || !!draggingPieceId}
               >
                 <div
                   className="piece-grid"
@@ -170,7 +180,11 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                     />
                   ))}
                 </div>
-                {placed && <span className="piece-placed-label">Placed</span>}
+                {placed && (
+                  <span className="piece-placed-label" aria-hidden="true">
+                    Take back
+                  </span>
+                )}
               </button>
             );
           })}

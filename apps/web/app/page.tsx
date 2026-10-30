@@ -59,7 +59,7 @@ export default function HomePage() {
           <li>Pick a piece from the tray, then tap or drag it onto the board.</li>
           <li>Rotate and flip pieces to make them fit around the blockers.</li>
           <li>
-            Double-tap a placed piece to take it back, or use Undo and Clear.
+            Tap a placed piece in the tray to take it back, or use Undo and Clear.
           </li>
           <li>Place all nine pieces to solve the puzzle.</li>
         </ol>

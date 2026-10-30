@@ -49,6 +49,7 @@ import {
   initPieceStates,
   isPointerOutsideBoard,
   pieceName,
+  placementCovering,
   placementError,
 } from "./pieceGeometry";
 import { useTouchScrollLock } from "./useTouchScrollLock";
@@ -779,7 +780,16 @@ export function GameProvider({
     startInteraction(event, cell as PieceId, placement.origin);
   };
 
-  const activateCell = (cellIndex: number, remove = false) => {
+  /**
+   * Tap, click or Enter on a board square. With a piece selected it goes so
+   * that it covers that square (the hint's spot when the square is one the
+   * hint outlines); with none selected, a placed piece there is taken back.
+   */
+  const activateCell = (
+    cellIndex: number,
+    remove = false,
+    hint?: Placement | null,
+  ) => {
     if (readOnly || interactionRef.current) return;
     const currentBoard = boardStateRef.current;
     const cell = currentBoard.cells[cellIndex];
@@ -799,7 +809,7 @@ export function GameProvider({
       return;
     }
     if (currentBoard.placements[activePieceId]) return;
-    const origin = {
+    const square = {
       x: cellIndex % currentBoard.size.cols,
       y: Math.floor(cellIndex / currentBoard.size.cols),
     };
@@ -809,15 +819,30 @@ export function GameProvider({
       state.rotation,
       state.flipped,
     );
-    if (!canPlace(currentBoard, transform, origin)) {
-      announce(placementError(currentBoard, transform, origin), true);
+    const hinted =
+      hint &&
+      hint.pieceId === activePieceId &&
+      hint.transformId === transform.id &&
+      transform.cells.some(
+        (part) =>
+          hint.origin.x + part.x === square.x &&
+          hint.origin.y + part.y === square.y,
+      ) &&
+      canPlace(currentBoard, transform, hint.origin)
+        ? hint.origin
+        : null;
+    const covering = hinted
+      ? { origin: hinted, valid: true }
+      : placementCovering(currentBoard, transform, square);
+    if (!covering.valid) {
+      announce(placementError(currentBoard, transform, covering.origin), true);
       return;
     }
     const nextBoard = placePiece(
       currentBoard,
       activePieceId,
       transform,
-      origin,
+      covering.origin,
     );
     setHistory((prev) => [...prev, currentBoard]);
     boardStateRef.current = nextBoard;
@@ -828,15 +853,24 @@ export function GameProvider({
     );
   };
 
-  const handleBoardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+  /** Takes a placed piece back to the tray (the tray's placed slots). */
+  const takeBack = (pieceId: PieceId) => {
+    if (readOnly || interactionRef.current) return;
+    const currentBoard = boardStateRef.current;
+    if (!currentBoard.placements[pieceId]) return;
+    commitRemoval(pieceId, currentBoard);
+    setActivePieceId(pieceId);
+  };
+
+  const handleBoardClick = (
+    event: ReactMouseEvent<HTMLDivElement>,
+    hint?: Placement | null,
+  ) => {
     const cellIndex = getCellIndexFromTarget(event.target);
-    if (cellIndex !== null && !boardStateRef.current.cells[cellIndex])
-      activateCell(cellIndex);
-    else if (
-      cellIndex !== null &&
-      boardStateRef.current.cells[cellIndex] === "blocker"
-    )
-      activateCell(cellIndex);
+    if (cellIndex === null) return;
+    const cell = boardStateRef.current.cells[cellIndex];
+    // Taps on placed pieces are handled by the pointer-down drag code.
+    if (!cell || cell === "blocker") activateCell(cellIndex, false, hint);
   };
 
   const handleBoardDoubleClick = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -933,6 +967,7 @@ export function GameProvider({
     feedback,
     selectPiece,
     activateCell,
+    takeBack,
     restoreState,
     boardRef,
   };
