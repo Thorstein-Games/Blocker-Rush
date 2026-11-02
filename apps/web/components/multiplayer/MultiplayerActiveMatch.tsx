@@ -129,7 +129,7 @@ export default function MultiplayerActiveMatch() {
     >
       {!isFinished && (
         <aside className="opponents-column">
-          <h3>Opponents</h3>
+          <h2>Opponents</h2>
           <div className="opponents-grid">
             {opponents.length === 0 ? (
               <span className="pieces-hint">Waiting for players…</span>
@@ -262,7 +262,7 @@ export default function MultiplayerActiveMatch() {
       </div>
       {!isFinished && (
         <aside className="panel multiplayer-side-card">
-          <h3>Match</h3>
+          <h2>Match</h2>
           <div className="stats-grid">
             <div className="stat-card">
               <span className="stat-label">Round</span>

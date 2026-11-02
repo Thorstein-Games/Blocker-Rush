@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PIECES, findHint, type Placement } from "@blocker-rush/shared";
+import {
+  PIECES,
+  PIECE_TRANSFORMS,
+  findHint,
+  type PieceId,
+  type Placement,
+} from "@blocker-rush/shared";
 import { useGame } from "./GameContext";
 import { findOrientationForTransform } from "./pieceGeometry";
 
@@ -9,6 +15,14 @@ const pieceName = (pieceId: string) =>
   PIECES.find((piece) => piece.id === pieceId)?.name ?? "That piece";
 
 const MESSAGE_MS = 8000;
+
+/** A hint shown in words: GameBoard puts it under the board. */
+export type HintNotice = {
+  text: string;
+  /** A piece to offer a "Take back" button for. */
+  takeBack?: PieceId;
+  sequence: number;
+};
 
 /**
  * Hints for the single-player board in GameContext. A hint is worked out
@@ -19,7 +33,7 @@ const MESSAGE_MS = 8000;
 export function useHint() {
   const { puzzleId, blockers, board, readOnly, setPieceState, selectPiece, boardRef } =
     useGame();
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<HintNotice | null>(null);
   const [hintPlacement, setHintPlacement] = useState<Placement | null>(null);
   const timeoutRef = useRef<number | null>(null);
 
@@ -33,8 +47,12 @@ export function useHint() {
   useEffect(() => clearHint, []);
   useEffect(clearHint, [puzzleId]);
 
-  const show = (text: string) => {
-    setMessage(text);
+  const show = (text: string, takeBack?: PieceId) => {
+    setMessage((previous) => ({
+      text,
+      takeBack,
+      sequence: (previous?.sequence ?? 0) + 1,
+    }));
     if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
     timeoutRef.current = window.setTimeout(() => setMessage(null), MESSAGE_MS);
   };
@@ -54,11 +72,17 @@ export function useHint() {
         selectPiece(placement.pieceId);
         // GameBoard outlines the squares and says which piece goes there.
         setMessage(null);
+        // Focus a square the piece covers, so Enter places it there.
+        const first = PIECE_TRANSFORMS[placement.pieceId]?.find(
+          (transform) => transform.id === placement.transformId,
+        )?.cells[0] ?? { x: 0, y: 0 };
+        const square =
+          (placement.origin.y + first.y) * board.size.cols +
+          placement.origin.x +
+          first.x;
         window.requestAnimationFrame(() => {
           boardRef.current
-            ?.querySelector<HTMLElement>(
-              `[data-index="${placement.origin.y * board.size.cols + placement.origin.x}"]`,
-            )
+            ?.querySelector<HTMLElement>(`[data-index="${square}"]`)
             ?.focus();
         });
         return true;
@@ -66,15 +90,16 @@ export function useHint() {
       case "remove":
         setHintPlacement(null);
         show(
-          `The ${pieceName(hint.pieceId)} can't stay where it is. Double-tap it to take it back.`,
+          `Hint: the ${pieceName(hint.pieceId)} can't stay where it is.`,
+          hint.pieceId,
         );
         return true;
       case "restart":
         setHintPlacement(null);
-        show("These pieces can't all stay where they are. Try clearing the board.");
+        show("Hint: these pieces can't all stay where they are. Try Clear.");
         return true;
       case "solved":
-        show("All pieces are already placed.");
+        show("Every piece is already placed.");
         return false;
       case "unsolvable":
         show("No hints are available for this puzzle.");

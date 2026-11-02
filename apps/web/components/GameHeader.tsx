@@ -77,24 +77,26 @@ const howToPlayPanel = (
     </p>
     <ol>
       <li>
-        Choose a piece, then tap a square to place it. You can also drag it onto
-        the board.
+        Choose a piece, then tap the board: the piece covers the square you
+        tap. With a mouse, the outline shows where it will go. You can also
+        drag it onto the board.
       </li>
       <li>
         Use Rotate and Flip to change its shape. Tapping a selected tray piece
         also rotates it.
       </li>
       <li>
-        Double-click or double-tap a placed piece to remove it. Undo reverses
-        your last placement, removal, or Clear.
+        To take a piece back, tap it in the tray, or double-tap it on the
+        board. Undo reverses your last placement, removal, or Clear.
       </li>
     </ol>
     <details>
       <summary>Play with a keyboard</summary>
       <p>
         Tab to a piece and press Enter or Space to select it and focus the
-        board. Arrow keys choose a square; Enter or Space places it. D or S
-        rotates, F flips, and Escape cancels selection. Delete or Backspace
+        board. Arrow keys choose a square, and the outline shows where the
+        piece will go; Enter or Space places it. D rotates one way, S the
+        other, F flips, and Escape cancels selection. Delete or Backspace
         removes the piece at the current square.
       </p>
     </details>
@@ -109,6 +111,9 @@ const howToPlayPanel = (
   </div>
 );
 const howToPlayTitle = "How to Play";
+
+/** Dispatch on window to open How to Play from elsewhere on the page. */
+export const OPEN_HELP_EVENT = "blockerRush:open-help";
 
 export default function GameHeader({
   mode,
@@ -136,6 +141,17 @@ export default function GameHeader({
       triggerRef.current?.focus();
     };
   }, [openPanel]);
+
+  // The board's "How to play" link opens this dialog.
+  useEffect(() => {
+    const open = () => {
+      triggerRef.current = document.activeElement as HTMLElement;
+      setIsMenuOpen(false);
+      setOpenPanel("howToPlay");
+    };
+    window.addEventListener(OPEN_HELP_EVENT, open);
+    return () => window.removeEventListener(OPEN_HELP_EVENT, open);
+  }, []);
 
   useEffect(() => {
     if (!openPanel && !isMenuOpen) return;
@@ -387,7 +403,7 @@ export default function GameHeader({
           }}
         >
           <div className="header-modal-header">
-            <h3 className="modal-title">{activeTitle}</h3>
+            <h2 className="modal-title">{activeTitle}</h2>
             <button
               className="icon-button modal-close"
               type="button"

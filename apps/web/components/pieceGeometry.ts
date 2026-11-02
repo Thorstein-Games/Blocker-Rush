@@ -1,7 +1,7 @@
 // Pure piece-orientation and board-geometry helpers used by GameContext.
 // No React state here — everything is a function of its arguments.
 import type { BoardState, PieceId, PieceTransform, Vec2 } from "@blocker-rush/shared";
-import { PIECES, PIECE_TRANSFORMS, cellsToKey } from "@blocker-rush/shared";
+import { PIECES, PIECE_TRANSFORMS, canPlace, cellsToKey } from "@blocker-rush/shared";
 import type { PieceState } from "./gameTypes";
 
 export const initPieceStates = (): Record<PieceId, PieceState> =>
@@ -99,6 +99,31 @@ export const getPieceVisualCenterLocal = (cells: Vec2[]) => {
     x: (minX + maxX + 1) / 2,
     y: (minY + maxY + 1) / 2,
   };
+};
+
+/**
+ * Where a tap (or the keyboard cursor) on `square` puts the piece: always so
+ * that it covers that square. It tries the piece's middle square first, then
+ * the others nearest the middle, and takes the first that fits; if none fits
+ * it returns the middle one, marked invalid.
+ */
+export const placementCovering = (
+  current: BoardState,
+  transform: PieceTransform,
+  square: Vec2,
+): { origin: Vec2; valid: boolean } => {
+  const center = getPieceVisualCenterLocal(transform.cells);
+  const byDistance = [...transform.cells].sort(
+    (a, b) =>
+      Math.hypot(a.x + 0.5 - center.x, a.y + 0.5 - center.y) -
+      Math.hypot(b.x + 0.5 - center.x, b.y + 0.5 - center.y),
+  );
+  const originFor = (cell: Vec2) => ({ x: square.x - cell.x, y: square.y - cell.y });
+  for (const cell of byDistance) {
+    const origin = originFor(cell);
+    if (canPlace(current, transform, origin)) return { origin, valid: true };
+  }
+  return { origin: originFor(byDistance[0] ?? { x: 0, y: 0 }), valid: false };
 };
 
 export const getPieceVisualCenterPx = (

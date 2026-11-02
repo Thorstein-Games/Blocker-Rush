@@ -120,7 +120,7 @@ function CasualGameLayout() {
     startedAt,
     applyPuzzle,
   } = useGame();
-  const { hintMessage, hintPlacement, requestHint } = useHint();
+  const { hintMessage, hintPlacement, requestHint, clearHint } = useHint();
   const router = useRouter();
   const searchParams = useSearchParams();
   const puzzleParam = searchParams.get("p");
@@ -133,7 +133,6 @@ function CasualGameLayout() {
   const [stats, setStats] = useState<CasualStats>(() => readStats());
   const [roundStats, setRoundStats] = useState<RoundStats | null>(null);
   const [hasRecordedSolve, setHasRecordedSolve] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
 
   useEffect(() => {
     const settings = readSettings();
@@ -143,14 +142,6 @@ function CasualGameLayout() {
   useEffect(() => {
     writeSettings({ difficulty });
   }, [difficulty]);
-
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 1200px)");
-    const sync = () => setIsDesktop(media.matches);
-    sync();
-    media.addEventListener("change", sync);
-    return () => media.removeEventListener("change", sync);
-  }, []);
 
   useEffect(() => {
     setLoadError(null);
@@ -296,69 +287,44 @@ function CasualGameLayout() {
   const settingsContent = (
     <div className="settings-stack">
       <ThemeSelect />
-      <div className="stack">
-        <label htmlFor="difficulty">Difficulty</label>
-        <select
-          id="difficulty"
-          value={difficulty}
-          onChange={(event) => setDifficulty(event.target.value as Difficulty)}
-        >
-          {difficultyOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="stack">
-        <label htmlFor="puzzle-input">Puzzle ID</label>
-        <input
-          id="puzzle-input"
-          value={puzzleInput}
-          onChange={(event) => setPuzzleInput(event.target.value)}
-          placeholder="A1A2B4B6C5D5F1"
-        />
+      <details className="puzzle-id-details" open={Boolean(loadError)}>
+        <summary>Play a puzzle ID</summary>
+        <div className="stack">
+          <label htmlFor="puzzle-input">Puzzle ID</label>
+          <input
+            id="puzzle-input"
+            value={puzzleInput}
+            onChange={(event) => setPuzzleInput(event.target.value)}
+            placeholder="A1A2B4B6C5D5F1"
+          />
+          <div className="settings-actions">
+            <button
+              className="button"
+              type="button"
+              onClick={loadPuzzleFromInput}
+            >
+              Load
+            </button>
+          </div>
+          {loadError && (
+            <div className="notice" role="status">
+              {loadError}
+            </div>
+          )}
+        </div>
+      </details>
+      {!solved && (
         <div className="settings-actions">
-          <button
-            className="button"
-            type="button"
-            onClick={loadPuzzleFromInput}
-          >
-            Load
-          </button>
           <button
             className="button secondary"
             type="button"
-            onClick={() => loadRandomPuzzle(difficulty)}
+            onClick={handleShare}
           >
-            Random Puzzle
+            Share this puzzle
           </button>
         </div>
-      </div>
-      <div className="settings-row">
-        {puzzleDifficulty && <span className="badge">{puzzleDifficulty}</span>}
-        {solved && roundStats && (
-          <span>
-            Moves: {roundStats.moves} · Time:{" "}
-            {formatDuration(roundStats.elapsedMs)}
-          </span>
-        )}
-      </div>
-      <div className="settings-actions">
-        <button
-          className="button secondary"
-          type="button"
-          onClick={handleShare}
-        >
-          Share
-        </button>
-      </div>
-      {loadError && (
-        <div className="notice" role="status">
-          {loadError}
-        </div>
       )}
-      {shareStatus && (
+      {shareStatus && !solved && (
         <div className="notice" role="status">
           {shareStatus}
         </div>
@@ -387,15 +353,9 @@ function CasualGameLayout() {
         statsTitle="Casual Wins"
         statsPanel={statsContent}
         settingsTitle="Casual Settings"
-        settingsPanel={isDesktop ? undefined : settingsContent}
+        settingsPanel={settingsContent}
       />
       <section className="game-layout">
-        {isDesktop && (
-          <aside className="panel side-panel">
-            <h3>Casual Settings</h3>
-            {settingsContent}
-          </aside>
-        )}
         <div className="game-center puzzle-workspace">
           <div className="game-context-strip">
             <strong>Casual</strong>
@@ -403,13 +363,37 @@ function CasualGameLayout() {
               {puzzleDifficulty ?? "Custom puzzle"}
             </span>
           </div>
-          <GameBoard hintPlacement={hintPlacement} />
+          <GameBoard
+            hintPlacement={hintPlacement}
+            hintNotice={hintMessage}
+            onHintDone={clearHint}
+          />
           <PiecesTray onHint={handleHint} />
-          {hintMessage && !solved && (
-            <div className="notice" role="status">
-              {hintMessage}
+          <div className="casual-bar">
+            <div
+              className="difficulty-picker"
+              role="group"
+              aria-label="Difficulty for new puzzles"
+            >
+              {difficultyOptions.map((tier) => (
+                <button
+                  key={tier}
+                  type="button"
+                  aria-pressed={difficulty === tier}
+                  onClick={() => setDifficulty(tier)}
+                >
+                  {tier[0]!.toUpperCase() + tier.slice(1)}
+                </button>
+              ))}
             </div>
-          )}
+            <button
+              className="button"
+              type="button"
+              onClick={() => loadRandomPuzzle(difficulty)}
+            >
+              New puzzle
+            </button>
+          </div>
           {solved && (
             <>
               <div className="notice" role="status">
@@ -424,11 +408,16 @@ function CasualGameLayout() {
                 <button
                   className="button secondary"
                   type="button"
-                  onClick={() => router.push("/casual")}
+                  onClick={() => loadRandomPuzzle(difficulty)}
                 >
-                  Play Again
+                  Next puzzle
                 </button>
               </div>
+              {shareStatus && (
+                <div className="notice" role="status">
+                  {shareStatus}
+                </div>
+              )}
               <tg-more-games game="blocker-rush" class="more-games"></tg-more-games>
               <tg-ad game="blocker-rush" format="box" class="finish-ad"></tg-ad>
             </>

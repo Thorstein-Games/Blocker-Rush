@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties } from "react";
+import { type CSSProperties, useRef } from "react";
 import { PIECES } from "@blocker-rush/shared";
 import { PIECE_COLORS } from "./pieceColors";
 import { useGame } from "./GameContext";
@@ -25,8 +25,14 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
     undo,
     canUndo,
     selectPiece,
+    takeBack,
     boardRef,
   } = useGame();
+
+  // The piece whose slot the pointer went down on while it was still in the
+  // tray: the click that ends dragging it onto the board must not take it
+  // straight back.
+  const pressedUnplacedRef = useRef<string | null>(null);
 
   const activePiece =
     activePieceId && !board.placements[activePieceId]
@@ -70,7 +76,10 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                 className="button secondary"
                 type="button"
                 onClick={onHint}
-                disabled={readOnly || !!draggingPieceId}
+                // Never disabled mid-drag: the dragged slot holds the pointer
+                // capture, and a disabled button gets no pointer events, so
+                // the drop would never arrive.
+                disabled={readOnly}
               >
                 Hint
               </button>
@@ -102,9 +111,7 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                   </button>
                 )}
               </div>
-            ) : (
-              <span className="pieces-hint">Tap or drag a piece</span>
-            )}
+            ) : null}
           </div>
         </div>
         <div className="pieces-grid">
@@ -130,8 +137,20 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                 key={piece.id}
                 className={slotClassName}
                 type="button"
-                onPointerDown={(event) => onPiecePointerDown(event, piece.id)}
+                onPointerDown={(event) => {
+                  pressedUnplacedRef.current = placed ? null : piece.id;
+                  // A placed piece's slot is a "take back" button.
+                  if (!placed) onPiecePointerDown(event, piece.id);
+                }}
                 onClick={(event) => {
+                  if (placed) {
+                    const endsDrag =
+                      event.detail !== 0 &&
+                      pressedUnplacedRef.current === piece.id;
+                    pressedUnplacedRef.current = null;
+                    if (!endsDrag && !draggingPieceId) takeBack(piece.id);
+                    return;
+                  }
                   if (event.detail !== 0) return;
                   selectPiece(piece.id);
                   boardRef.current
@@ -140,10 +159,17 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                 }}
                 aria-pressed={activePieceId === piece.id}
                 aria-label={
-                  placed ? `${piece.name} placed` : `Select ${piece.name}`
+                  placed ? `Take back ${piece.name}` : `Select ${piece.name}`
                 }
-                aria-description={`${transform.cells.length} squares, ${transform.width} columns by ${transform.height} rows. Enter or Space selects this piece and focuses the board.`}
-                disabled={readOnly || placed}
+                aria-description={
+                  placed
+                    ? "Placed on the board. Activate to return it to the tray."
+                    : `${transform.cells.length} squares, ${transform.width} columns by ${transform.height} rows. Enter or Space selects this piece and focuses the board.`
+                }
+                // Never disabled mid-drag: the dragged slot holds the pointer
+                // capture, and a disabled button gets no pointer events, so
+                // the drop would never arrive.
+                disabled={readOnly}
               >
                 <div
                   className="piece-grid"
@@ -170,7 +196,11 @@ export default function PiecesTray({ onHint }: PiecesTrayProps = {}) {
                     />
                   ))}
                 </div>
-                {placed && <span className="piece-placed-label">Placed</span>}
+                {placed && (
+                  <span className="piece-placed-label" aria-hidden="true">
+                    Take back
+                  </span>
+                )}
               </button>
             );
           })}

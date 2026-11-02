@@ -92,6 +92,8 @@ const applyHostSettings = (
     }
     if (typeof window !== "undefined") {
       window.localStorage.setItem("multiplayer-player-name", nextName);
+      // Shared with the other Thorstein Games.
+      window.localStorage.setItem("playerName", nextName);
     }
     setDisplayName(nextName);
     setIsEditingName(false);
@@ -99,7 +101,7 @@ const applyHostSettings = (
 
   return (
     <section className="multiplayer-room-stage panel stack">
-      <h3>
+      <h2>
         Room{" "}
         <button
           className="room-code-button"
@@ -110,7 +112,7 @@ const applyHostSettings = (
         >
           {state.roomCode}
         </button>
-      </h3>
+      </h2>
       <div className="multiplayer-room-list">
         {players.map((player) => (
           <div className="room-row" key={player.playerId}>

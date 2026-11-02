@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getDailyDifficulty } from "@blocker-rush/shared";
 import DailyGame from "../../../components/DailyGame";
 import SeoContent from "../../../components/SeoContent";
-import { isArchiveDateKey } from "../../../components/dailyArchive";
+import { isArchiveDateKey } from "../../../components/archiveDays";
 import { parseDateKey } from "../../../components/dailyStats";
 import { breadcrumbJsonLd, buildPageMetadata } from "../../../lib/seo";
 

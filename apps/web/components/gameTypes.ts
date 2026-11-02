@@ -93,7 +93,10 @@ export type GameContextValue = {
     flipped: boolean,
   ) => PieceTransform;
   onBoardPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
-  onBoardClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
+  onBoardClick: (
+    event: ReactMouseEvent<HTMLDivElement>,
+    hint?: Placement | null,
+  ) => void;
   onBoardDoubleClick: (event: ReactMouseEvent<HTMLDivElement>) => void;
   onPiecePointerDown: (
     event: ReactPointerEvent<HTMLElement>,
@@ -106,7 +109,12 @@ export type GameContextValue = {
   canUndo: boolean;
   feedback: { text: string; error: boolean; sequence: number } | null;
   selectPiece: (pieceId: PieceId) => void;
-  activateCell: (cellIndex: number, remove?: boolean) => void;
+  activateCell: (
+    cellIndex: number,
+    remove?: boolean,
+    hint?: Placement | null,
+  ) => void;
+  takeBack: (pieceId: PieceId) => void;
   restoreState: (snapshot: {
     placements: Placement[];
     pieceStates: Record<PieceId, PieceState>;

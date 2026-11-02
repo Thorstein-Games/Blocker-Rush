@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { difficultyOptions } from "@blocker-rush/shared";
 import { type DailyStats, getBestStreak } from "./dailyStats";
-import { type SolveHistory, summarizeHistory } from "./dailyArchive";
+import { type SolveHistory, summarizeHistory } from "./archiveDays";
 import { formatDuration } from "./dailyTimer";
 
 /**

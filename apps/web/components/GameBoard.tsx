@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import {
   PIECES,
@@ -9,21 +9,22 @@ import {
   type Placement,
 } from "@blocker-rush/shared";
 import { PIECE_COLORS } from "./pieceColors";
+import { OPEN_HELP_EVENT } from "./GameHeader";
+import { placementCovering } from "./pieceGeometry";
+import type { HintNotice } from "./useHint";
 import WinnerFireworks from "./multiplayer/WinnerFireworks";
 import { useGame } from "./GameContext";
 
+// Shown under the board when the last piece goes in.
 const WINNER_MESSAGES = [
-  "That last snap hits just right.",
-  "Clean finish. Puzzle locked.",
-  "Perfect fit. No notes.",
-  "You solved it like clockwork.",
-  "Board filled. Momentum maintained.",
-  "Every move paid off.",
-  "Precision win. Nicely done.",
-  "That was a sharp close.",
-  "Solved with style.",
-  "Yo! Champ in the making!",
-  "Another puzzle in the books.",
+  "Not a gap left. Worthy of a saga.",
+  "Every square claimed. Odin nods.",
+  "The shield wall holds.",
+  "Forged without a crack.",
+  "A fit fit for Valhalla.",
+  "The skalds will sing of this one.",
+  "Clean as a fresh-sharpened axe.",
+  "Thor himself couldn't wedge a pebble in.",
 ] as const;
 
 const getRandomWinnerMessage = () => {
@@ -34,9 +35,21 @@ const getRandomWinnerMessage = () => {
 type GameBoardProps = {
   overlay?: ReactNode;
   hintPlacement?: Placement | null;
+  /** A hint in words (useHint), shown in the message line under the board. */
+  hintNotice?: HintNotice | null;
+  /** Called after the hint's "Take back" button is used. */
+  onHintDone?: () => void;
+  /** Under the board once solved, beside the cheer (e.g. the streak). */
+  solvedExtra?: ReactNode;
 };
 
-export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
+export default function GameBoard({
+  overlay,
+  hintPlacement,
+  hintNotice,
+  onHintDone,
+  solvedExtra,
+}: GameBoardProps) {
   const {
     board,
     ghost,
@@ -52,6 +65,7 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
     readOnly,
     activePieceId,
     activateCell,
+    takeBack,
     feedback,
   } = useGame();
   const [winnerMessage] = useState(getRandomWinnerMessage());
@@ -59,6 +73,18 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
   const shapeId = useId();
   const [cursor, setCursor] = useState(0);
   const [keyboardFocus, setKeyboardFocus] = useState(false);
+  // The square under a mouse pointer, for the placement outline.
+  const [hoverCell, setHoverCell] = useState<number | null>(null);
+  // The feedback message current when the hint notice arrived: a newer one
+  // (e.g. a failed tap) replaces the notice in the message line.
+  const [feedbackAtHint, setFeedbackAtHint] = useState<number | undefined>();
+  useEffect(() => {
+    setFeedbackAtHint(feedback?.sequence);
+    // Only when a new notice arrives.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hintNotice?.sequence]);
+  const showHintNotice =
+    hintNotice && !solved && feedback?.sequence === feedbackAtHint;
   const activePiece = PIECES.find((piece) => piece.id === activePieceId);
   const availablePiece =
     activePieceId && !board.placements[activePieceId] ? activePieceId : null;
@@ -75,23 +101,43 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
     selectedTransform?.id === hintPlacement.transformId
       ? hintPlacement
       : null;
-  const cursorOrigin = {
-    x: cursor % board.size.cols,
-    y: Math.floor(cursor / board.size.cols),
+  const squareAt = (index: number) => ({
+    x: index % board.size.cols,
+    y: Math.floor(index / board.size.cols),
+  });
+  // Where the selected piece would go for a square: the hint's spot when
+  // the square is one the hint outlines, else covering that square.
+  const placementFor = (index: number) => {
+    if (!selectedTransform) return null;
+    const square = squareAt(index);
+    if (
+      activeHint &&
+      selectedTransform.cells.some(
+        (part) =>
+          activeHint.origin.x + part.x === square.x &&
+          activeHint.origin.y + part.y === square.y,
+      )
+    )
+      return {
+        origin: activeHint.origin,
+        valid: canPlace(board, selectedTransform, activeHint.origin),
+      };
+    return placementCovering(board, selectedTransform, square);
   };
+  const hoverFree =
+    hoverCell !== null && (!board.cells[hoverCell] || board.cells[hoverCell] === "blocker");
   const preview = draggingPieceId
     ? ghost
-    : activeHint && selectedTransform
-      ? {
-          origin: activeHint.origin,
-          valid: canPlace(board, selectedTransform, activeHint.origin),
-        }
+    : hoverFree && selectedTransform
+      ? placementFor(hoverCell!)
       : keyboardFocus && selectedTransform
-        ? {
-            origin: cursorOrigin,
-            valid: canPlace(board, selectedTransform, cursorOrigin),
-          }
-        : null;
+        ? placementFor(cursor)
+        : activeHint && selectedTransform
+          ? {
+              origin: activeHint.origin,
+              valid: canPlace(board, selectedTransform, activeHint.origin),
+            }
+          : null;
   const previewPiece = draggingPieceId ?? availablePiece;
   const focusCell = (index: number) => {
     setCursor(index);
@@ -121,16 +167,20 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
         aria-rowindex={Math.floor(index / board.size.cols) + 1}
         aria-colindex={(index % board.size.cols) + 1}
         aria-label={`Row ${Math.floor(index / board.size.cols) + 1}, column ${(index % board.size.cols) + 1}: ${isBlocker ? "blocker" : isPiece ? PIECES.find((piece) => piece.id === cell)?.name : "empty"}`}
+        onPointerEnter={(event) => {
+          if (event.pointerType === "mouse") setHoverCell(index);
+        }}
         onFocus={(event) => {
           setCursor(index);
           setKeyboardFocus(event.currentTarget.matches(":focus-visible"));
         }}
         style={
-          isPiece
-            ? ({
-                "--block-color": PIECE_COLORS[cell as PieceId],
-              } as CSSProperties)
-            : undefined
+          {
+            "--row": Math.floor(index / board.size.cols),
+            ...(isPiece
+              ? { "--block-color": PIECE_COLORS[cell as PieceId] }
+              : null),
+          } as CSSProperties
         }
       />
     );
@@ -156,15 +206,16 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
       </p>
       <p className="sr-only" id={instructionsId}>
         Select a piece in the tray with Enter or Space. Arrow keys move between
-        squares. Enter or Space places the selected piece. Delete or Backspace
-        removes a piece. D or S rotates; F flips. Escape cancels selection.
+        squares. Enter or Space places the selected piece so it covers the
+        current square. Delete or Backspace removes a piece. D rotates one
+        way, S the other; F flips. Escape cancels selection.
       </p>
       <p className="sr-only" id={shapeId}>
         {selectedTransform && activePiece
-          ? `${activePiece.name}: ${selectedTransform.width} columns by ${selectedTransform.height} rows. Squares relative to the placement corner: ${selectedTransform.cells.map((cell) => `row ${cell.y + 1}, column ${cell.x + 1}`).join("; ")}.`
+          ? `${activePiece.name}: ${selectedTransform.width} columns by ${selectedTransform.height} rows, ${selectedTransform.cells.length} squares.`
           : "No piece selected."}
       </p>
-      <div className="board-shell">
+      <div className={`board-shell${solved ? " solved" : ""}`}>
         <div
           className="board"
           ref={boardRef as React.RefObject<HTMLDivElement>}
@@ -210,11 +261,15 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
               activateCell(
                 cursor,
                 event.key === "Delete" || event.key === "Backspace",
+                activeHint,
               );
             }
           }}
           onPointerDown={readOnly ? undefined : onBoardPointerDown}
-          onClick={readOnly ? undefined : onBoardClick}
+          onClick={
+            readOnly ? undefined : (event) => onBoardClick(event, activeHint)
+          }
+          onPointerLeave={() => setHoverCell(null)}
           onDoubleClick={readOnly ? undefined : onBoardDoubleClick}
           style={
             {
@@ -233,7 +288,13 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
           ))}
           {preview && previewPiece && (
             <div
-              className={`ghost${preview.valid ? "" : " invalid"}`}
+              className={[
+                "ghost",
+                preview.valid ? null : "invalid",
+                draggingPieceId ? null : "outline",
+              ]
+                .filter(Boolean)
+                .join(" ")}
               aria-hidden="true"
               style={
                 {
@@ -303,42 +364,70 @@ export default function GameBoard({ overlay, hintPlacement }: GameBoardProps) {
         )}
         {overlay ? <div className="board-overlay">{overlay}</div> : null}
         {solved && (
-          <div className="celebration" role="status">
+          <div className="celebration" aria-hidden="true">
             <WinnerFireworks className="celebration-fireworks" />
-            <div className="celebration-card">
-              <strong>Puzzle Complete</strong>
-              <span>{winnerMessage}</span>
-            </div>
           </div>
         )}
       </div>
       <div className="board-guidance">
-        <p
-          className={`board-feedback${feedback?.error ? " error" : ""}`}
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          {solved ? (
-            "Every square filled. Puzzle complete!"
-          ) : feedback?.error ? (
-            <span key={feedback.sequence}>{feedback.text}</span>
-          ) : activeHint ? (
-            preview?.valid ? (
-              `Hint: place ${activePiece?.name} on the outlined squares.`
+        {solved ? (
+          <div className="solved-banner" role="status">
+            <strong>Skål! Puzzle complete.</strong>
+            <span>{winnerMessage}</span>
+            {solvedExtra}
+          </div>
+        ) : (
+          <div
+            className={`board-feedback${feedback?.error && !showHintNotice ? " error" : ""}`}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            {showHintNotice ? (
+              <span key={`hint-${hintNotice.sequence}`}>
+                {hintNotice.text}{" "}
+                {hintNotice.takeBack && board.placements[hintNotice.takeBack] && (
+                  <button
+                    type="button"
+                    className="inline-action"
+                    onClick={() => {
+                      takeBack(hintNotice.takeBack!);
+                      onHintDone?.();
+                    }}
+                  >
+                    Take back the{" "}
+                    {PIECES.find((piece) => piece.id === hintNotice.takeBack)?.name}
+                  </button>
+                )}
+              </span>
+            ) : feedback?.error ? (
+              <span key={feedback.sequence}>{feedback.text}</span>
+            ) : activeHint ? (
+              preview?.valid ? (
+                `Hint: place ${activePiece?.name} on the outlined squares.`
+              ) : (
+                "Hint: these squares are occupied. Remove the pieces in the outlined area first."
+              )
+            ) : feedback ? (
+              <span key={feedback.sequence}>{feedback.text}</span>
+            ) : availablePiece && activePiece ? (
+              `${activePiece.name} selected. Tap the board to place it; Rotate or Flip to fit.`
+            ) : Object.values(board.placements).filter(Boolean).length > 0 ? (
+              "To take a piece back, tap it in the tray. Undo works too."
             ) : (
-              "Hint: these squares are occupied. Remove the pieces in the outlined area first."
-            )
-          ) : feedback ? (
-            <span key={feedback.sequence}>{feedback.text}</span>
-          ) : availablePiece && activePiece ? (
-            `${activePiece.name} selected. Choose a square; Rotate or Flip to fit.`
-          ) : Object.values(board.placements).filter(Boolean).length > 0 ? (
-            "Double-tap a piece to remove it, or use Undo."
-          ) : (
-            "Choose a piece, then tap a square. You can also drag."
-          )}
-        </p>
+              <>
+                Pick a piece, then tap where it goes.{" "}
+                <button
+                  type="button"
+                  className="inline-action"
+                  onClick={() => window.dispatchEvent(new Event(OPEN_HELP_EVENT))}
+                >
+                  How to play
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

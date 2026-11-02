@@ -33,10 +33,26 @@ export default function MultiplayerLobbyLanding({
   reconnectRoomCode = "",
   leftRoomCode = "",
 }: MultiplayerLobbyLandingProps) {
-  const { state, requestLobby, joinPublic, joinByCode, createPrivate } =
-    useMultiplayerStore();
+  const {
+    state,
+    requestLobby,
+    retryLobby,
+    joinPublic,
+    joinByCode,
+    createPrivate,
+  } = useMultiplayerStore();
 
-  const defaultPlayerName = useMemo(() => `Player${randomPlayerSuffix(5)}`, []);
+  // The name other Thorstein Games use (one origin, shared localStorage),
+  // else a random one.
+  const defaultPlayerName = useMemo(() => {
+    try {
+      const shared = window.localStorage.getItem("playerName")?.trim();
+      if (shared) return shared.slice(0, 24);
+    } catch {
+      // Storage blocked: fall through to a random name.
+    }
+    return `Player${randomPlayerSuffix(5)}`;
+  }, []);
   const [storedName, setStoredName] = useLocalStorage<string>(
     "multiplayer-player-name",
     defaultPlayerName,
@@ -131,14 +147,41 @@ export default function MultiplayerLobbyLanding({
         }
       />
       <section className="multiplayer-lobby">
+        {state.lobbyOffline ? (
+          <div className="notice error lobby-status" role="alert">
+            <span>
+              Can&apos;t reach the game server. Check your connection, then
+              try again.
+            </span>
+            <button className="button secondary" type="button" onClick={retryLobby}>
+              Retry
+            </button>
+          </div>
+        ) : !state.connected ? (
+          <p className="lobby-status pieces-hint" role="status">
+            Connecting to the game server…
+          </p>
+        ) : null}
+        {state.error && !state.roomCode && (
+          <div className="notice error lobby-status" role="alert">
+            {state.error}
+          </div>
+        )}
         <div className="panel stack">
-          <h3>Quick Join</h3>
+          <h2>Quick Join</h2>
           <label htmlFor="display-name">Display name</label>
           <input
             id="display-name"
             autoComplete="nickname"
             value={name}
-            onChange={(event) => setStoredName(event.target.value)}
+            onChange={(event) => {
+              setStoredName(event.target.value);
+              try {
+                window.localStorage.setItem("playerName", event.target.value);
+              } catch {
+                // Not shared with other games this time.
+              }
+            }}
             placeholder="Display name"
             maxLength={24}
           />
@@ -146,6 +189,7 @@ export default function MultiplayerLobbyLanding({
             className="button"
             type="button"
             onClick={() => joinPublic(name)}
+            disabled={state.lobbyOffline}
           >
             Join Public Matchmaking
           </button>
@@ -173,7 +217,7 @@ export default function MultiplayerLobbyLanding({
               className="button secondary"
               type="button"
               onClick={() => joinByCode(name, roomCodeInput)}
-              disabled={!roomCodeInput}
+              disabled={!roomCodeInput || state.lobbyOffline}
             >
               Join by Code
             </button>
@@ -181,7 +225,7 @@ export default function MultiplayerLobbyLanding({
         </div>
 
         <div className="panel stack">
-          <h3>Create Private Room</h3>
+          <h2>Create Private Room</h2>
           <label htmlFor="rounds">Rounds</label>
           <select
             id="rounds"
@@ -224,24 +268,30 @@ export default function MultiplayerLobbyLanding({
             className="button"
             type="button"
             onClick={() => createPrivate(name, settings)}
+            disabled={state.lobbyOffline}
           >
             Create Private Room
           </button>
         </div>
 
         <div className="panel stack">
-          <h3>Rooms</h3>
+          <h2>Rooms</h2>
           <button
             className="button secondary"
             type="button"
             onClick={requestLobby}
+            disabled={!state.connected}
           >
             Refresh
           </button>
           <div className="multiplayer-room-list">
-            {state.lobbyRooms.length === 0 ? (
+            {!state.connected ? (
               <span className="pieces-hint">
-                No waiting or in-progress rooms.
+                Open rooms show here once you&apos;re connected.
+              </span>
+            ) : state.lobbyRooms.length === 0 ? (
+              <span className="pieces-hint">
+                No open rooms right now. Join matchmaking or create one.
               </span>
             ) : (
               state.lobbyRooms.map((room) => (
