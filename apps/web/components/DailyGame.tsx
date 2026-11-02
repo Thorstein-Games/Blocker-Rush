@@ -29,7 +29,7 @@ import {
   describeSolve,
   formatDuration,
 } from "./dailyTimer";
-import { type SolveHistory, archiveDayStatus, recordSolve } from "./dailyArchive";
+import { type SolveHistory, archiveDayStatus, recordSolve } from "./archiveDays";
 import { useHint, type HintNotice } from "./useHint";
 import DailyStatsPanel from "./DailyStatsPanel";
 import {

@@ -9,7 +9,7 @@ import ThemeSelect from "./ThemeSelect";
 import { type DailyStats, parseDateKey, reconcileStats } from "./dailyStats";
 import DailyStatsPanel from "./DailyStatsPanel";
 import { formatDuration } from "./dailyTimer";
-import { type SolveHistory, archiveDateKeys } from "./dailyArchive";
+import { type SolveHistory, archiveDateKeys } from "./archiveDays";
 import { readDailyStats, readSolveHistory } from "./dailyStorage";
 
 type ArchiveState = {

@@ -1,7 +1,7 @@
 import type { Placement, PieceId } from "@blocker-rush/shared";
 import type { PieceState } from "./gameTypes";
 import type { DailyStats } from "./dailyStats";
-import { type SolveHistory, parseSolveHistory } from "./dailyArchive";
+import { type SolveHistory, parseSolveHistory } from "./archiveDays";
 
 // localStorage persistence for the daily puzzle and its archive. Every
 // accessor tolerates missing, malformed or unavailable storage.

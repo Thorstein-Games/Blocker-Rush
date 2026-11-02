@@ -8,7 +8,7 @@ import {
   parseSolveHistory,
   recordSolve,
   summarizeHistory,
-} from "./dailyArchive";
+} from "./archiveDays";
 
 // A zone with DST, so the November change falls inside one of these ranges
 // (Node applies TZ changes at runtime).
