@@ -54,7 +54,9 @@ jobs:
       - if: env.HAS_MEGINGJORD == 'true'
         run: pnpm install --frozen-lockfile
         working-directory: megingjord
-      - run: npx playwright install --with-deps chromium
+      # No --with-deps: Ubuntu 24.04 runners already have Chromium's libraries,
+      # and its apt step sometimes takes 7+ minutes.
+      - run: npx playwright install chromium
         working-directory: apps/web
       - run: npm run test:e2e
         env:
