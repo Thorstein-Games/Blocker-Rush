@@ -1,0 +1,24 @@
+# One-off: delete every stored artifact in this repo to free Actions storage.
+name: Delete stored artifacts
+on:
+  push:
+    branches: [claude/adoring-bohr-yhkzcj]
+    paths: [.github/workflows/delete-artifacts.yml]
+permissions:
+  actions: write
+jobs:
+  delete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh api --paginate "repos/$REPO/actions/artifacts?per_page=100" \
+            --jq '.artifacts[] | select(.expired | not) | "\(.id) \(.size_in_bytes) \(.name)"' > list.txt
+          echo "Found $(wc -l < list.txt) artifacts, $(awk '{s+=$2} END {printf "%.1f", s/1048576}' list.txt) MB"
+          while read -r id size name; do
+            gh api -X DELETE "repos/$REPO/actions/artifacts/$id" && echo "deleted $name ($id)"
+          done < list.txt
