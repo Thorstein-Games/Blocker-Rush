@@ -3,7 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ["**/*.md"] # docs-only changes don't touch the code
   pull_request:
+
+concurrency:
+  # A newer push to the same branch cancels this run.
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -61,4 +67,4 @@ jobs:
         with:
           name: playwright-traces
           path: apps/web/test-results
-          retention-days: 7
+          retention-days: 3
