@@ -25,11 +25,17 @@ const longDate = (dateKey: string) =>
 export function generateMetadata({ params }: Params) {
   if (!isArchiveDateKey(params.date)) return {};
   const difficulty = getDailyDifficulty(parseDateKey(params.date));
-  return buildPageMetadata({
-    title: `Daily Puzzle for ${longDate(params.date)}`,
-    description: `Play the Blocker Rush daily puzzle from ${longDate(params.date)}, a ${difficulty} board. Fit 9 pieces around 7 blockers on a 6×6 grid in this free Genius Square–style logic puzzle.`,
-    path: `/daily/${params.date}`,
-  });
+  return {
+    ...buildPageMetadata({
+      title: `Daily Puzzle for ${longDate(params.date)}`,
+      description: `Play the Blocker Rush daily puzzle from ${longDate(params.date)}, a ${difficulty} board. Fit 9 pieces around 7 blockers on a 6×6 grid in this free Genius Square–style logic puzzle.`,
+      path: `/daily/${params.date}`,
+    }),
+    // Hundreds of near-identical day pages read as thin content to search
+    // engines (and to AdSense's review). The archive list (/daily) stays
+    // indexed and its links followed; the days themselves stay out of search.
+    robots: { index: false, follow: true },
+  };
 }
 
 export default function ArchiveDayPage({ params }: Params) {

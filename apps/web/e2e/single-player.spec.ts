@@ -338,6 +338,8 @@ test.describe("daily archive", () => {
 
     await page.goto(`/blocker-rush/daily/${dateKey}`);
     await expect(page).toHaveTitle(/^Daily Puzzle for .+ \| Blocker Rush$/);
+    // Day pages stay out of search; the archive list is indexed.
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex, follow");
     await expect(contextStrip(page)).toContainText("Archive");
     await expect(contextStrip(page)).not.toContainText("streak");
     await expect(contextStrip(page).locator("time")).toHaveAttribute("datetime", dateKey);
@@ -478,6 +480,7 @@ test.describe("pages load without errors", () => {
     const errors = watchForErrors(page);
     await page.goto("/blocker-rush/daily");
     await expect(page.locator(".archive-day").first()).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /^index, follow/);
     expect(errors).toEqual([]);
   });
 
