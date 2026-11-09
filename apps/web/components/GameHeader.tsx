@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { withBasePath } from "../lib/basePath";
+import { autoTour, showTour } from "../lib/tour";
 
 type Mode = "daily" | "casual" | "multiplayer";
 
@@ -141,6 +142,11 @@ export default function GameHeader({
       triggerRef.current?.focus();
     };
   }, [openPanel]);
+
+  // First visit to a single-player board: the 3-step tutorial.
+  useEffect(() => {
+    if (mode !== "multiplayer") autoTour();
+  }, [mode]);
 
   // The board's "How to play" link opens this dialog.
   useEffect(() => {
@@ -419,7 +425,21 @@ export default function GameHeader({
               </svg>
             </button>
           </div>
-          <div className="header-modal-body">{activePanel}</div>
+          <div className="header-modal-body">
+            {activePanel}
+            {openPanel === "howToPlay" && mode !== "multiplayer" && (
+              <button
+                className="button secondary tour-replay"
+                type="button"
+                onClick={() => {
+                  setOpenPanel(null);
+                  requestAnimationFrame(() => showTour());
+                }}
+              >
+                Show the tutorial
+              </button>
+            )}
+          </div>
         </dialog>
       )}
     </>
