@@ -65,13 +65,14 @@ export function tutorialSeen(key: string): boolean {
 
 /**
  * Opens the tutorial the first time a browser loads the game. Automated
- * browsers (crawlers, other tests) never get it unless a test sets
+ * browsers (crawlers, other tests, jsdom) never get it unless a test sets
  * `window.__tutorialAuto = true` first.
  */
 export function autoTutorial(options: TutorialOptions): boolean {
   if (typeof window === "undefined" || tutorialSeen(options.key)) return false;
   const w = window as unknown as { __tutorialAuto?: boolean };
-  if (navigator.webdriver && !w.__tutorialAuto) return false;
+  const automated = navigator.webdriver || /jsdom/i.test(navigator.userAgent);
+  if (automated && !w.__tutorialAuto) return false;
   openTutorial(options);
   return true;
 }
@@ -174,8 +175,8 @@ export function openTutorial(options: TutorialOptions): () => void {
       hole.style.width = `${r.width + pad * 2}px`;
       hole.style.height = `${r.height + pad * 2}px`;
       scrim.classList.add("clear");
-      // Sit the card in the half of the screen the target isn't in.
-      card.dataset.at = r.top + r.height / 2 < innerHeight / 2 ? "bottom" : "top";
+      // Sit the card on whichever side of the target has more room.
+      card.dataset.at = innerHeight - r.bottom > r.top ? "bottom" : "top";
     }
     frame = requestAnimationFrame(place);
   }
