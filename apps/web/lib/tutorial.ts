@@ -46,7 +46,7 @@ export type TutorialOptions = {
 const HOST_ID = "game-tutorial";
 /** How long a demo's success message shows before `advance` moves on. */
 export const ADVANCE_MS = 1500;
-/** On opening, how long the page shows before scrolling to the first step's target. */
+/** On a first visit, how long the page shows before scrolling to the first step's target. */
 const FIRST_SCROLL_DELAY_MS = 1000;
 /** Room the shared 40px bar (and a little air) takes at the top. */
 const TOP_CLEAR = 48;
@@ -82,7 +82,8 @@ export function autoTutorial(options: TutorialOptions): boolean {
   const w = window as unknown as { __tutorialAuto?: boolean };
   const automated = navigator.webdriver || /jsdom/i.test(navigator.userAgent);
   if (automated && !w.__tutorialAuto) return false;
-  openTutorial(options);
+  // Let the page be seen first; a replay (the player asked) moves at once.
+  openTutorial(options, FIRST_SCROLL_DELAY_MS);
   return true;
 }
 
@@ -92,8 +93,11 @@ export function tutorialOpen(): boolean {
   return closeOpen !== null;
 }
 
-/** Opens the tutorial now (the replay button). Returns a function that closes it. */
-export function openTutorial(options: TutorialOptions): () => void {
+/**
+ * Opens the tutorial now (the replay button), scrolling to the first step's
+ * target after `firstDelay` ms. Returns a function that closes it.
+ */
+export function openTutorial(options: TutorialOptions, firstDelay = 0): () => void {
   closeOpen?.();
   storageSet(options.key, "seen");
   const steps = options.steps.slice(0, 3);
@@ -380,7 +384,7 @@ export function openTutorial(options: TutorialOptions): () => void {
   host.addEventListener("keydown", onHostKey);
 
   closeOpen = closeNow;
-  show(0, FIRST_SCROLL_DELAY_MS);
+  show(0, firstDelay);
   return closeNow;
 }
 
