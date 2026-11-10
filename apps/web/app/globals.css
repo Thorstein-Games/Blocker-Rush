@@ -2042,3 +2042,7 @@ input::placeholder {
     animation: none;
   }
 }
+
+.tour-replay {
+  margin-top: 16px;
+}
