@@ -9,8 +9,11 @@
  */
 
 export type TutorialDemoApi = {
-  /** The player did the thing: show `message` and highlight Next. */
-  done(message?: string): void;
+  /**
+   * The player did the thing: show `message` and light up Next. With
+   * `advance`, the next step opens by itself after a moment (`ADVANCE_MS`).
+   */
+  done(message?: string, options?: { advance?: boolean }): void;
   /** Change the hint line under the demo. */
   say(message: string): void;
 };
@@ -41,6 +44,12 @@ export type TutorialOptions = {
 };
 
 const HOST_ID = "game-tutorial";
+/** How long a demo's success message shows before `advance` moves on. */
+export const ADVANCE_MS = 1500;
+/** On opening, how long the page shows before scrolling to the first step's target. */
+const FIRST_SCROLL_DELAY_MS = 1000;
+/** Room the shared 40px bar (and a little air) takes at the top. */
+const TOP_CLEAR = 48;
 
 function storageGet(key: string): string | null {
   try {
@@ -97,7 +106,7 @@ export function openTutorial(options: TutorialOptions): () => void {
   root.innerHTML = `<style>${STYLE}${options.css ?? ""}</style>
     <div class="scrim" part="scrim"></div>
     <div class="hole" hidden></div>
-    <div class="card" role="dialog" aria-modal="true" aria-label="${escapeHtml(options.label)}">
+    <div class="card" tabindex="-1" role="dialog" aria-modal="true" aria-label="${escapeHtml(options.label)}">
       <div class="top">
         <span class="count" aria-hidden="true"></span>
         <button type="button" class="x" aria-label="Close tutorial">×</button>
@@ -144,6 +153,65 @@ export function openTutorial(options: TutorialOptions): () => void {
   let frame = 0;
   let target: Element | null = null;
   let lastRect = "";
+  /** Timer for a pending scroll or auto-advance; cleared on every step change and on close. */
+  let timer = 0;
+  let travel = 0;
+  const reduceMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /** Is the target on screen, clear of the card, so it can be pointed at without scrolling? */
+  function inView(el: Element): boolean {
+    const r = el.getBoundingClientRect();
+    const cardRoom = card.offsetHeight + 24;
+    if (r.height > innerHeight - TOP_CLEAR - cardRoom) return r.top >= TOP_CLEAR && r.top < TOP_CLEAR + 24;
+    const above = r.top >= TOP_CLEAR && r.bottom <= innerHeight - cardRoom; // card fits below it
+    const below = r.top >= TOP_CLEAR + cardRoom && r.bottom <= innerHeight; // card fits above it
+    return above || below;
+  }
+
+  /**
+   * Scrolls the target into view so the player sees the page move: the card
+   * fades out, the page glides there, and the card comes back once it stops.
+   */
+  function travelTo(el: Element, delay: number) {
+    host.classList.add("moving");
+    timer = window.setTimeout(() => {
+      host.classList.remove("waiting");
+      // Land the target in the space the card leaves free below it (the card
+      // then sits underneath), rather than centring it where the card would cover it.
+      const r = el.getBoundingClientRect();
+      const free = innerHeight - TOP_CLEAR - card.offsetHeight - 24;
+      const at = r.height <= free ? TOP_CLEAR + (free - r.height) / 2 : TOP_CLEAR + 8;
+      try {
+        window.scrollTo({ top: scrollY + r.top - at, behavior: reduceMotion() ? "auto" : "smooth" });
+      } catch {
+        window.scrollTo(0, scrollY + r.top - at);
+      }
+      // Wait until the target stops moving (smooth scrolling has no reliable end event).
+      const started = performance.now();
+      let last = "";
+      let still = 0;
+      const settle = () => {
+        const r = el.getBoundingClientRect();
+        const key = `${r.top},${r.left}`;
+        still = key === last ? still + 1 : 0;
+        last = key;
+        const waited = performance.now() - started;
+        if ((still >= 6 && waited > 150) || waited > 1600) {
+          host.classList.remove("moving");
+          focusStep();
+          return;
+        }
+        travel = requestAnimationFrame(settle);
+      };
+      travel = requestAnimationFrame(settle);
+    }, delay);
+  }
+
+  function stopTimers() {
+    window.clearTimeout(timer);
+    cancelAnimationFrame(travel);
+    host.classList.remove("moving", "waiting");
+  }
 
   function findTarget(step: TutorialStep): Element | null {
     if (!step.target) return null;
@@ -162,6 +230,16 @@ export function openTutorial(options: TutorialOptions): () => void {
       hole.hidden = true;
       card.dataset.at = "middle";
       scrim.classList.remove("clear");
+      // The game may still be rendering (or re-rendering) the part this step
+      // points at, so keep looking for it while the step is open.
+      const step = steps[index];
+      const found = step ? findTarget(step) : null;
+      if (found) {
+        target = found;
+        lastRect = "";
+        if (!inView(found) && !host.classList.contains("moving")) travelTo(found, 0);
+      }
+      frame = requestAnimationFrame(place);
       return;
     }
     const r = target.getBoundingClientRect();
@@ -181,10 +259,11 @@ export function openTutorial(options: TutorialOptions): () => void {
     frame = requestAnimationFrame(place);
   }
 
-  function show(i: number) {
+  function show(i: number, delay = 0) {
     if (typeof cleanup === "function") cleanup();
     cleanup = undefined;
     cancelAnimationFrame(frame);
+    stopTimers();
     const step = steps[i];
     if (!step) return;
     index = i;
@@ -192,6 +271,8 @@ export function openTutorial(options: TutorialOptions): () => void {
     bodyEl.textContent = step.body;
     status.textContent = "";
     next.classList.remove("ready");
+    // On a demo step, Next stays quiet until the player has done the thing.
+    next.classList.toggle("quiet", !!step.demo);
     count.textContent = steps.length > 1 ? `${i + 1} of ${steps.length}` : "";
     dots.querySelectorAll("i").forEach((d, j) => d.classList.toggle("on", j === i));
     const last = i === steps.length - 1;
@@ -205,10 +286,16 @@ export function openTutorial(options: TutorialOptions): () => void {
       mount.className = "demo";
       extra.appendChild(mount);
       cleanup = step.demo(mount, {
-        done(message) {
+        done(message, opts) {
           status.textContent = message ?? "Nice!";
           status.classList.add("good");
+          next.classList.remove("quiet");
           next.classList.add("ready");
+          if (opts?.advance) {
+            window.clearTimeout(timer);
+            const from = i;
+            timer = window.setTimeout(() => index === from && goNext(), ADVANCE_MS);
+          }
         },
         say(message) {
           status.classList.remove("good");
@@ -218,22 +305,28 @@ export function openTutorial(options: TutorialOptions): () => void {
     }
     target = findTarget(step);
     lastRect = "";
-    if (target) {
-      try {
-        target.scrollIntoView({ block: "center", inline: "nearest" });
-      } catch {
-        /* old browsers */
-      }
+    if (target && !inView(target)) {
+      // On opening, let the page be seen first; between steps, go straight there.
+      if (delay) host.classList.add("waiting");
+      travelTo(target, delay);
     }
     place();
-    next.focus({ preventScroll: true });
+    if (!host.classList.contains("moving")) focusStep();
   }
+
+  /** Focus the card on a demo step (so the demo, not Next, reads as the thing to do), else Next. */
+  function focusStep() {
+    (steps[index]?.demo ? card : next).focus({ preventScroll: true });
+  }
+
+  const goNext = () => (index < steps.length - 1 ? show(index + 1) : close(true));
 
   function close(finished: boolean) {
     if (closeOpen !== closeNow) return;
     closeOpen = null;
     if (typeof cleanup === "function") cleanup();
     cancelAnimationFrame(frame);
+    stopTimers();
     window.removeEventListener("keydown", onWindowKey, true);
     host.remove();
     try {
@@ -266,7 +359,7 @@ export function openTutorial(options: TutorialOptions): () => void {
     e.stopPropagation();
     if (e.key !== "Tab") return;
     const focusable = Array.from(card.querySelectorAll<HTMLElement>("button, [tabindex='0']")).filter(
-      (el) => !el.hidden && el.offsetParent !== null,
+      (el) => !el.hidden && el.offsetParent !== null && !(el as HTMLButtonElement).disabled,
     );
     if (!focusable.length) return;
     const active = root.activeElement as HTMLElement | null;
@@ -276,17 +369,18 @@ export function openTutorial(options: TutorialOptions): () => void {
     focusable[to]?.focus();
   }
 
-  next.addEventListener("click", () => (index < steps.length - 1 ? show(index + 1) : close(true)));
+  next.addEventListener("click", goNext);
   back.addEventListener("click", () => index > 0 && show(index - 1));
   skip.addEventListener("click", () => close(false));
   closeBtn.addEventListener("click", () => close(false));
   scrim.addEventListener("click", () => close(false));
-  hole.addEventListener("click", () => close(false));
+  // Tapping the part being pointed at is a natural "got it", not a request to quit.
+  hole.addEventListener("click", goNext);
   window.addEventListener("keydown", onWindowKey, true);
   host.addEventListener("keydown", onHostKey);
 
   closeOpen = closeNow;
-  show(0);
+  show(0, FIRST_SCROLL_DELAY_MS);
   return closeNow;
 }
 
@@ -302,7 +396,7 @@ const STYLE = `
 .hole {
   position: fixed; z-index: 2147483001; border-radius: 12px; pointer-events: auto;
   box-shadow: 0 0 0 3px var(--accent), 0 0 0 200vmax rgba(6, 7, 12, 0.72);
-  transition: left .2s, top .2s, width .2s, height .2s;
+  transition: opacity .25s ease, left .2s, top .2s, width .2s, height .2s;
 }
 .hole[hidden] { display: none; }
 .card {
@@ -312,6 +406,10 @@ const STYLE = `
   box-shadow: 0 20px 60px rgba(0,0,0,.55); padding: 14px 18px 16px;
   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; text-align: left;
 }
+.scrim, .card { transition: opacity .25s ease; }
+:host(.moving) .card { opacity: 0; pointer-events: none; }
+:host(.moving) .hole { transition: opacity .25s ease; }
+:host(.waiting) .scrim, :host(.waiting) .hole { opacity: 0; pointer-events: none; }
 .card[data-at="middle"] { top: 50%; transform: translate(-50%, -50%); }
 .card[data-at="bottom"] { bottom: max(12px, env(safe-area-inset-bottom)); }
 .card[data-at="top"] { top: 52px; }
@@ -340,10 +438,13 @@ button { font: inherit; }
 .skip, .back { background: none; border: 1px solid rgba(255,255,255,.2); color: #e4e5ea; }
 .skip { border-color: transparent; color: #b4b6c0; padding: 0 8px; }
 .skip:hover, .back:hover { background: rgba(255,255,255,.08); }
-.next { background: var(--accent); color: var(--accent-text); border: 0; }
+.next { background: var(--accent); color: var(--accent-text); border: 1px solid var(--accent); }
+.next.quiet { background: none; color: #e4e5ea; border-color: rgba(255,255,255,.2); }
+.next.quiet:hover { background: rgba(255,255,255,.08); }
+.card:focus { outline: none; }
 .next.ready { animation: ready 1s ease-in-out 2; }
 [hidden] { display: none !important; }
 button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 @keyframes ready { 50% { transform: scale(1.07); box-shadow: 0 0 0 6px rgba(255,255,255,.15); } }
-@media (prefers-reduced-motion: reduce) { .hole { transition: none; } .next.ready { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .scrim, .hole, .card { transition: none; } .next.ready { animation: none; } }
 `;

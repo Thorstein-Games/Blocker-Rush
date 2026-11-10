@@ -7,25 +7,34 @@ test.beforeEach(async ({ page }) => {
 });
 
 const tour = (page: Page) => page.getByRole("dialog", { name: "Blocker Rush tutorial" });
-const square = (page: Page, name: string) =>
-  tour(page).getByRole("gridcell", { name: new RegExp(`^Square ${name}:`) });
 
-test("first visit: fill the practice board, then the tray and header", async ({ page }) => {
+test("first visit: the tray, the board, then the header", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   await page.goto("/blocker-rush");
   const dialog = tour(page);
+  const hole = page.locator("#game-tutorial .hole");
+
+  // Each step spotlights the real part of the page it talks about.
+  const spotlights = async (selector: string) => {
+    await expect
+      .poll(async () => {
+        const box = await page.locator(selector).first().boundingBox();
+        const h = await hole.boundingBox();
+        return !!h && !!box && Math.abs(h.x + 6 - box.x) < 2 && Math.abs(h.width - 12 - box.width) < 2;
+      })
+      .toBe(true);
+  };
+
+  await expect(dialog.getByRole("heading", { name: "Pick a piece" })).toBeVisible();
+  await expect(dialog).toContainText("Rotate and Flip");
+  await spotlights(".pieces-area");
+  await dialog.getByRole("button", { name: "Next" }).click();
   await expect(dialog.getByRole("heading", { name: "Fill every square" })).toBeVisible();
-
-  await square(page, "2, 1").click();
-  await expect(square(page, "2, 1")).toHaveAccessibleName("Square 2, 1: Square");
-  await square(page, "2, 3").click();
-  await expect(dialog.getByRole("status")).toHaveText("Solved! Every square is filled.");
-
-  await dialog.getByRole("button", { name: "Next" }).click();
-  await expect(dialog.getByRole("heading", { name: "Turn, flip, or get a hint" })).toBeVisible();
-  await dialog.getByRole("button", { name: "Next" }).click();
+  await spotlights(".board");
+  // Tapping the spotlighted part goes on, rather than closing the tutorial.
+  await hole.click();
   await expect(dialog.getByRole("heading", { name: "A new puzzle every day" })).toBeVisible();
   await dialog.getByRole("button", { name: "Let's play" }).click();
   await expect(dialog).toBeHidden();
@@ -34,20 +43,6 @@ test("first visit: fill the practice board, then the tray and header", async ({ 
   await expect(page.locator(".board-cell.blocker")).toHaveCount(7);
   await expect(tour(page)).toBeHidden();
   expect(errors).toEqual([]);
-});
-
-test("a wrong spot can be taken back", async ({ page }) => {
-  await page.goto("/blocker-rush");
-  const dialog = tour(page);
-  // The square in the bottom-right corner leaves no room for the hook.
-  await square(page, "3, 3").click();
-  await expect(dialog.getByRole("status")).toHaveText(
-    "The other piece can't fit now. Tap a placed piece to take it back.",
-  );
-  await square(page, "3, 3").click();
-  await expect(square(page, "3, 3")).toHaveAccessibleName("Square 3, 3: empty");
-  await square(page, "1, 1").click();
-  await expect(dialog.getByRole("status")).toHaveText("That's a blocker: nothing can cover it.");
 });
 
 test("skip, then replay from How to Play", async ({ page }) => {
